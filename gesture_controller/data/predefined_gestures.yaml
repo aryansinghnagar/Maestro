@@ -1,0 +1,106 @@
+version: "1.0"
+config:
+  global_cooldown_ms: 200
+  max_simultaneous_gestures: 1
+  priority_resolution: confidence
+
+gestures:
+  - name: MinimizeWindow
+    type: dynamic
+    priority: 1
+    states:
+      - id: Idle
+        transitions:
+          - to: PointingUp
+            condition: "index_extended == True and middle_extended == False and ring_extended == False and pinky_extended == False"
+      - id: PointingUp
+        min_duration_ms: 200
+        timeout_ms: 2000
+        transitions:
+          - to: RapidDownFlick
+            condition: "index_tip_velocity_y > 0.5 and palm_velocity_magnitude < 0.2"
+          - to: Idle
+            condition: "index_extended == False"
+            abort: true
+      - id: RapidDownFlick
+        min_duration_ms: 50
+        max_duration_ms: 300
+        transitions:
+          - to: Trigger
+            condition: "index_tip_delta_y > 0.15"
+          - to: Idle
+            condition: "palm_center_delta_y > 0.1"
+            abort: true
+      - id: Trigger
+        action: "OS:MinimizeActiveWindow"
+        cooldown_ms: 1000
+
+  - name: SwitchWindow
+    type: dynamic
+    priority: 2
+    states:
+      - id: Idle
+        transitions:
+          - to: HandOpen
+            condition: "thumb_extended == True and index_extended == True and middle_extended == True and ring_extended == True and pinky_extended == True"
+      - id: HandOpen
+        min_duration_ms: 150
+        timeout_ms: 2000
+        transitions:
+          - to: HorizontalSwipe
+            condition: "palm_velocity_magnitude > 0.6"
+          - to: Idle
+            condition: "index_extended == False"
+            abort: true
+      - id: HorizontalSwipe
+        min_duration_ms: 50
+        max_duration_ms: 400
+        transitions:
+          - to: Trigger
+            condition: "palm_center_delta_x > 0.2"
+          - to: Idle
+            condition: "palm_center_delta_y > 0.15"
+            abort: true
+      - id: Trigger
+        action: "OS:SwitchWindow"
+        cooldown_ms: 800
+
+  - name: ScrollUpDown
+    type: continuous
+    priority: 3
+    states:
+      - id: Idle
+        transitions:
+          - to: PointingForward
+            condition: "index_extended == True and middle_extended == False and ring_extended == False and pinky_extended == False"
+      - id: PointingForward
+        min_duration_ms: 200
+        timeout_ms: 1500
+        transitions:
+          - to: ScrollingActive
+            condition: "palm_velocity_magnitude > 0.1"
+          - to: Idle
+            condition: "index_extended == False"
+            abort: true
+      - id: ScrollingActive
+        transitions:
+          - to: Idle
+            condition: "index_extended == False"
+            abort: true
+      - id: Trigger
+        action: "MouseScroll:delta"
+        cooldown_ms: 200
+
+app_profiles:
+  chrome.exe:
+    SwipeLeft: "KeyPress:Ctrl+Shift+Tab"
+    SwipeRight: "KeyPress:Ctrl+Tab"
+  POWERPNT.EXE:
+    SwipeLeft: "KeyPress:ArrowLeft"
+    SwipeRight: "KeyPress:ArrowRight"
+  vlc.exe:
+    SwipeLeft: "Media:Previous"
+    SwipeRight: "Media:Next"
+  _default:
+    SwipeLeft: "KeyPress:ArrowLeft"
+    SwipeRight: "KeyPress:ArrowRight"

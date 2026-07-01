@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.benchmarks/
+*.so
+.venv/
+venv/
+*.log
+gesture_controller/data/custom_templates/*.json
+!gesture_controller/data/custom_templates/.gitkeep
+.coverage
+
