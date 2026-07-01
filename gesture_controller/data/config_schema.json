@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GestureControllerConfig",
+  "type": "object",
+  "properties": {
+    "version": { "type": "string" },
+    "camera": {
+      "type": "object",
+      "properties": {
+        "device_id": { "type": "integer" },
+        "resolution": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "fps_target": { "type": "integer" },
+        "backend_preference": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "auto_reconnect": { "type": "boolean" },
+        "reconnect_backoff_ms": {
+          "type": "array",
+          "items": { "type": "integer" }
+        },
+        "watchdog_timeout_ms": { "type": "integer" }
+      },
+      "required": ["device_id", "resolution", "fps_target", "auto_reconnect"]
+    },
+    "filtering": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "one_euro": {
+          "type": "object",
+          "properties": {
+            "min_cutoff": { "type": "number" },
+            "beta": { "type": "number" },
+            "derivate_cutoff": { "type": "number" }
+          }
+        },
+        "dynamic_adaptation": {
+          "type": "object",
+          "properties": {
+            "lighting_enabled": { "type": "boolean" },
+            "depth_scaling_enabled": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "sensitivity": {
+      "type": "object",
+      "properties": {
+        "global_multiplier": { "type": "number" }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "properties": {
+        "pause_hotkey": { "type": "string" },
+        "safety_gesture_enabled": { "type": "boolean" }
+      }
+    },
+    "engine": {
+      "type": "object",
+      "properties": {
+        "max_hands": { "type": "integer" },
+        "min_detection_confidence": { "type": "number" },
+        "min_tracking_confidence": { "type": "number" }
+      }
+    },
+    "hud": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "opacity": { "type": "number" },
+        "show_tracking_points": { "type": "boolean" },
+        "show_progress_ring": { "type": "boolean" },
+        "show_action_confirmation": { "type": "boolean" },
+        "confirmation_duration_ms": { "type": "integer" }
+      }
+    },
+    "logging": {
+      "type": "object",
+      "properties": {
+        "level": { "type": "string" },
+        "structured": { "type": "boolean" },
+        "rotation": { "type": "string" },
+        "max_files": { "type": "integer" },
+        "telemetry_enabled": { "type": "boolean" }
+      }
+    },
+    "profiles": {
+      "type": "object",
+      "properties": {
+        "active_profile": { "type": "string" },
+        "auto_detect_app": { "type": "boolean" }
+      }
+    },
+    "os_integration": {
+      "type": "object",
+      "properties": {
+        "linux": {
+          "type": "object",
+          "properties": {
+            "input_method": { "type": "string" },
+            "window_manager": { "type": "string" }
+          }
+        },
+        "macos": {
+          "type": "object",
+          "properties": {
+            "use_axui_element": { "type": "boolean" }
+          }
+        },
+        "windows": {
+          "type": "object",
+          "properties": {
+            "use_sendinput": { "type": "boolean" }
+          }
+        }
+      }
+    }
+  }
+}

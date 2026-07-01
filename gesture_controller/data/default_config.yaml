@@ -1,0 +1,60 @@
+version: "1.0"
+camera:
+  device_id: 0
+  resolution: [640, 480]
+  fps_target: 30
+  backend_preference: ["MSMF", "DirectShow"]  # per-OS defaults
+  auto_reconnect: true
+  reconnect_backoff_ms: [100, 200, 400, 800, 1600]
+  watchdog_timeout_ms: 2000
+
+filtering:
+  type: "one_euro"
+  one_euro:
+    min_cutoff: 0.004
+    beta: 0.04
+    derivate_cutoff: 1.0
+  dynamic_adaptation:
+    lighting_enabled: true
+    depth_scaling_enabled: true
+
+sensitivity:
+  global_multiplier: 1.0
+
+safety:
+  pause_hotkey: "Win+Shift+G"  # per-OS variants documented
+  safety_gesture_enabled: false
+
+engine:
+  max_hands: 2
+  min_detection_confidence: 0.7
+  min_tracking_confidence: 0.5
+
+hud:
+  enabled: true
+  opacity: 0.3
+  show_tracking_points: true
+  show_progress_ring: true
+  show_action_confirmation: true
+  confirmation_duration_ms: 800
+
+logging:
+  level: "INFO"
+  structured: true
+  rotation: "daily"
+  max_files: 7
+  telemetry_enabled: false
+
+profiles:
+  active_profile: "default"
+  auto_detect_app: true
+
+os_integration:
+  linux:
+    input_method: "auto"  # "auto", "uinput", "x11"
+    window_manager: "auto"  # "auto", "wlr", "kwin", "gnome", "xdotool", "none"
+  macos:
+    use_axui_element: true  # Use accessibility attributes for window min/switch
+  windows:
+    use_sendinput: false  # Upgrade path from pyautogui to SendInput ctypes
+

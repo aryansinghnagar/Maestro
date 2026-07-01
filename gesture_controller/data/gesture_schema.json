@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["name", "type", "states"],
+  "properties": {
+    "name": {"type": "string"},
+    "type": {"type": "string", "enum": ["static", "dynamic", "continuous"]},
+    "priority": {"type": "integer", "minimum": 1},
+    "thresholds": {"type": "object"},
+    "states": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": {"type": "string"},
+          "is_terminal": {"type": "boolean"},
+          "min_duration_ms": {"type": "number", "minimum": 0},
+          "max_duration_ms": {"type": "number"},
+          "cooldown_ms": {"type": "number", "minimum": 0},
+          "action": {"type": "string"},
+          "transitions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["to", "condition"],
+              "properties": {
+                "to": {"type": "string"},
+                "condition": {"type": "string"},
+                "abort": {"type": "boolean"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

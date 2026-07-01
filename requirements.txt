@@ -1,0 +1,12 @@
+opencv-python>=4.8.0
+mediapipe>=0.10.0
+numpy>=1.24.0
+PyQt6>=6.5.0
+PyYAML>=6.0
+jsonschema>=4.17.0
+structlog>=23.1.0
+numba>=0.57.0
+pyautogui>=0.9.54
+psutil>=5.9.0
+watchdog>=3.0.0
+
