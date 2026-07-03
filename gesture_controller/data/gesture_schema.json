@@ -1,33 +1,79 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "required": ["name", "type", "states"],
-  "properties": {
-    "name": {"type": "string"},
-    "type": {"type": "string", "enum": ["static", "dynamic", "continuous"]},
-    "priority": {"type": "integer", "minimum": 1},
-    "thresholds": {"type": "object"},
-    "states": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["id"],
-        "properties": {
-          "id": {"type": "string"},
-          "is_terminal": {"type": "boolean"},
-          "min_duration_ms": {"type": "number", "minimum": 0},
-          "max_duration_ms": {"type": "number"},
-          "cooldown_ms": {"type": "number", "minimum": 0},
-          "action": {"type": "string"},
-          "transitions": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["to", "condition"],
-              "properties": {
-                "to": {"type": "string"},
-                "condition": {"type": "string"},
-                "abort": {"type": "boolean"}
+  "oneOf": [
+    {
+      "$ref": "#/definitions/single_gesture"
+    },
+    {
+      "title": "FullGesturesDocument",
+      "type": "object",
+      "required": ["version", "gestures"],
+      "additionalProperties": false,
+      "properties": {
+        "version": {"type": "string"},
+        "config": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "global_cooldown_ms": {"type": "integer", "minimum": 0},
+            "max_simultaneous_gestures": {"type": "integer", "minimum": 1},
+            "priority_resolution": {"type": "string", "enum": ["confidence", "priority"]}
+          }
+        },
+        "gestures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/single_gesture"
+          }
+        },
+        "app_profiles": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "single_gesture": {
+      "type": "object",
+      "required": ["name", "type", "states"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string"},
+        "type": {"type": "string", "enum": ["static", "dynamic", "continuous"]},
+        "priority": {"type": "integer", "minimum": 1},
+        "thresholds": {"type": "object"},
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {"type": "string"},
+              "is_terminal": {"type": "boolean"},
+              "min_duration_ms": {"type": "number", "minimum": 0},
+              "max_duration_ms": {"type": "number"},
+              "timeout_ms": {"type": "number"},
+              "cooldown_ms": {"type": "number", "minimum": 0},
+              "action": {"type": "string"},
+              "transitions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["to", "condition"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "to": {"type": "string"},
+                    "condition": {"type": "string"},
+                    "abort": {"type": "boolean"}
+                  }
+                }
               }
             }
           }

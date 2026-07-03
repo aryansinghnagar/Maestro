@@ -68,6 +68,7 @@ class MockOSController(BaseController):
     def switch_window(self, direction: str = "next") -> None:
         pass
 
+@pytest.mark.e2e
 def test_minimize_gesture_e2e() -> None:
     """Simulate a sequence of FeatureVectors representing Minimize gesture sequence."""
     

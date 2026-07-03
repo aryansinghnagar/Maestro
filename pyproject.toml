@@ -102,8 +102,9 @@ markers = [
     "benchmark: performance benchmark tests",
     "slow: tests that take > 5 seconds",
     "e2e: end-to-end tests requiring hardware",
+    "real_mediapipe: integration tests using real mediapipe assets",
 ]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short --strict-markers --strict-config --cov=gesture_controller"
 
 [tool.coverage.run]
 source = ["gesture_controller"]
