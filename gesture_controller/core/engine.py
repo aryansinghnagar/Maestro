@@ -44,7 +44,7 @@ class GestureEngine:
         plugin_gestures = self._plugin_loader.get_all_gestures()
 
         # Initialize CustomGestureMatcher
-        self._custom_matcher = CustomGestureMatcher()
+        self._custom_matcher = CustomGestureMatcher(self._config._config)
 
         # Load predefined gestures YAML config
         gestures_yaml_path = Path(__file__).parent.parent / "data" / "predefined_gestures.yaml"
@@ -78,8 +78,8 @@ class GestureEngine:
         # 3. Initialize Landmark Extractor (Process B)
         self._extractor = LandmarkExtractor(self._config._config)
 
-        # 4. Initialize One-Euro Filter
-        self._filter = OneEuroFilter(merged_config)
+        # 4. Initialize One-Euro Filters dict
+        self._filters: dict[str, OneEuroFilter] = {}
 
         # 5. Initialize Gesture FSM Manager
         self._fsm_manager = GestureFSMManager(merged_config, self._event_bus)
@@ -92,6 +92,29 @@ class GestureEngine:
 
         # 7. Initialize Action Dispatcher (Subscribes to gesture_triggered on event_bus)
         self._dispatcher = ActionDispatcher(self._controller, self._config, self._event_bus)
+
+        # Register signal handlers for graceful shutdown (SIGINT/SIGTERM)
+        import signal
+        try:
+            self._old_sigint = signal.signal(signal.SIGINT, self._handle_signal)
+            self._old_sigterm = signal.signal(signal.SIGTERM, self._handle_signal)
+        except ValueError:
+            self._old_sigint = None
+            self._old_sigterm = None
+
+    def _handle_signal(self, signum: int, frame: Any) -> None:
+        import sys
+        import signal
+        logger.info("Signal received, shutting down...", signal=signum)
+        self.shutdown()
+        
+        # Restore old handler and forward signal, or exit
+        old_handler = self._old_sigint if signum == signal.SIGINT else self._old_sigterm
+        if old_handler and old_handler is not signal.SIG_DFL and old_handler is not signal.SIG_IGN:
+            if callable(old_handler):
+                old_handler(signum, frame)
+        else:
+            sys.exit(128 + signum)
 
     def _create_os_controller(self) -> Any:
         """Create OS Controller appropriate for the platform."""
@@ -197,7 +220,7 @@ class GestureEngine:
                     self._last_fps_time = now
 
                 timestamp = now
-                hands = self._extractor.extract(self._shm_name)
+                hands = self._extractor.extract(self._shm_name, int(timestamp * 1000))
                 
                 if hands:
                     # Publish raw landmarks (useful for debug overlays/visualizers)
@@ -208,13 +231,19 @@ class GestureEngine:
                         # Convert hand landmarks to numpy coordinates
                         lm_array = np.array([[l.x, l.y, l.z] for l in hand.landmarks], dtype=np.float64)
                         
+                        # Get or create One-Euro filter per hand/handedness
+                        filt = self._filters.get(hand.handedness)
+                        if filt is None:
+                            filt = OneEuroFilter(self._config._config)
+                            self._filters[hand.handedness] = filt
+
                         # Depth metric: Wrist to Index MCP length
                         mcp5 = lm_array[5]
                         wrist = lm_array[0]
                         depth_metric = float(np.linalg.norm(mcp5 - wrist))
                         
                         # 1. Apply One-Euro filter
-                        filtered, velocity, acceleration = self._filter.filter(
+                        filtered, velocity, acceleration = filt.filter(
                             lm_array, 
                             timestamp,
                             lighting_metric=None,
@@ -247,7 +276,7 @@ class GestureEngine:
                         # 4. Evaluate FSM transitions
                         event = self._fsm_manager.evaluate(features)
                         if not event:
-                            event = self._custom_matcher.match()
+                            event = self._custom_matcher.match(timestamp)
 
                         if event:
                             # Propagate trigger to subscribers (dispatcher is subscribed to this)
@@ -258,7 +287,8 @@ class GestureEngine:
                 else:
                     self._current_hands = []
                     # Reset filters, FSMs, and custom matcher immediately when hand is lost to prevent drift/lag
-                    self._filter.reset()
+                    for f in self._filters.values():
+                        f.reset()
                     self._fsm_manager.reset_all()
                     self._custom_matcher.reset()
 
@@ -301,7 +331,7 @@ class GestureEngine:
 
     def get_current_hands(self) -> list[Hand]:
         """Return the latest detected and filtered Hand data."""
-        return self._current_hands
+        return list(self._current_hands)
 
     def get_fsm_states(self) -> dict[str, tuple[str, float]]:
         """Return states of all FSMs."""

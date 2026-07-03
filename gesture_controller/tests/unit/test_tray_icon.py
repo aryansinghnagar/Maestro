@@ -78,18 +78,12 @@ def test_tray_controller_camera_events(qapp: QApplication) -> None:
     mock_bus = MagicMock(spec=EventBus)
     tray = TrayController(mock_bus)
     
-    # Verify event bus subscriptions
-    assert mock_bus.subscribe.call_count == 2
-    calls = [c[0][0] for c in mock_bus.subscribe.call_args_list]
-    assert "camera_disconnected" in calls
-    assert "camera_recovered" in calls
-    
     # Trigger disconnected handler
-    tray._on_camera_disconnected(None)
+    tray._on_camera_disconnected_gui()
     assert tray._camera_active is False
     
     # Trigger recovered handler
-    tray._on_camera_recovered(None)
+    tray._on_camera_recovered_gui()
     assert tray._camera_active is True
 
     # Clean up

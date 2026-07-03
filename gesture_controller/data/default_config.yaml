@@ -11,8 +11,8 @@ camera:
 filtering:
   type: "one_euro"
   one_euro:
-    min_cutoff: 0.004
-    beta: 0.04
+    min_cutoff: 1.0
+    beta: 0.007
     derivate_cutoff: 1.0
   dynamic_adaptation:
     lighting_enabled: true

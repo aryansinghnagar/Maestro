@@ -8,7 +8,7 @@ import structlog
 from pathlib import Path
 
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, pyqtSlot
 
 logger = structlog.get_logger(__name__)
 
@@ -22,7 +22,9 @@ class GestureControllerApp:
             Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
         )
 
-        self._app = QApplication(sys.argv)
+        self._app = QApplication.instance()
+        if self._app is None:
+            self._app = QApplication(sys.argv)
         self._app.setQuitOnLastWindowClosed(False)  # Tray keeps app alive
         self._app.setApplicationName("Gesture Controller")
 
@@ -40,10 +42,24 @@ class GestureControllerApp:
         from gesture_controller.gui.tray_icon import TrayController
         from gesture_controller.gui.overlay import OverlayHUD
         from gesture_controller.gui.settings_window import SettingsWindow
+        from gesture_controller.gui.gui_event_bridge import GuiEventBridge
 
         self._tray = TrayController(self._event_bus)
         self._overlay = OverlayHUD(self._config._config)
-        self._settings = SettingsWindow(self._config)
+        
+        # Provide a callback so GestureRecorder can pull live hand data
+        def _get_current_hand():
+            hands = self._engine.get_current_hands()
+            return hands[0] if hands else None
+
+        template_dir = Path(self._engine._custom_matcher._template_dir) if hasattr(self._engine._custom_matcher, "_template_dir") else None
+        self._settings = SettingsWindow(
+            self._config,
+            landmark_callback=_get_current_hand,
+            template_dir=template_dir,
+            reload_callback=self._engine._custom_matcher.load_templates,
+            parent=None
+        )
 
         # ── Signal wiring ──────────────────────────────────────────────────
         # Tray -> Engine pause
@@ -54,8 +70,12 @@ class GestureControllerApp:
         self._tray.quit_requested.connect(self._shutdown)
         # Settings -> Config reload
         self._settings.config_changed.connect(self._on_config_changed)
-        # Engine -> Overlay action feedback
-        self._event_bus.subscribe("gesture_triggered", self._on_gesture_triggered)
+        
+        # Bridge engine-thread events to GUI thread via Qt signals
+        self._bridge = GuiEventBridge(self._event_bus, parent=self._app)
+        self._bridge.gesture_triggered.connect(self._on_gesture_triggered_gui)
+        self._bridge.camera_disconnected.connect(self._tray._on_camera_disconnected_gui)
+        self._bridge.camera_recovered.connect(self._tray._on_camera_recovered_gui)
 
         # ── Polling timer: Engine -> GUI bridge ────────────────────────────
         self._poll_timer = QTimer()
@@ -89,10 +109,9 @@ class GestureControllerApp:
             self._engine.get_gesture_count()
         )
 
-    def _on_gesture_triggered(self, event) -> None:
-        """Show action confirmation on HUD overlay."""
-        if hasattr(event, "gesture_name") and hasattr(event, "action"):
-            self._overlay.show_action_feedback(event.gesture_name, event.action)
+    def _on_gesture_triggered_gui(self, gesture_name: str, action: str) -> None:
+        """Show action confirmation on HUD overlay. Runs on GUI thread."""
+        self._overlay.show_action_feedback(gesture_name, action)
 
     def _on_config_changed(self, new_config: dict) -> None:
         """Propagate config changes to engine and overlay."""

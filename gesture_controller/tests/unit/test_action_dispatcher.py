@@ -51,7 +51,7 @@ def test_action_dispatcher_routing_keypress(mock_controller: MagicMock, dummy_co
     )
     
     event_bus.publish("gesture_triggered", event)
-    mock_controller.key_combo.assert_called_once_with(["Ctrl", "Shift", "C"])
+    mock_controller.key_combo.assert_called_once_with(["ctrl", "shift", "c"])
 
 def test_action_dispatcher_routing_scroll(mock_controller: MagicMock, dummy_config: MagicMock, event_bus: EventBus) -> None:
     dispatcher = ActionDispatcher(mock_controller, dummy_config, event_bus)
@@ -101,5 +101,5 @@ def test_action_dispatcher_app_profile_resolution(mock_controller: MagicMock, du
     event_bus.publish("gesture_triggered", event)
     
     # Verify that the action executed was the profile-specific override hotkey combo
-    mock_controller.key_combo.assert_called_once_with(["Ctrl", "Shift", "Tab"])
+    mock_controller.key_combo.assert_called_once_with(["ctrl", "shift", "tab"])
     assert event.app_profile == "chrome.exe"

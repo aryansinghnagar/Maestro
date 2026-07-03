@@ -128,7 +128,7 @@ def test_linux_minimize_active_window(mock_run: MagicMock, mock_write: MagicMock
     
     ctrl.minimize_active_window()
     # Verify swaymsg move scratchpad called
-    mock_run.assert_called_once_with(["swaymsg", "[focused] move scratchpad"], capture_output=True)
+    mock_run.assert_called_once_with(["swaymsg", "[focused] move scratchpad"], capture_output=True, timeout=2)
 
 @patch("platform.system", return_value="Linux")
 @patch("os.open", return_value=99)

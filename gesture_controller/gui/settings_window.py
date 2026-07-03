@@ -1,7 +1,9 @@
 import os
 import json
+import re
 import platform
 import structlog
+from pathlib import Path
 from PyQt6.QtWidgets import (
     QDialog, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QComboBox, QSlider, QCheckBox, QPushButton,
@@ -88,10 +90,13 @@ class SettingsWindow(QDialog):
     """Settings dialog managing core configuration properties, profiles and custom gestures."""
     config_changed = pyqtSignal(dict)
 
-    def __init__(self, config_manager: ConfigManager, landmark_callback=None, parent=None) -> None:
+    def __init__(self, config_manager: ConfigManager, landmark_callback=None,
+                 template_dir: Path | None = None, reload_callback=None, parent=None) -> None:
         super().__init__(parent)
         self._config = config_manager
         self._landmark_callback = landmark_callback
+        self._template_dir = template_dir
+        self._reload_callback = reload_callback
         self._setup_ui()
         self._load_current_config()
 
@@ -350,23 +355,53 @@ class SettingsWindow(QDialog):
         recorder.recording_complete.connect(self._on_custom_gesture_recorded)
         recorder.exec()
 
+    def _sanitize_gesture_name(self, name: str) -> str | None:
+        """Return a safe filename stem, or None if invalid."""
+        if not name or not name.strip():
+            return None
+        name = name.strip()
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", name):
+            return None
+        return name
+
     def _on_custom_gesture_recorded(self, template_data: dict) -> None:
         """Save new template to template directory."""
-        name = template_data["name"]
+        name = self._sanitize_gesture_name(template_data.get("name", ""))
+        if name is None:
+            QMessageBox.critical(
+                self, "Invalid Gesture Name",
+                "Gesture name must be 1-64 characters: alphanumeric, dash, or underscore only."
+            )
+            return
+
+        if self._template_dir is None:
+            QMessageBox.critical(
+                self, "Cannot Save Gesture",
+                "The gesture engine is not connected. Cannot save custom gestures."
+            )
+            return
+
+        dest_path = self._template_dir / f"{name}.json"
         
-        # Save JSON file
-        dest_dir = self._landmark_callback.__self__._custom_matcher._template_dir if self._landmark_callback else None
-        if dest_dir:
-            dest_path = dest_dir / f"{name}.json"
-            try:
-                with open(dest_path, "w", encoding="utf-8") as f:
-                    json.dump(template_data, f, indent=2)
-                QMessageBox.information(self, "Gesture Saved", f"Custom gesture '{name}' saved successfully!")
-                
-                # Reload matcher templates
-                self._landmark_callback.__self__._custom_matcher.load_templates(dest_dir)
-            except Exception as e:
-                QMessageBox.critical(self, "Error Saving Gesture", f"Failed to write template: {e}")
+        # Defense-in-depth: verify the resolved path is still inside template_dir
+        try:
+            dest_path.resolve().relative_to(self._template_dir.resolve())
+        except ValueError:
+            QMessageBox.critical(self, "Security Error", "Resolved path escapes template directory.")
+            return
+
+        try:
+            with open(dest_path, "w", encoding="utf-8") as f:
+                json.dump(template_data, f, indent=2)
+            QMessageBox.information(self, "Gesture Saved", f"Custom gesture '{name}' saved successfully!")
+            
+            # Reload matcher templates
+            if self._reload_callback is not None:
+                self._reload_callback(self._template_dir)
+            elif self._landmark_callback is not None and hasattr(self._landmark_callback, "__self__"):
+                self._landmark_callback.__self__._custom_matcher.load_templates(self._template_dir)
+        except Exception as e:
+            QMessageBox.critical(self, "Error Saving Gesture", f"Failed to write template: {e}")
 
     def _on_apply(self) -> None:
         """Save settings updates back to ConfigManager."""

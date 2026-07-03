@@ -9,8 +9,13 @@ from gesture_controller.os_integration.base_controller import BaseController
 logger = structlog.get_logger(__name__)
 
 # Configure PyAutoGUI safety features
-pyautogui.FAILSAFE = True
+pyautogui.FAILSAFE = False
 pyautogui.PAUSE = 0.01
+
+WIN_KEY_ALIASES = {
+    "super": "win", "meta": "win", "cmd": "win",
+    "return": "enter", "page_up": "pageup", "page_down": "pagedown",
+}
 
 class WindowsController(BaseController):
     """Windows OS controller using PyAutoGUI and ctypes Win32 bindings."""
@@ -24,17 +29,20 @@ class WindowsController(BaseController):
         return platform.system() == "Windows"
 
     def key_press(self, key: str, modifiers: list[str] | None = None) -> None:
+        key_norm = WIN_KEY_ALIASES.get(key.lower(), key.lower())
         if modifiers:
-            # pyautogui.hotkey accepts list of strings
-            pyautogui.hotkey(*(modifiers + [key]))
+            mods_norm = [WIN_KEY_ALIASES.get(m.lower(), m.lower()) for m in modifiers]
+            pyautogui.hotkey(*(mods_norm + [key_norm]))
         else:
-            pyautogui.press(key)
+            pyautogui.press(key_norm)
 
     def key_release(self, key: str) -> None:
-        pyautogui.keyUp(key)
+        key_norm = WIN_KEY_ALIASES.get(key.lower(), key.lower())
+        pyautogui.keyUp(key_norm)
 
     def key_combo(self, keys: list[str]) -> None:
-        pyautogui.hotkey(*keys)
+        normalized = [WIN_KEY_ALIASES.get(k.lower(), k.lower()) for k in keys]
+        pyautogui.hotkey(*normalized)
 
     def mouse_click(self, button: str = "left", x: int | None = None, y: int | None = None) -> None:
         if x is not None and y is not None:

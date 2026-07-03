@@ -1,4 +1,5 @@
 import importlib.util
+import ast
 import json
 import os
 import sys
@@ -101,32 +102,55 @@ class PluginLoader:
         logger.info("Plugins loaded", count=len(plugins), names=[p.meta["name"] for p in plugins])
         return plugins
 
+    def _extract_meta_without_exec(self, path: Path) -> dict | None:
+        """Parse PLUGIN_META via AST without executing module code."""
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except SyntaxError as e:
+            raise PluginLoadError(str(path), f"Syntax error: {e}")
+        for node in tree.body:
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id == "PLUGIN_META":
+                        try:
+                            return ast.literal_eval(node.value)
+                        except (ValueError, SyntaxError) as e:
+                            raise PluginLoadError(str(path), f"PLUGIN_META must be a literal dict: {e}")
+        return None
+
     def _load_plugin(self, path: Path) -> Plugin:
-        """Load and validate a single plugin file."""
+        """Load and validate a single plugin file.
+
+        SECURITY: Parse PLUGIN_META via AST BEFORE executing any module code.
+        A malicious plugin cannot run module-level code unless its manifest
+        passes schema validation first.
+        """
+        # 1. Validate manifest BEFORE executing any code
+        meta = self._extract_meta_without_exec(path)
+        if meta is None:
+            raise PluginLoadError(str(path), "Missing PLUGIN_META")
+        try:
+            jsonschema.validate(meta, self._schema)
+        except jsonschema.ValidationError as e:
+            raise PluginLoadError(str(path), f"Invalid PLUGIN_META: {e.message}")
+
+        # 2. Only execute after manifest is validated
         module_name = f"gesture_controller.plugins.{path.stem}"
         spec = importlib.util.spec_from_file_location(module_name, str(path))
         if spec is None or spec.loader is None:
             raise PluginLoadError(str(path), "Cannot create module spec")
 
         module = importlib.util.module_from_spec(spec)
-        sys.modules[module_name] = module
-
         try:
             spec.loader.exec_module(module)
         except Exception as e:
             raise PluginLoadError(str(path), f"Import error: {e}")
+        sys.modules[module_name] = module
 
-        # 1. Validate PLUGIN_META
-        if not hasattr(module, "PLUGIN_META"):
-            raise PluginLoadError(str(path), "Missing PLUGIN_META")
+        # Re-read meta from the executed module (in case it was computed or customized)
+        meta = getattr(module, "PLUGIN_META", meta)
 
-        meta = module.PLUGIN_META
-        try:
-            jsonschema.validate(meta, self._schema)
-        except jsonschema.ValidationError as e:
-            raise PluginLoadError(str(path), f"Invalid PLUGIN_META: {e.message}")
-
-        # 2. Validate GESTURE_DEFINITIONS if present
+        # 3. Validate GESTURE_DEFINITIONS if present
         gestures = getattr(module, "GESTURE_DEFINITIONS", [])
         if gestures:
             gesture_schema_path = Path(__file__).parent.parent / "data" / "gesture_schema.json"
@@ -137,8 +161,11 @@ class PluginLoader:
                     for idx, gesture in enumerate(gestures):
                         jsonschema.validate(gesture, g_schema)
                 except jsonschema.ValidationError as e:
+                    # Clean up imported module from sys.modules on validation failure
+                    sys.modules.pop(module_name, None)
                     raise PluginLoadError(str(path), f"Invalid GESTURE_DEFINITIONS at index {idx}: {e.message}")
                 except Exception as e:
+                    sys.modules.pop(module_name, None)
                     raise PluginLoadError(str(path), f"Failed to validate gestures: {e}")
 
         actions = getattr(module, "ACTION_HANDLERS", {})

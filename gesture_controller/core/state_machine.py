@@ -1,5 +1,7 @@
 import ast
+import copy
 import operator
+import threading
 import time
 import structlog
 from dataclasses import dataclass, field
@@ -39,14 +41,25 @@ def compile_condition(expr_str: str, thresholds: dict[str, float]) -> Callable[[
         elif isinstance(node, ast.Constant):
             return node.value
         elif isinstance(node, ast.Compare):
-            left = _eval_node(node.left)
-            for op, comparator in zip(node.ops, node.comparators):
-                right = _eval_node(comparator)
+            left_val = _eval_node(node.left)
+            comparators = [_eval_node(c) for c in node.comparators]
+            
+            if len(node.ops) == 1:
+                op_fn = ALLOWED_OPS.get(type(node.ops[0]))
+                if op_fn is None:
+                    raise ValueError(f"Disallowed operator: {type(node.ops[0]).__name__}")
+                return ("_cmp", op_fn, left_val, comparators[0])
+            
+            cmp_pairs = []
+            current_left = left_val
+            for op, right_val in zip(node.ops, comparators):
                 op_fn = ALLOWED_OPS.get(type(op))
                 if op_fn is None:
                     raise ValueError(f"Disallowed operator: {type(op).__name__}")
-                left = ("_cmp", op_fn, left, right)
-            return left
+                cmp_pairs.append(("_cmp", op_fn, current_left, right_val))
+                current_left = right_val
+                
+            return ("_bool", ALLOWED_OPS[ast.And], cmp_pairs)
         elif isinstance(node, ast.BoolOp):
             values = [_eval_node(v) for v in node.values]
             op_fn = ALLOWED_OPS.get(type(node.op))
@@ -195,6 +208,7 @@ class GestureFSM:
 
         # Populate delta values dynamically based on state entry features
         if self._features_at_state_entry is not None:
+            features = copy.copy(features)
             features.index_tip_delta_y = features.index_tip[1] - self._features_at_state_entry.index_tip[1]
             features.palm_center_delta_x = features.palm_center[0] - self._features_at_state_entry.palm_center[0]
             features.palm_center_delta_y = features.palm_center[1] - self._features_at_state_entry.palm_center[1]
@@ -287,6 +301,7 @@ class GestureFSMManager:
         self._fsms: list[GestureFSM] = []
         self._event_bus = event_bus
         self._global_cooldown_until = 0.0
+        self._lock = threading.RLock()
         
         engine_cfg = config.get("engine", {})
         self._global_cooldown_ms = float(engine_cfg.get("global_cooldown_ms", 200.0))
@@ -296,9 +311,16 @@ class GestureFSMManager:
 
     def reload_gestures(self, config: dict[str, Any]) -> None:
         """Clear and reload all gestures from config."""
-        self._fsms = []
-        self._load_gestures(config)
-        logger.info("GestureFSMManager reloaded gestures", count=len(self._fsms))
+        with self._lock:
+            prev_fsms = self._fsms
+            self._fsms = []
+            try:
+                self._load_gestures(config)
+            except Exception:
+                self._fsms = prev_fsms
+                logger.exception("Gesture reload failed; keeping previous FSM set")
+                return
+            logger.info("GestureFSMManager reloaded gestures", count=len(self._fsms))
 
     def _load_gestures(self, config: dict[str, Any]) -> None:
         """Load gestures from config yaml."""
@@ -357,7 +379,9 @@ class GestureFSMManager:
     def evaluate(self, features: FeatureVector) -> GestureEvent | None:
         """Evaluate all FSMs. Return best GestureEvent or None."""
         candidates = []
-        for fsm in self._fsms:
+        with self._lock:
+            fsms_snapshot = list(self._fsms)
+        for fsm in fsms_snapshot:
             # Skip evaluation for discrete FSMs if in global cooldown, but allow active continuous scrolling to evaluate
             in_global_cooldown = features.timestamp < self._global_cooldown_until
             if in_global_cooldown and not (fsm.gesture_type == "continuous" and fsm.current_state == "ScrollingActive"):

@@ -30,6 +30,8 @@ LINUX_KEYCODES = {
     "f1": 59, "f2": 60, "f3": 61, "f4": 62, "f5": 63, "f6": 64,
     "f7": 65, "f8": 66, "f9": 67, "f10": 68, "f11": 87, "f12": 88,
     "ctrl": 29, "shift": 42, "alt": 56, "super": 125,
+    "0": 11, "1": 2, "2": 3, "3": 4, "4": 5, "5": 6, "6": 7, "7": 8, "8": 9, "9": 10,
+    "backspace": 14, "home": 102, "end": 107, "page_up": 104, "page_down": 109, "insert": 110,
 }
 
 LINUX_MODIFIER_MAP = {
@@ -67,39 +69,43 @@ class LinuxWaylandController(BaseController):
         o_nonblock = getattr(os, "O_NONBLOCK", 2048)
         fd = os.open("/dev/uinput", os.O_WRONLY | o_nonblock)
 
-        UI_SET_EVBIT = 0x40045564
-        UI_SET_KEYBIT = 0x40045565
-        UI_SET_RELBIT = 0x40045566
-        UI_DEV_CREATE = 0x5501
+        try:
+            UI_SET_EVBIT = 0x40045564
+            UI_SET_KEYBIT = 0x40045565
+            UI_SET_RELBIT = 0x40045566
+            UI_DEV_CREATE = 0x5501
 
-        # Enable keys
-        fcntl.ioctl(fd, UI_SET_EVBIT, evdev.ecodes.EV_KEY)
-        for code in LINUX_KEYCODES.values():
-            fcntl.ioctl(fd, UI_SET_KEYBIT, code)
-        
-        # Volume & Media keys
-        for code in [114, 115, 163, 164, 165]: # VOLUMEDOWN, VOLUMEUP, NEXTSONG, PLAYPAUSE, PREVIOUSSONG
-            fcntl.ioctl(fd, UI_SET_KEYBIT, code)
+            # Enable keys
+            fcntl.ioctl(fd, UI_SET_EVBIT, evdev.ecodes.EV_KEY)
+            for code in LINUX_KEYCODES.values():
+                fcntl.ioctl(fd, UI_SET_KEYBIT, code)
+            
+            # Volume & Media keys
+            for code in [114, 115, 163, 164, 165]: # VOLUMEDOWN, VOLUMEUP, NEXTSONG, PLAYPAUSE, PREVIOUSSONG
+                fcntl.ioctl(fd, UI_SET_KEYBIT, code)
 
-        # Enable mouse relative move and scroll
-        fcntl.ioctl(fd, UI_SET_EVBIT, evdev.ecodes.EV_REL)
-        fcntl.ioctl(fd, UI_SET_RELBIT, evdev.ecodes.REL_X)
-        fcntl.ioctl(fd, UI_SET_RELBIT, evdev.ecodes.REL_Y)
-        fcntl.ioctl(fd, UI_SET_RELBIT, evdev.ecodes.REL_WHEEL)
-        fcntl.ioctl(fd, UI_SET_RELBIT, evdev.ecodes.REL_HWHEEL)
+            # Enable mouse relative move and scroll
+            fcntl.ioctl(fd, UI_SET_EVBIT, evdev.ecodes.EV_REL)
+            fcntl.ioctl(fd, UI_SET_RELBIT, evdev.ecodes.REL_X)
+            fcntl.ioctl(fd, UI_SET_RELBIT, evdev.ecodes.REL_Y)
+            fcntl.ioctl(fd, UI_SET_RELBIT, evdev.ecodes.REL_WHEEL)
+            fcntl.ioctl(fd, UI_SET_RELBIT, evdev.ecodes.REL_HWHEEL)
 
-        # Setup device info
-        BUS_USB = 0x03
-        device_name = b"gesture-controller\x00".ljust(80, b"\x00")
-        struct_uinput = struct.pack("80sHHiH", device_name, BUS_USB, 0x1234, 0x5678, 0x0001)
-        os.write(fd, struct_uinput)
+            # Setup device info
+            BUS_USB = 0x03
+            device_name = b"gesture-controller\x00".ljust(80, b"\x00")
+            struct_uinput = struct.pack("80sHHHHi", device_name, BUS_USB, 0x1234, 0x5678, 0x0001, 0)
+            os.write(fd, struct_uinput)
 
-        # Enable EV_SYN
-        fcntl.ioctl(fd, UI_SET_EVBIT, evdev.ecodes.EV_SYN)
+            # Enable EV_SYN
+            fcntl.ioctl(fd, UI_SET_EVBIT, evdev.ecodes.EV_SYN)
 
-        # Create device
-        fcntl.ioctl(fd, UI_DEV_CREATE)
-        return fd
+            # Create device
+            fcntl.ioctl(fd, UI_DEV_CREATE)
+            return fd
+        except Exception:
+            os.close(fd)
+            raise
 
     def _emit_event(self, event_type: int, event_code: int, value: int) -> None:
         if self._fd is None or struct is None or evdev is None:
@@ -313,14 +319,27 @@ class LinuxWaylandController(BaseController):
 
         wm = self._window_manager
         if wm == "sway":
-            subprocess.run(["swaymsg", "[focused] move scratchpad"], capture_output=True)
+            subprocess.run(["swaymsg", "[focused] move scratchpad"], capture_output=True, timeout=2)
         elif wm == "hyprland":
-            subprocess.run(["hyprctl", "dispatch", "movetoworkspacesilent", "special"], capture_output=True)
+            subprocess.run(["hyprctl", "dispatch", "movetoworkspacesilent", "special"], capture_output=True, timeout=2)
         elif wm == "xdotool" or self._has_xdotool():
-            subprocess.run(["xdotool", "windowminimize", "$(xdotool getactivewindow)"], shell=True, capture_output=True)
+            try:
+                res = subprocess.run(["xdotool", "getactivewindow"], capture_output=True, text=True, timeout=2)
+                if res.returncode == 0:
+                    win_id = res.stdout.strip()
+                    if win_id:
+                        subprocess.run(["xdotool", "windowminimize", win_id], capture_output=True, timeout=2)
+            except subprocess.TimeoutExpired:
+                logger.warning("xdotool minimize timed out")
+        elif wm == "gnome":
+            # GNOME: Super+H minimizes the focused window
+            self.key_combo(["super", "h"])
+        elif wm == "kwin":
+            # KDE Plasma: Meta+Down minimizes
+            self.key_combo(["super", "down"])
         else:
-            # Fallback toggle show desktop
-            self.key_combo(["super", "d"])
+            logger.warning("minimize_active_window: no handler for window manager '%s'", wm)
+            self.key_combo(["super", "h"])  # last resort: GNOME convention
 
     def switch_window(self) -> None:
         # Alt+Tab is the standard window switching shortcut across GNOME, KDE, and wlroots

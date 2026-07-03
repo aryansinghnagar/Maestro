@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import mediapipe as mp
 from mediapipe.tasks import python
@@ -31,17 +32,20 @@ class LandmarkExtractor:
         base_options = python.BaseOptions(model_asset_path=model_path_str)
         self._options = vision.HandLandmarkerOptions(
             base_options=base_options,
-            running_mode=vision.RunningMode.IMAGE,
+            running_mode=vision.RunningMode.VIDEO,
             num_hands=config.get("engine", {}).get("max_hands", 2),
             min_hand_detection_confidence=config.get("engine", {}).get("min_detection_confidence", 0.7),
             min_hand_presence_confidence=config.get("engine", {}).get("min_tracking_confidence", 0.5),
         )
         self._landmarker = vision.HandLandmarker.create_from_options(self._options)
-        logger.info("MediaPipe HandLandmarker Tasks API initialized")
+        logger.info("MediaPipe HandLandmarker Tasks API initialized in VIDEO mode")
 
-    def extract(self, shm_name: str) -> list[Hand] | None:
+    def extract(self, shm_name: str, timestamp_ms: int | None = None) -> list[Hand] | None:
         """Read frame from SharedMemory, extract landmarks, return list[Hand].
         Returns None if no hands detected."""
+        if timestamp_ms is None:
+            timestamp_ms = int(time.monotonic() * 1000)
+
         try:
             shm = shared_memory.SharedMemory(name=shm_name)
             frame = np.ndarray(
@@ -62,7 +66,7 @@ class LandmarkExtractor:
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
         try:
-            results = self._landmarker.detect(mp_image)
+            results = self._landmarker.detect_for_video(mp_image, timestamp_ms)
         except Exception as e:
             logger.error("MediaPipe HandLandmarker inference failed", error=str(e))
             return None
