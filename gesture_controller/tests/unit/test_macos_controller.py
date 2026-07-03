@@ -90,7 +90,7 @@ def test_macos_mouse_click(mock_system: MagicMock) -> None:
     
     # Verify mouseDown and mouseUp events created
     assert mock_quartz.CGEventCreateMouseEvent.call_count == 2
-    mock_quartz.CGEventPost.call_count == 2
+    assert mock_quartz.CGEventPost.call_count == 2
 
 @patch("platform.system", return_value="Darwin")
 def test_macos_mouse_scroll(mock_system: MagicMock) -> None:

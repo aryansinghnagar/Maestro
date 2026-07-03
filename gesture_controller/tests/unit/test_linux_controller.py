@@ -234,10 +234,13 @@ def test_linux_window_manager_actions(mock_run: MagicMock, mock_write: MagicMock
     ctrl._window_manager = "xdotool"
     
     ctrl.switch_window()
-    # verify alt+tab triggered
+    # verify alt+tab triggered via uinput write
+    assert mock_write.call_count >= 2
+    mock_write.reset_mock()
     
     ctrl.show_desktop()
-    # verify super+d triggered
+    # verify super+d triggered via uinput write
+    assert mock_write.call_count >= 2
 
 @patch("platform.system", return_value="Linux")
 @patch("os.open", return_value=99)

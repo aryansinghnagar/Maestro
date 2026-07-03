@@ -2,19 +2,21 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "GestureControllerConfig",
   "type": "object",
+  "additionalProperties": false,
   "properties": {
     "version": { "type": "string" },
     "camera": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "device_id": { "type": "integer" },
+        "device_id": { "type": "integer", "minimum": -1 },
         "resolution": {
           "type": "array",
-          "items": { "type": "integer" },
+          "items": { "type": "integer", "minimum": 1 },
           "minItems": 2,
           "maxItems": 2
         },
-        "fps_target": { "type": "integer" },
+        "fps_target": { "type": "integer", "minimum": 1, "maximum": 240 },
         "backend_preference": {
           "type": "array",
           "items": { "type": "string" }
@@ -22,26 +24,29 @@
         "auto_reconnect": { "type": "boolean" },
         "reconnect_backoff_ms": {
           "type": "array",
-          "items": { "type": "integer" }
+          "items": { "type": "integer", "minimum": 1 }
         },
-        "watchdog_timeout_ms": { "type": "integer" }
+        "watchdog_timeout_ms": { "type": "integer", "minimum": 1 }
       },
       "required": ["device_id", "resolution", "fps_target", "auto_reconnect"]
     },
     "filtering": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "type": { "type": "string" },
+        "type": { "type": "string", "enum": ["one_euro", "none"] },
         "one_euro": {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
-            "min_cutoff": { "type": "number" },
-            "beta": { "type": "number" },
-            "derivate_cutoff": { "type": "number" }
+            "min_cutoff": { "type": "number", "minimum": 0.001 },
+            "beta": { "type": "number", "minimum": 0.0 },
+            "derivate_cutoff": { "type": "number", "minimum": 0.001 }
           }
         },
         "dynamic_adaptation": {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "lighting_enabled": { "type": "boolean" },
             "depth_scaling_enabled": { "type": "boolean" }
@@ -51,12 +56,14 @@
     },
     "sensitivity": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "global_multiplier": { "type": "number" }
+        "global_multiplier": { "type": "number", "minimum": 0.01, "maximum": 100.0 }
       }
     },
     "safety": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "pause_hotkey": { "type": "string" },
         "safety_gesture_enabled": { "type": "boolean" }
@@ -64,35 +71,39 @@
     },
     "engine": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "max_hands": { "type": "integer" },
-        "min_detection_confidence": { "type": "number" },
-        "min_tracking_confidence": { "type": "number" }
+        "max_hands": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "min_detection_confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "min_tracking_confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 }
       }
     },
     "hud": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "enabled": { "type": "boolean" },
-        "opacity": { "type": "number" },
+        "opacity": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
         "show_tracking_points": { "type": "boolean" },
         "show_progress_ring": { "type": "boolean" },
         "show_action_confirmation": { "type": "boolean" },
-        "confirmation_duration_ms": { "type": "integer" }
+        "confirmation_duration_ms": { "type": "integer", "minimum": 0 }
       }
     },
     "logging": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "level": { "type": "string" },
+        "level": { "type": "string", "enum": ["debug", "info", "warning", "error", "critical", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] },
         "structured": { "type": "boolean" },
         "rotation": { "type": "string" },
-        "max_files": { "type": "integer" },
+        "max_files": { "type": "integer", "minimum": 1 },
         "telemetry_enabled": { "type": "boolean" }
       }
     },
     "profiles": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "active_profile": { "type": "string" },
         "auto_detect_app": { "type": "boolean" }
@@ -100,22 +111,26 @@
     },
     "os_integration": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "linux": {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
-            "input_method": { "type": "string" },
-            "window_manager": { "type": "string" }
+            "input_method": { "type": "string", "enum": ["uinput", "xdotool", "auto"] },
+            "window_manager": { "type": "string", "enum": ["sway", "hyprland", "xdotool", "gnome", "kwin", "auto"] }
           }
         },
         "macos": {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "use_axui_element": { "type": "boolean" }
           }
         },
         "windows": {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "use_sendinput": { "type": "boolean" }
           }
