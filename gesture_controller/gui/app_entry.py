@@ -145,6 +145,13 @@ class GestureControllerApp:
 
     def run(self) -> int:
         """Start the Qt event loop. Blocks until quit."""
+        # First-run onboarding check
+        from gesture_controller.gui.onboarding import is_onboarded, OnboardingWizard
+        if not is_onboarded():
+            wizard = OnboardingWizard()
+            if not wizard.exec():
+                return 0
+
         # Start engine processing thread
         self._engine.start()
         # Allow Ctrl+C in terminal to trigger shutdown

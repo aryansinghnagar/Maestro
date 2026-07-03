@@ -6,9 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 import pytest
 
-# Add project root to sys.path so we can import scripts module
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
-from scripts import verify_install
+from gesture_controller.cli import verify_install
 
 def test_verify_install_success() -> None:
     """Verify verify_install.main returns 0 when all sub-checks pass."""

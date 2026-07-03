@@ -50,14 +50,11 @@ def check_config() -> bool:
     """Verify default configurations are present and valid YAML."""
     try:
         import yaml
-        # Search for default_config.yaml relative to python path
-        # In source tree, config is under gesture_controller/data/default_config.yaml
-        # In PyInstaller, the sys._MEIPASS dir will contain "data/default_config.yaml"
         import sys
         if hasattr(sys, "_MEIPASS"):
             config_path = Path(sys._MEIPASS) / "data" / "default_config.yaml"
         else:
-            config_path = Path(__file__).parent.parent / "gesture_controller" / "data" / "default_config.yaml"
+            config_path = Path(__file__).parent.parent / "data" / "default_config.yaml"
 
         if not config_path.exists():
             print(f"Default config file path not found: {config_path}")
