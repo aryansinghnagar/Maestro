@@ -18,11 +18,15 @@ def dummy_config() -> dict:
 
 def test_landmark_extractor_loads_mediapipe(dummy_config: dict) -> None:
     mock_landmarker = MagicMock()
+    from mediapipe.tasks.python import vision
     
     with patch("mediapipe.tasks.python.vision.HandLandmarker.create_from_options", return_value=mock_landmarker) as mock_create:
         extractor = LandmarkExtractor(dummy_config)
         assert extractor._landmarker is mock_landmarker
         mock_create.assert_called_once()
+        # Assert that VIDEO mode is specified in options
+        options = mock_create.call_args[0][0]
+        assert options.running_mode == vision.RunningMode.VIDEO
 
 def test_landmark_extractor_extracts_hands(
     dummy_config: dict, 
@@ -33,7 +37,7 @@ def test_landmark_extractor_extracts_hands(
     
     mock_landmarker = MagicMock()
     mock_results = MagicMock()
-    mock_landmarker.detect.return_value = mock_results
+    mock_landmarker.detect_for_video.return_value = mock_results
     
     # Mock output landmarks (21 points)
     mock_lm = MagicMock(x=0.1, y=0.2, z=0.3, visibility=0.95)
@@ -45,7 +49,7 @@ def test_landmark_extractor_extracts_hands(
     
     with patch("mediapipe.tasks.python.vision.HandLandmarker.create_from_options", return_value=mock_landmarker):
         extractor = LandmarkExtractor(dummy_config)
-        hands = extractor.extract(shm.name)
+        hands = extractor.extract(shm.name, timestamp_ms=42)
         
         assert hands is not None
         assert len(hands) == 1
@@ -57,6 +61,9 @@ def test_landmark_extractor_extracts_hands(
         assert hand.landmarks[0].y == 0.2
         assert hand.landmarks[0].z == 0.3
         assert hand.landmarks[0].visibility == 0.95
+        # Verify that detect_for_video was called with the right timestamp
+        mock_landmarker.detect_for_video.assert_called_once()
+        assert mock_landmarker.detect_for_video.call_args[0][1] == 42
 
 def test_landmark_extractor_returns_none_if_no_hands(
     dummy_config: dict, 
@@ -67,7 +74,7 @@ def test_landmark_extractor_returns_none_if_no_hands(
     mock_landmarker = MagicMock()
     mock_results = MagicMock()
     mock_results.hand_landmarks = []
-    mock_landmarker.detect.return_value = mock_results
+    mock_landmarker.detect_for_video.return_value = mock_results
     
     with patch("mediapipe.tasks.python.vision.HandLandmarker.create_from_options", return_value=mock_landmarker):
         extractor = LandmarkExtractor(dummy_config)

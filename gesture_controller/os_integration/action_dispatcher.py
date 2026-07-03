@@ -98,8 +98,20 @@ class ActionDispatcher:
         else:
             logger.error("Unknown OS action", action=action)
 
+    def _normalize_key(self, key: str) -> str:
+        aliases = {
+            "arrowleft": "left", "arrowright": "right",
+            "arrowup": "up", "arrowdown": "down",
+            "win": "super", "windows": "super", "meta": "super",
+            "enter": "return", "esc": "escape",
+            "pageup": "page_up", "pagedown": "page_down",
+            "pgup": "page_up", "pgdn": "page_down",
+        }
+        k = key.strip().lower()
+        return aliases.get(k, k)
+
     def _execute_keypress(self, keys_str: str) -> None:
-        keys = keys_str.split("+")
+        keys = [self._normalize_key(k) for k in keys_str.split("+")]
         self._controller.key_combo(keys)
 
     def _execute_mouse_click(self, button: str) -> None:

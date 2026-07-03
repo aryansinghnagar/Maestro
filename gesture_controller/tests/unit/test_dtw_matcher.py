@@ -57,7 +57,7 @@ def test_custom_gesture_matcher_empty_buffer_returns_none(tmp_path: Path) -> Non
     matcher._template_dir = tmp_path
     matcher.load_templates(tmp_path)
     
-    assert matcher.match() is None
+    assert matcher.match(0.0) is None
 
 def test_custom_gesture_matcher_matching(tmp_path: Path) -> None:
     # 1. Create a dummy template file
@@ -85,18 +85,58 @@ def test_custom_gesture_matcher_matching(tmp_path: Path) -> None:
     assert "RampGesture" in matcher._templates
     
     # 2. Feed matching landmarks into buffer
-    # Hand landmarks must be translated/scaled in to_hand_frame, so we mock landmarks 
-    # to result in flat matching values when to_hand_frame is executed.
-    # To keep this test simple and fast, we can mock `to_hand_frame` during buffer update
-    # or directly populate the matcher's buffer for matching validation.
     matcher._buffer_full = True
     matcher._buffer = template_data.copy()
     
-    event = matcher.match()
+    event = matcher.match(0.0)
     assert event is not None
     assert event.gesture_name == "RampGesture"
     assert event.action == "KeyPress:Right"
     assert event.confidence > 0.8
+
+def test_custom_gesture_matcher_cooldown(tmp_path: Path) -> None:
+    template_data = np.zeros((60, 63), dtype=np.float64)
+    template_json = {
+        "name": "RampGesture",
+        "action": "KeyPress:Right",
+        "threshold": 0.15,
+        "template": template_data.tolist()
+    }
+    with open(tmp_path / "ramp.json", "w", encoding="utf-8") as f:
+        json.dump(template_json, f)
+        
+    config = {
+        "dtw": {
+            "cooldown_ms": 100.0,
+            "refractory_ms": 200.0
+        }
+    }
+    matcher = CustomGestureMatcher(config)
+    matcher._template_dir = tmp_path
+    matcher.load_templates(tmp_path)
+    
+    matcher._buffer_full = True
+    matcher._buffer = template_data.copy()
+    
+    # First match succeeds
+    event = matcher.match(0.0)
+    assert event is not None
+    
+    # Refill buffer as it is reset on success
+    matcher._buffer_full = True
+    matcher._buffer = template_data.copy()
+    
+    # Global cooldown fails
+    event = matcher.match(0.05)
+    assert event is None
+    
+    # Same gesture refractory fails
+    event = matcher.match(0.15)
+    assert event is None
+    
+    # Cooldown & refractory passed succeeds
+    event = matcher.match(0.25)
+    assert event is not None
 
 def test_custom_gesture_matcher_reset() -> None:
     matcher = CustomGestureMatcher()

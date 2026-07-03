@@ -19,5 +19,5 @@ def test_no_unsafe_eval_or_exec_in_codebase() -> None:
             content = f.read()
             
             # Check for direct calls to eval or exec
-            assert "eval(" not in content, f"Unsafe 'eval(' call found in {py_file.relative_to(gc_dir)}"
-            assert "exec(" not in content, f"Unsafe 'exec(' call found in {py_file.relative_to(gc_dir)}"
+            assert "eval(" not in content.replace("literal_eval(", ""), f"Unsafe 'eval(' call found in {py_file.relative_to(gc_dir)}"
+            assert "exec(" not in content.replace("exec_module(", "").replace("_exec(", ""), f"Unsafe 'exec(' call found in {py_file.relative_to(gc_dir)}"

@@ -166,6 +166,14 @@ class CustomGestureMatcher:
         self._buffer_idx: int = 0
         self._buffer_full: bool = False
         self._frame_count: int = 0
+        self._last_match_monotonic: float = 0.0
+        self._last_matched_name: str | None = None
+        cfg = config or {}
+        self._cooldown_s: float = cfg.get("dtw", {}).get("cooldown_ms", 1000.0) / 1000.0
+        self._refractory_s: float = cfg.get("dtw", {}).get("refractory_ms", 2000.0) / 1000.0
+        self._precomputed_templates: np.ndarray | None = None
+        self._precomputed_thresholds: np.ndarray | None = None
+        self._precomputed_names: list[str] | None = None
         
         # Determine custom template directories
         sys_name = platform.system()
@@ -212,9 +220,16 @@ class CustomGestureMatcher:
             except Exception as e:
                 logger.error("Failed loading template from json", path=str(path), error=str(e))
         logger.info("Custom gesture templates loaded", count=len(self._templates))
+        self._precomputed_names = None  # Force rebuild
 
     def reset(self) -> None:
         """Reset the rolling buffer and frames counter on hand loss."""
+        self.clear_buffer()
+        self._last_match_monotonic = 0.0
+        self._last_matched_name = None
+
+    def clear_buffer(self) -> None:
+        """Clear the rolling buffer state."""
         self._buffer.fill(0.0)
         self._buffer_idx = 0
         self._buffer_full = False
@@ -230,9 +245,23 @@ class CustomGestureMatcher:
         if self._frame_count >= 60:
             self._buffer_full = True
 
-    def match(self) -> GestureEvent | None:
-        """Perform batch DTW comparison against all custom gesture templates."""
+    def match(self, timestamp_s: float) -> GestureEvent | None:
+        """Returns GestureEvent if a template matches AND per-gesture cooldown
+        has elapsed. A matched gesture enters a refractory period during which
+        the SAME gesture cannot re-trigger, followed by a global cooldown
+        during which NO custom gesture can trigger."""
         if not self._buffer_full or not self._templates:
+            return None
+
+        # Global cooldown
+        if self._last_matched_name is not None and (timestamp_s - self._last_match_monotonic) < self._cooldown_s:
+            return None
+
+        # Lazily (re)build the stacked template array
+        if self._precomputed_names is None or self._precomputed_names != list(self._templates.keys()):
+            self._rebuild_precomputed()
+
+        if self._precomputed_templates is None or self._precomputed_templates.shape[0] == 0:
             return None
 
         # Align rolling buffer so that the oldest frame is first
@@ -241,22 +270,45 @@ class CustomGestureMatcher:
         else:
             query = np.roll(self._buffer, -self._buffer_idx, axis=0)
 
-        template_names = list(self._templates.keys())
-        template_arrays = np.array([self._templates[n]["template"] for n in template_names], dtype=np.float64)
-        threshold_array = np.array([self._templates[n]["threshold"] for n in template_names], dtype=np.float64)
-
-        best_idx, best_dist = dtw_distance_batch(query, template_arrays, threshold_array)
+        best_idx, best_dist = dtw_distance_batch(
+            query, self._precomputed_templates, self._precomputed_thresholds,
+        )
 
         if best_idx >= 0:
-            name = template_names[best_idx]
+            name = self._precomputed_names[best_idx]
+            # Per-gesture refractory
+            if name == self._last_matched_name and (timestamp_s - self._last_match_monotonic) < self._refractory_s:
+                return None
+            
+            self._last_match_monotonic = timestamp_s
+            self._last_matched_name = name
             confidence = float(np.clip(1.0 - best_dist, 0.0, 1.0))
+            
+            # Reset buffer on successful match to prevent duplicate triggers from overlapping windows
+            self.clear_buffer()
+            
             return GestureEvent(
                 gesture_name=name,
                 gesture_type="custom",
                 action=self._templates[name]["action"],
                 confidence=confidence,
-                hand="Right",
-                timestamp=time.time(),
+                hand="Right",  # TODO: plumb real handedness
+                timestamp=timestamp_s,
                 gesture_source="dtw",
             )
         return None
+
+    def _rebuild_precomputed(self) -> None:
+        names = list(self._templates.keys())
+        if not names:
+            self._precomputed_templates = np.zeros((0, 60, 63), dtype=np.float64)
+            self._precomputed_thresholds = np.zeros((0,), dtype=np.float64)
+            self._precomputed_names = []
+            return
+        self._precomputed_templates = np.stack(
+            [self._templates[n]["template"] for n in names], axis=0,
+        ).astype(np.float64, copy=False)
+        self._precomputed_thresholds = np.array(
+            [self._templates[n]["threshold"] for n in names], dtype=np.float64,
+        )
+        self._precomputed_names = names

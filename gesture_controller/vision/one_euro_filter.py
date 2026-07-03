@@ -1,4 +1,6 @@
 import numpy as np
+import structlog
+logger = structlog.get_logger(__name__)
 from typing import Any
 
 class OneEuroFilter:
@@ -10,8 +12,8 @@ class OneEuroFilter:
 
     def __init__(self, config: dict[str, Any]) -> None:
         oe_config = config.get("filtering", {}).get("one_euro", {})
-        self._min_cutoff = oe_config.get("min_cutoff", 0.004)
-        self._beta = oe_config.get("beta", 0.04)
+        self._min_cutoff = oe_config.get("min_cutoff", 1.0)
+        self._beta = oe_config.get("beta", 0.007)
         self._derivate_cutoff = oe_config.get("derivate_cutoff", 1.0)
         self._dynamic = config.get("filtering", {}).get("dynamic_adaptation", {})
 
@@ -46,6 +48,13 @@ class OneEuroFilter:
         Returns:
             (filtered_landmarks, velocity, acceleration) each (21, 3)
         """
+        # NaN or Inf input recovery: reset filter state and return zero vectors
+        if not np.isfinite(landmarks).all():
+            logger.warning("NaN or Inf detected in landmarks input; resetting One-Euro filter state")
+            self.reset()
+            landmarks = np.where(np.isfinite(landmarks), landmarks, 0.0)
+            return landmarks, np.zeros_like(landmarks), np.zeros_like(landmarks)
+
         # Dynamic parameter adaptation
         min_cutoff = self._min_cutoff
         beta = self._beta
@@ -58,7 +67,7 @@ class OneEuroFilter:
         if self._dynamic.get("depth_scaling_enabled", False) and depth_metric is not None:
             # Far hand (smaller depth metric) -> more smoothing (smaller beta)
             depth_factor = np.clip(depth_metric * 5.0, 0.5, 2.0)
-            beta /= depth_factor
+            beta *= depth_factor
 
         if not self._initialized:
             self._x_prev = landmarks.copy()

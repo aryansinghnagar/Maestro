@@ -2,21 +2,25 @@
 Gesture Controller package.
 """
 
+from __future__ import annotations
+from typing import Any
+
 __version__ = "0.1.0"
 
-# Apply Windows ctypes patch for MediaPipe on Python 3.14+
+# Apply Windows ctypes patch for MediaPipe on Python 3.14+.
+# Gate behind env var so tests and non-MediaPipe consumers can opt out.
 import os
 if os.name == "nt":
     import ctypes
-    _orig_cdll_init = ctypes.CDLL.__init__
-    def _patched_cdll_init(self, name: str | None, *args: Any, **kwargs: Any) -> None:
-        _orig_cdll_init(self, name, *args, **kwargs)
-        if name and "libmediapipe" in name:
-            if not hasattr(self, "free"):
-                try:
-                    self.free = ctypes.CDLL("msvcrt").free
-                except Exception:
-                    pass
-    # Avoid type annotation issues by bypassing strict checks for monkeypatching
-    from typing import Any
-    ctypes.CDLL.__init__ = _patched_cdll_init  # type: ignore
+    if os.environ.get("MAESTRO_PATCH_CDLL", "1") == "1":
+        _orig_cdll_init = ctypes.CDLL.__init__
+        _msvcrt = ctypes.CDLL("msvcrt")
+        _msvcrt_free = _msvcrt.free
+
+        def _patched_cdll_init(self: Any, name: str | None, *args: Any, **kwargs: Any) -> None:
+            _orig_cdll_init(self, name, *args, **kwargs)
+            if name and "libmediapipe" in name and not hasattr(self, "free"):
+                self.free = _msvcrt_free  # Reuse a single msvcrt handle
+
+        ctypes.CDLL.__init__ = _patched_cdll_init  # type: ignore[method-assign]
+

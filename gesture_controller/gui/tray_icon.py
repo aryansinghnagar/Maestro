@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QSystemTrayIcon, QMenu
-from PyQt6.QtCore import QObject, pyqtSignal, Qt
+from PyQt6.QtCore import QObject, pyqtSignal, Qt, pyqtSlot
 from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor, QBrush, QPen
 import structlog
 
@@ -49,10 +49,6 @@ class TrayController(QObject):
         self._setup_menu()
         
         self._tray_icon.activated.connect(self._on_activated)
-        
-        # Subscribe to camera events
-        self._event_bus.subscribe("camera_disconnected", self._on_camera_disconnected)
-        self._event_bus.subscribe("camera_recovered", self._on_camera_recovered)
 
     def _setup_menu(self) -> None:
         self._menu = QMenu()
@@ -112,7 +108,9 @@ class TrayController(QObject):
         if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
             self.settings_requested.emit()
 
-    def _on_camera_disconnected(self, event: any) -> None:
+    @pyqtSlot()
+    def _on_camera_disconnected_gui(self) -> None:
+        """Runs on GUI thread via GuiEventBridge signal."""
         self._camera_active = False
         self._status_action.setText("Camera: Disconnected")
         self._tray_icon.showMessage(
@@ -122,7 +120,9 @@ class TrayController(QObject):
             3000
         )
 
-    def _on_camera_recovered(self, event: any) -> None:
+    @pyqtSlot()
+    def _on_camera_recovered_gui(self) -> None:
+        """Runs on GUI thread via GuiEventBridge signal."""
         self._camera_active = True
         self._status_action.setText("Camera: Connected")
         self._tray_icon.showMessage(

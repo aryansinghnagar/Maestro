@@ -65,7 +65,7 @@ def test_custom_gesture_flow_integration(qapp: QApplication, tmp_path: Path) -> 
     for _ in range(60):
         matcher.update_buffer(mock_hand)
         
-    event = matcher.match()
+    event = matcher.match(0.0)
     assert event is not None
     assert event.gesture_name == "CustomWave"
     assert event.action == "KeyPress:VolumeUp"

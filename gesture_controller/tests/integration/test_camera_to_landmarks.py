@@ -38,7 +38,7 @@ def test_camera_to_landmarks_integration(
     # 2. Setup mock MediaPipe HandLandmarker
     mock_landmarker = MagicMock()
     mock_results = MagicMock()
-    mock_landmarker.detect.return_value = mock_results
+    mock_landmarker.detect_for_video.return_value = mock_results
     
     # Mock landmark values (21 points)
     mock_lm = MagicMock(x=0.25, y=0.5, z=-0.1, visibility=1.0)
