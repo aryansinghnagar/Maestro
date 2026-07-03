@@ -48,7 +48,7 @@ jobs:
           echo "Signing setup binary using credentials if available..."
 
       - name: Upload Setup Asset to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: packaging/GestureController-Setup-*.exe
         env:
@@ -97,7 +97,7 @@ jobs:
           echo "Notarizing DMG bundle..."
 
       - name: Upload DMG Asset to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/GestureController.dmg
         env:
