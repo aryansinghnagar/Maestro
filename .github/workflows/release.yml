@@ -1,0 +1,104 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build & Package Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+          pip install pyinstaller
+
+      - name: Build Binary with PyInstaller
+        run: |
+          pyinstaller gesture_controller.spec
+
+      - name: Setup NSIS
+        run: |
+          choco install nsis -y
+
+      - name: Compile NSIS Installer Setup
+        run: |
+          makensis packaging/windows_installer.nsi
+
+      - name: Authenticode Code Signing Stub (S2-10)
+        shell: bash
+        run: |
+          echo "=== Windows Authenticode Signing Stub ==="
+          # In production, replace with actual SignTool or digital certificate signing:
+          # signtool sign /f certificate.pfx /p "${{ secrets.WIN_SIGNING_PASSWORD }}" /tr http://timestamp.digicert.com /td sha256 /fd sha256 dist/windows/GestureController-Setup-*.exe
+          echo "Signing setup binary using credentials if available..."
+
+      - name: Upload Setup Asset to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: packaging/GestureController-Setup-*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-macos:
+    name: Build & Package macOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+          pip install pyinstaller
+
+      - name: Build Bundle with PyInstaller
+        run: |
+          pyinstaller gesture_controller.spec
+
+      - name: macOS Code Signing Stub (S2-9)
+        run: |
+          echo "=== macOS Developer Code Signing Stub ==="
+          # In production, import signing certificates and run:
+          # codesign --force --options runtime --self-sign - --entitlements packaging/macos/entitlements.plist dist/GestureController.app
+          echo "Signing app bundle..."
+
+      - name: Create DMG Bundle
+        run: |
+          hdiutil create -fs HFS+ -srcfolder dist/GestureController.app -volname "GestureController" dist/GestureController.dmg
+
+      - name: macOS Notarization Stub (S2-9)
+        run: |
+          echo "=== macOS Notarization Stub ==="
+          # In production, run xcrun notarytool:
+          # xcrun notarytool submit dist/GestureController.dmg --apple-id "${{ secrets.APPLE_ID }}" --password "${{ secrets.APPLE_PASSWORD }}" --team-id "${{ secrets.APPLE_TEAM_ID }}" --wait
+          # xcrun stapler staple dist/GestureController.dmg
+          echo "Notarizing DMG bundle..."
+
+      - name: Upload DMG Asset to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/GestureController.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

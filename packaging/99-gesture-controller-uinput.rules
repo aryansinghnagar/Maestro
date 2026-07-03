@@ -1,2 +1,2 @@
 # Allow the gesture-controller user to access /dev/uinput without root privilege
-KERNEL=="uinput", MODE="0660", GROUP="input", OPTIONS+="static_node=uinput"
+KERNEL=="uinput", MODE="0660", GROUP="gesture-controller", OPTIONS+="static_node=uinput"

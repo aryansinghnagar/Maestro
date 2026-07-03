@@ -2,7 +2,6 @@
 import sys
 from pathlib import Path
 
-block_cipher = None
 project_root = Path(SPECPATH)
 
 a = Analysis(
@@ -28,11 +27,10 @@ a = Analysis(
     excludes=["matplotlib", "tkinter", "scipy", "pandas"],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
-    cipher=block_cipher,
     noarchive=False,
 )
 
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure, a.zipped_data)
 
 exe = EXE(
     pyz,
@@ -49,7 +47,7 @@ exe = EXE(
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
-    entitlements_file=None,
+    entitlements_file=str(project_root / "packaging" / "macos" / "entitlements.plist") if sys.platform == "darwin" else None,
     icon=str(project_root / "packaging" / "icon.ico") if (sys.platform == "win32" and (project_root / "packaging" / "icon.ico").exists()) else None,
 )
 
@@ -63,3 +61,12 @@ coll = COLLECT(
     upx_exclude=[],
     name="GestureController",
 )
+
+if sys.platform == "darwin":
+    app = BUNDLE(
+        coll,
+        name="GestureController.app",
+        icon=str(project_root / "packaging" / "icon.icns") if (project_root / "packaging" / "icon.icns").exists() else None,
+        bundle_identifier="com.maestro.gesture-controller",
+        info_plist=str(project_root / "packaging" / "macos" / "Info.plist"),
+    )

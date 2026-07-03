@@ -1,0 +1,12 @@
+[Unit]
+Description=Maestro 2-Hand Gesture Controller
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/gesture-controller
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
