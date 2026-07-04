@@ -133,6 +133,14 @@ class GestureControllerApp:
         self._bridge.camera_disconnected.connect(self._tray._on_camera_disconnected_gui)
         self._bridge.camera_recovered.connect(self._tray._on_camera_recovered_gui)
 
+        # ── Initialize Update Checker ──────────────────────────────────────
+        from gesture_controller.core.updater import UpdateCheckerThread
+        self._updater_thread = UpdateCheckerThread(current_version="0.1.0", parent=self._app)
+        self._updater_thread.update_available.connect(self._on_update_available)
+        self._updater_thread.start()
+        
+        self._tray.message_clicked.connect(self._on_tray_message_clicked)
+
         # ── Polling timer: Engine -> GUI bridge ────────────────────────────
         self._poll_timer = QTimer()
         self._poll_timer.timeout.connect(self._poll_engine)
@@ -249,6 +257,21 @@ class GestureControllerApp:
                 f"Failed to export diagnostics archive:\n{str(e)}"
             )
 
+    def _on_update_available(self, latest_version: str, download_url: str) -> None:
+        """Show tray balloon notification when a newer version is available (S4-8)."""
+        logger.info("Application update available", version=latest_version, url=download_url)
+        self._download_url = download_url
+        self._tray.show_message(
+            "Update Available",
+            f"A newer version (v{latest_version}) of Maestro is available. Click here to download."
+        )
+
+    def _on_tray_message_clicked(self) -> None:
+        """Open web browser to update release page when balloon message is clicked."""
+        if hasattr(self, "_download_url") and self._download_url:
+            import webbrowser
+            webbrowser.open(self._download_url)
+
     # ── Lifecycle ──────────────────────────────────────────────────────────
 
     def _shutdown(self) -> None:
@@ -256,6 +279,14 @@ class GestureControllerApp:
         logger.info("Shutting down Gesture Controller App")
         self._poll_timer.stop()
         self._status_timer.stop()
+
+        # Stop and join update checker thread if running (S4-8)
+        if hasattr(self, "_updater_thread"):
+            self._updater_thread.quit()
+            if not self._updater_thread.wait(1000):
+                self._updater_thread.terminate()
+                self._updater_thread.wait(500)
+
         self._engine.shutdown()
         self._overlay.hide()
         self._tray.hide()

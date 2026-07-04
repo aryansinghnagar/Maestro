@@ -1,4 +1,4 @@
-# Maestro: Cross-Platform Desktop Hand-Gesture Controller (!!!UNTESTED!!!)
+# Maestro: Cross-Platform Desktop Hand-Gesture Controller
 
 Maestro is a production-grade, low-latency, cross-platform hand-gesture controller that translates real-time webcam video feeds into desktop system inputs (key combos, mouse movements, scrolling, window operations). Built with a high-performance multiprocessing architecture, Maestro isolates heavy machine learning landmark extraction from the OS simulation and UI event loops to deliver sub-millisecond gesture matching latency.
 
