@@ -52,7 +52,9 @@ def test_camera_to_landmarks_integration(
          patch("mediapipe.tasks.python.vision.HandLandmarker.create_from_options", return_value=mock_landmarker):
         
         # Instantiate both stages
-        stream = CameraStream(config, shm.name)
+        import multiprocessing as mp
+        event = mp.Event()
+        stream = CameraStream(config, shm.name, event)
         extractor = LandmarkExtractor(config)
         
         # Connect mock camera

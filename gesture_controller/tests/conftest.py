@@ -4,12 +4,11 @@ from multiprocessing import shared_memory
 from gesture_controller.models.data_types import Hand, Landmark3D
 
 def pytest_configure(config) -> None:
-    """Disable automatic garbage collection during the test run to avoid PyQt6 teardown segfaults."""
-    import gc
-    gc.disable()
+    """Configure settings if needed."""
+    pass
 
 def pytest_unconfigure(config) -> None:
-    """Do not enable GC to avoid deconstruction access violations on process exit."""
+    """Clean up on teardown."""
     pass
 
 def make_hand(landmarks: list[tuple[float, float, float]], handedness: str = "Right") -> Hand:

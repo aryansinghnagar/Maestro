@@ -27,16 +27,32 @@ class OverlayHUD(QWidget):
         self._action_feedback_time: float = 0
         self._fsm_progress: float = 0.0
         
+        # Monitor changes tracking (S4-7)
+        from PyQt6.QtGui import QGuiApplication
+        app = QGuiApplication.instance()
+        if app:
+            app.screenAdded.connect(lambda _: self.reposition())
+            app.screenRemoved.connect(lambda _: self.reposition())
+            app.primaryScreenChanged.connect(lambda _: self.reposition())
+
         # Recalculate size to cover primary monitor
         self.reposition()
 
     def reposition(self) -> None:
-        """Cover only primary screen or cover full virtual desktop layout based on config."""
+        """Cover screen geometries based on monitor selection config (S4-7)."""
+        from PyQt6.QtGui import QGuiApplication
         screen_cfg = self._config.get("hud", {}).get("multi_monitor_mode", "primary")
-        primary = QApplication.primaryScreen()
+        primary = QGuiApplication.primaryScreen()
         if primary:
             if screen_cfg == "all":
                 self.setGeometry(primary.virtualGeometry())
+            elif screen_cfg == "select":
+                screen_idx = self._config.get("hud", {}).get("target_screen_index", 0)
+                screens = QGuiApplication.screens()
+                if 0 <= screen_idx < len(screens):
+                    self.setGeometry(screens[screen_idx].geometry())
+                else:
+                    self.setGeometry(primary.geometry())
             else:
                 self.setGeometry(primary.geometry())
 

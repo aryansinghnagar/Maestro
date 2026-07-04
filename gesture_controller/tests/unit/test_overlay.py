@@ -74,3 +74,28 @@ def test_overlay_hud_set_hand_data(qapp: QApplication) -> None:
     # Clean up to prevent segfaults
     overlay.deleteLater()
     qapp.processEvents()
+
+def test_overlay_hud_reposition(qapp: QApplication) -> None:
+    config = {
+        "hud": {
+            "multi_monitor_mode": "select",
+            "target_screen_index": 0
+        }
+    }
+    overlay = OverlayHUD(config)
+    overlay.reposition()
+    
+    # We should cover target screen geometries if valid, else primary screen fallback
+    primary_geom = QApplication.primaryScreen().geometry()
+    assert overlay.geometry().width() == primary_geom.width()
+    
+    # Check 'all' monitors mode
+    overlay._config["hud"]["multi_monitor_mode"] = "all"
+    overlay.reposition()
+    virtual_geom = QApplication.primaryScreen().virtualGeometry()
+    assert overlay.geometry().width() == virtual_geom.width()
+
+    # Clean up to prevent segfaults
+    overlay.deleteLater()
+    qapp.processEvents()
+
