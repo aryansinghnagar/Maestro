@@ -500,11 +500,43 @@ class SettingsWindow(QDialog):
         if user_dir:
             try:
                 user_dir.mkdir(parents=True, exist_ok=True)
-                # Write back current config dictionary
-                import yaml
-                with open(user_dir / "config.yaml", "w", encoding="utf-8") as f:
-                    yaml.safe_dump(self._config._config, f)
-                logger.info("Configuration saved successfully to user profile config.yaml")
+                config_path = user_dir / "config.yaml"
+                
+                # Use ruamel.yaml to preserve comments (S4-6)
+                from ruamel.yaml import YAML
+                ryaml = YAML()
+                ryaml.preserve_quotes = True
+                
+                if config_path.exists():
+                    try:
+                        with open(config_path, "r", encoding="utf-8") as f:
+                            user_config = ryaml.load(f) or {}
+                    except Exception:
+                        user_config = {}
+                else:
+                    user_config = {}
+                
+                # Helper to set nested keys safely
+                def set_nested(d, keys, val):
+                    for k in keys[:-1]:
+                        if k not in d or not isinstance(d[k], dict):
+                            d[k] = {}
+                        d = d[k]
+                    d[keys[-1]] = val
+                
+                # Update settings matching settings window inputs
+                set_nested(user_config, ["camera", "device_id"], self._camera_device.currentIndex())
+                set_nested(user_config, ["sensitivity", "global_multiplier"], self._sens_slider.value() / 100.0)
+                set_nested(user_config, ["filter", "one_euro", "min_cutoff"], self._cutoff_slider.value() / 10.0)
+                set_nested(user_config, ["hud", "enabled"], self._hud_enabled.isChecked())
+                set_nested(user_config, ["hud", "opacity"], self._hud_opacity.value() / 100.0)
+                set_nested(user_config, ["hud", "show_tracking_points"], self._show_points.isChecked())
+                set_nested(user_config, ["hud", "show_progress_ring"], self._show_ring.isChecked())
+                set_nested(user_config, ["safety", "toggle_recognition_hotkey"], self._hotkey_widget.text())
+                
+                with open(config_path, "w", encoding="utf-8") as f:
+                    ryaml.dump(user_config, f)
+                logger.info("Configuration saved successfully to user profile config.yaml, preserving comments")
             except Exception as e:
                 logger.error("Failed saving configuration overrides to file", error=str(e))
                 

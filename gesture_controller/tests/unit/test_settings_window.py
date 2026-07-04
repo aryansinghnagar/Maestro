@@ -88,3 +88,30 @@ def test_settings_window_apply_overrides(qapp: QApplication, tmp_path: Path) -> 
     # Clean up to prevent segfaults
     window.deleteLater()
     qapp.processEvents()
+
+def test_settings_window_preserves_comments(qapp: QApplication, tmp_path: Path) -> None:
+    config_file = tmp_path / "config.yaml"
+    initial_content = (
+        "# This is a top-level comment\n"
+        "camera:\n"
+        "  device_id: 0  # this is a nested comment\n"
+    )
+    config_file.write_text(initial_content, encoding="utf-8")
+    
+    config = ConfigManager()
+    window = SettingsWindow(config)
+    
+    window._camera_device.setCurrentIndex(3)
+    
+    with patch("gesture_controller.gui.settings_window.USER_CONFIG_DIRS", {"Windows": tmp_path, "Linux": tmp_path, "Darwin": tmp_path}):
+        with patch.object(window, "accept"):
+            window._on_apply()
+            
+    content = config_file.read_text(encoding="utf-8")
+    assert "# This is a top-level comment" in content
+    assert "# this is a nested comment" in content
+    assert "device_id: 3" in content
+
+    window.deleteLater()
+    qapp.processEvents()
+

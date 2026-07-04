@@ -132,6 +132,7 @@ def test_minimize_gesture_e2e() -> None:
         
         # Instantiate the engine
         engine = GestureEngine()
+        engine._frame_ready_event.wait = MagicMock(return_value=True)
         
         # Replace OS controller with our mock
         mock_controller = MockOSController()
