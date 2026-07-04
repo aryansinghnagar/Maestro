@@ -38,6 +38,7 @@ class TrayController(QObject):
     settings_requested = pyqtSignal()
     export_diagnostics_requested = pyqtSignal()
     quit_requested = pyqtSignal()
+    message_clicked = pyqtSignal()
 
     def __init__(self, event_bus, parent=None) -> None:
         super().__init__(parent)
@@ -50,6 +51,7 @@ class TrayController(QObject):
         self._setup_menu()
         
         self._tray_icon.activated.connect(self._on_activated)
+        self._tray_icon.messageClicked.connect(self.message_clicked.emit)
 
     def _setup_menu(self) -> None:
         self._menu = QMenu()
@@ -136,3 +138,6 @@ class TrayController(QObject):
             QSystemTrayIcon.MessageIcon.Information,
             3000
         )
+
+    def show_message(self, title: str, message: str) -> None:
+        self._tray_icon.showMessage(title, message, QSystemTrayIcon.MessageIcon.Information, 5000)

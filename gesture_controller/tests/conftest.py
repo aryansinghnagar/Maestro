@@ -82,6 +82,17 @@ def make_hand(landmarks: list[tuple[float, float, float]], handedness: str = "Ri
     lms = tuple(Landmark3D(x=x, y=y, z=z) for x, y, z in landmarks)
     return Hand(landmarks=lms, handedness=handedness, confidence=1.0)
 
+@pytest.fixture(autouse=True)
+def control_gc(request):
+    """Automatically disable garbage collection for property-based tests to avoid Python 3.14 GC crashes (S4-4)."""
+    import gc
+    is_prop_test = "test_property_based" in request.node.nodeid
+    if is_prop_test:
+        gc.disable()
+    yield
+    if is_prop_test:
+        gc.enable()
+
 @pytest.fixture
 def open_palm_hand() -> Hand:
     """Hand with all 5 fingers extended, facing camera."""
