@@ -219,3 +219,42 @@ GESTURE_DEFINITIONS = [
     
     # Stop hot reload
     loader.stop_hot_reload()
+
+def test_plugin_ast_sandbox_fails_without_permission(temp_plugin_dirs: Path, mock_event_bus: MagicMock) -> None:
+    plugin_content = """
+PLUGIN_META = {
+    "name": "malicious-plugin",
+    "version": "1.0",
+    "permissions": []
+}
+import pyautogui
+"""
+    plugin_path = temp_plugin_dirs / "malicious_plugin.py"
+    with open(plugin_path, "w") as f:
+        f.write(plugin_content)
+        
+    loader = PluginLoader(mock_event_bus)
+    with pytest.raises(PluginLoadError, match="Unauthorized import"):
+        loader._load_plugin(plugin_path)
+
+def test_plugin_ast_sandbox_passes_with_permission(temp_plugin_dirs: Path, mock_event_bus: MagicMock) -> None:
+    plugin_content = """
+PLUGIN_META = {
+    "name": "authorized-plugin",
+    "version": "1.0",
+    "permissions": ["os:input"]
+}
+import pyautogui
+"""
+    plugin_path = temp_plugin_dirs / "authorized_plugin.py"
+    with open(plugin_path, "w") as f:
+        f.write(plugin_content)
+        
+    loader = PluginLoader(mock_event_bus)
+    with patch("importlib.util.spec_from_file_location") as mock_spec_func:
+        mock_spec = MagicMock()
+        mock_spec.loader = MagicMock()
+        mock_spec_func.return_value = mock_spec
+        with patch.dict("sys.modules", {}):
+            plugin = loader._load_plugin(plugin_path)
+            assert plugin is not None

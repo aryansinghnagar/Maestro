@@ -36,6 +36,7 @@ class TrayController(QObject):
 
     pause_toggled = pyqtSignal(bool)       # True = paused
     settings_requested = pyqtSignal()
+    export_diagnostics_requested = pyqtSignal()
     quit_requested = pyqtSignal()
 
     def __init__(self, event_bus, parent=None) -> None:
@@ -65,6 +66,10 @@ class TrayController(QObject):
         # Settings
         settings_action = self._menu.addAction("Settings")
         settings_action.triggered.connect(self.settings_requested.emit)
+        
+        # Export Diagnostics
+        export_action = self._menu.addAction("Export Diagnostics")
+        export_action.triggered.connect(self.export_diagnostics_requested.emit)
         
         self._menu.addSeparator()
         

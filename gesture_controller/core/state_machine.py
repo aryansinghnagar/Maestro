@@ -13,117 +13,35 @@ from gesture_controller.core.event_bus import EventBus
 logger = structlog.get_logger(__name__)
 
 # Operators allowed in FSM conditions for AST compilation
-ALLOWED_OPS: dict[Any, Callable[..., Any]] = {
-    ast.Eq: operator.eq,
-    ast.NotEq: operator.ne,
-    ast.Lt: operator.lt,
-    ast.LtE: operator.le,
-    ast.Gt: operator.gt,
-    ast.GtE: operator.ge,
-    ast.And: lambda a, b: a and b,
-    ast.Or: lambda a, b: a or b,
-    ast.Not: lambda a: not a,
-}
+import numpy as np
 
 def compile_condition(expr_str: str, thresholds: dict[str, float]) -> Callable[[FeatureVector], bool]:
     """Parse a condition string into a safe callable. Raises ValueError on disallowed constructs."""
-    tree = ast.parse(expr_str, mode="eval")
-
-    def _eval_node(node: Any) -> Any:
-        if isinstance(node, ast.Name):
-            if node.id == "True":
-                return True
-            if node.id == "False":
-                return False
-            if node.id in thresholds:
-                return thresholds[node.id]
-            return node.id  # Attribute name on FeatureVector
-        elif isinstance(node, ast.Constant):
-            return node.value
-        elif isinstance(node, ast.Compare):
-            left_val = _eval_node(node.left)
-            comparators = [_eval_node(c) for c in node.comparators]
-            
-            if len(node.ops) == 1:
-                op_fn = ALLOWED_OPS.get(type(node.ops[0]))
-                if op_fn is None:
-                    raise ValueError(f"Disallowed operator: {type(node.ops[0]).__name__}")
-                return ("_cmp", op_fn, left_val, comparators[0])
-            
-            cmp_pairs = []
-            current_left = left_val
-            for op, right_val in zip(node.ops, comparators):
-                op_fn = ALLOWED_OPS.get(type(op))
-                if op_fn is None:
-                    raise ValueError(f"Disallowed operator: {type(op).__name__}")
-                cmp_pairs.append(("_cmp", op_fn, current_left, right_val))
-                current_left = right_val
-                
-            return ("_bool", ALLOWED_OPS[ast.And], cmp_pairs)
-        elif isinstance(node, ast.BoolOp):
-            values = [_eval_node(v) for v in node.values]
-            op_fn = ALLOWED_OPS.get(type(node.op))
-            if op_fn is None:
-                raise ValueError(f"Disallowed boolean op: {type(node.op).__name__}")
-            return ("_bool", op_fn, values)
-        elif isinstance(node, ast.UnaryOp):
-            operand = _eval_node(node.operand)
-            op_fn = ALLOWED_OPS.get(type(node.op))
-            if op_fn is None:
-                raise ValueError(f"Disallowed unary op: {type(node.op).__name__}")
-            return ("_unary", op_fn, operand)
-        elif isinstance(node, ast.Call):
-            # Safe support for abs() function calls
-            if isinstance(node.func, ast.Name) and node.func.id == "abs":
-                if len(node.args) != 1:
-                    raise ValueError("abs() expects exactly 1 argument")
-                arg = _eval_node(node.args[0])
-                return ("_abs", arg)
-            raise ValueError(f"Disallowed function call: {node.func.id if isinstance(node.func, ast.Name) else 'complex'}")
-        else:
-            raise ValueError(f"Disallowed AST node: {type(node).__name__}")
-
-    compiled = _eval_node(tree.body)
-
+    from gesture_controller.core.config_manager import SafeExpressionEvaluator
+    
+    compiled_ast = SafeExpressionEvaluator.compile_expression(expr_str)
+    
     def _execute(fv: FeatureVector) -> bool:
-        return bool(_resolve(compiled, fv))
-
+        context = dict(thresholds)
+        for key in dir(fv):
+            if key.startswith("_"):
+                continue
+            try:
+                val = getattr(fv, key)
+            except AttributeError:
+                continue
+            if callable(val):
+                continue
+            context[key] = val
+            
+            if isinstance(val, (tuple, list, np.ndarray)) and len(val) == 3:
+                context[f"{key}_x"] = float(val[0])
+                context[f"{key}_y"] = float(val[1])
+                context[f"{key}_z"] = float(val[2])
+                
+        return SafeExpressionEvaluator.evaluate(compiled_ast, context)
+        
     return _execute
-
-def _resolve(node: Any, fv: FeatureVector) -> Any:
-    if isinstance(node, (bool, int, float)):
-        return node
-    elif isinstance(node, str):
-        # Attribute/component vector lookup (e.g. index_tip_velocity_y -> index_tip_velocity[1])
-        if node.endswith("_x") or node.endswith("_y") or node.endswith("_z"):
-            attr_name = node[:-2]
-            if hasattr(fv, attr_name):
-                vec = getattr(fv, attr_name)
-                axis = {"x": 0, "y": 1, "z": 2}[node[-1]]
-                return float(vec[axis])
-        if hasattr(fv, node):
-            return getattr(fv, node)
-        raise AttributeError(f"Unknown feature or threshold in condition: {node}")
-    elif isinstance(node, tuple):
-        tag = node[0]
-        if tag == "_cmp":
-            _, op_fn, left, right = node
-            return op_fn(_resolve(left, fv), _resolve(right, fv))
-        elif tag == "_bool":
-            _, op_fn, values = node
-            resolved = [_resolve(v, fv) for v in values]
-            # Custom boolean list reducer
-            res = resolved[0]
-            for val in resolved[1:]:
-                res = op_fn(res, val)
-            return res
-        elif tag == "_unary":
-            _, op_fn, operand = node
-            return op_fn(_resolve(operand, fv))
-        elif tag == "_abs":
-            _, arg = node
-            return abs(_resolve(arg, fv))
-    raise ValueError(f"Cannot resolve node payload: {node}")
 
 
 @dataclass
@@ -169,7 +87,7 @@ class GestureFSM:
         self._cooldown_until = 0.0
         self._features_at_state_entry: FeatureVector | None = None
 
-    def evaluate(self, features: FeatureVector, timestamp: float) -> GestureEvent | None:
+    def evaluate(self, features: FeatureVector, timestamp: float, correlation_id: str = "") -> GestureEvent | None:
         """Evaluate one frame against this FSM. Returns GestureEvent or None."""
         state = self.states.get(self.current_state)
         if not state:
@@ -230,9 +148,17 @@ class GestureFSM:
                     return None
 
                 # Transition to new state
+                old_state = self.current_state
                 self.current_state = transition.target_state
                 self.state_entered_at = timestamp
                 self._features_at_state_entry = features
+                logger.info(
+                    "metric_fsm_transition",
+                    fsm=self.name,
+                    from_state=old_state,
+                    to_state=transition.target_state,
+                    correlation_id=correlation_id
+                )
 
                 new_state = self.states.get(transition.target_state)
                 if not new_state:
@@ -249,6 +175,7 @@ class GestureFSM:
                         hand=features.handedness,
                         timestamp=timestamp,
                         gesture_source="fsm",
+                        metadata={"correlation_id": correlation_id}
                     )
                     self.last_triggered_at = timestamp
                     self.is_in_cooldown = True
@@ -280,6 +207,7 @@ class GestureFSM:
                     hand=features.handedness,
                     timestamp=timestamp,
                     gesture_source="fsm",
+                    metadata={"correlation_id": correlation_id}
                 )
 
         return None
@@ -376,7 +304,7 @@ class GestureFSMManager:
         self._fsms.sort(key=lambda x: x.priority)
         logger.info("Loaded and sorted gesture FSMs", count=len(self._fsms))
 
-    def evaluate(self, features: FeatureVector) -> GestureEvent | None:
+    def evaluate(self, features: FeatureVector, correlation_id: str = "") -> GestureEvent | None:
         """Evaluate all FSMs. Return best GestureEvent or None."""
         candidates = []
         with self._lock:
@@ -387,7 +315,7 @@ class GestureFSMManager:
             if in_global_cooldown and not (fsm.gesture_type == "continuous" and fsm.current_state == "ScrollingActive"):
                 continue
 
-            event = fsm.evaluate(features, features.timestamp)
+            event = fsm.evaluate(features, features.timestamp, correlation_id)
             if event:
                 # Store priority as metadata for conflict resolution
                 event.metadata["priority"] = fsm.priority

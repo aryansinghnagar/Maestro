@@ -245,7 +245,7 @@ class CustomGestureMatcher:
         if self._frame_count >= 60:
             self._buffer_full = True
 
-    def match(self, timestamp_s: float) -> GestureEvent | None:
+    def match(self, timestamp_s: float, correlation_id: str = "") -> GestureEvent | None:
         """Returns GestureEvent if a template matches AND per-gesture cooldown
         has elapsed. A matched gesture enters a refractory period during which
         the SAME gesture cannot re-trigger, followed by a global cooldown
@@ -295,6 +295,7 @@ class CustomGestureMatcher:
                 hand="Right",  # TODO: plumb real handedness
                 timestamp=timestamp_s,
                 gesture_source="dtw",
+                metadata={"correlation_id": correlation_id}
             )
         return None
 

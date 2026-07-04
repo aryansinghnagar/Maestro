@@ -16,9 +16,10 @@ FRAME_SIZE = FRAME_WIDTH * FRAME_HEIGHT * FRAME_CHANNELS
 class CameraStream:
     """Process A: Captures frames from webcam and writes to SharedMemory."""
 
-    def __init__(self, config: dict[str, Any], shm_name: str) -> None:
+    def __init__(self, config: dict[str, Any], shm_name: str, frame_ready_event: Any) -> None:
         self.config = config
         self.shm_name = shm_name
+        self.frame_ready_event = frame_ready_event
         self._running = False
         self._cap: cv2.VideoCapture | None = None
         self._backoff_idx = 0
@@ -110,6 +111,7 @@ class CameraStream:
 
             # Write to SharedMemory (newest overwrites)
             np.copyto(frame_buf, frame)
+            self.frame_ready_event.set()
 
         shm.close()
 
@@ -125,6 +127,7 @@ class CameraStream:
         if not self._running:
             return
         wait = self._backoff_times[min(self._backoff_idx, len(self._backoff_times) - 1)] / 1000.0
+        logger.info("metric_camera_reconnect", attempt=self._backoff_idx)
         logger.info("Reconnecting camera with backoff", wait_sec=wait)
         time.sleep(wait)
         self._backoff_idx = min(self._backoff_idx + 1, len(self._backoff_times) - 1)
@@ -134,9 +137,9 @@ class CameraStream:
         self._disconnect()
 
 
-def start_camera_process(config: dict[str, Any], shm_name: str) -> mp.Process:
+def start_camera_process(config: dict[str, Any], shm_name: str, frame_ready_event: Any) -> mp.Process:
     """Spawn camera capture as a separate process."""
-    stream = CameraStream(config, shm_name)
+    stream = CameraStream(config, shm_name, frame_ready_event)
     process = mp.Process(target=stream.run, daemon=True, name="camera_capture")
     process.start()
     return process

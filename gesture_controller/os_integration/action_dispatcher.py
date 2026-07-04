@@ -37,12 +37,25 @@ class ActionDispatcher:
             return {}
 
     def _on_gesture(self, event: GestureEvent) -> None:
+        import time
+        correlation_id = event.metadata.get("correlation_id", "")
         action_str = self._resolve_action(event)
         if not action_str:
             return
         
+        start_time = time.perf_counter()
         self._execute(action_str)
-        logger.info("Action executed", gesture=event.gesture_name, action=action_str, app=event.app_profile)
+        latency_ms = (time.perf_counter() - start_time) * 1000.0
+        
+        logger.info(
+            "metric_dispatcher_latency_ms",
+            gesture=event.gesture_name,
+            action=action_str,
+            app=event.app_profile,
+            latency_ms=latency_ms,
+            correlation_id=correlation_id
+        )
+        logger.info("Action executed", gesture=event.gesture_name, action=action_str, app=event.app_profile, correlation_id=correlation_id)
 
     def _resolve_action(self, event: GestureEvent) -> str:
         """Resolve gesture action to app-specific commands if enabled."""

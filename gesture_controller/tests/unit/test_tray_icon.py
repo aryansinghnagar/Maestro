@@ -102,6 +102,15 @@ def test_tray_update_status(qapp: QApplication) -> None:
     assert "30.0" in tooltip
     assert "5" in tooltip
 
+def test_tray_export_diagnostics_signal(qapp: QApplication) -> None:
+    mock_bus = MagicMock(spec=EventBus)
+    tray = TrayController(mock_bus)
+    
+    # Assert that Export Diagnostics action was added to the context menu
+    tray._menu.addAction.assert_any_call("Export Diagnostics")
+
     # Clean up
     tray.deleteLater()
     qapp.processEvents()
+
+

@@ -13,6 +13,44 @@ from PyQt6.QtCore import Qt, QTimer, pyqtSlot
 logger = structlog.get_logger(__name__)
 
 
+def setup_logging(user_dir: Path) -> None:
+    import logging
+    import structlog
+    from logging.handlers import RotatingFileHandler
+
+    log_dir = user_dir / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / "app.log"
+
+    # Configure standard logging
+    logging_handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=3, encoding="utf-8")
+    logging_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+    
+    console_handler = logging.StreamHandler(sys.stderr)
+    console_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    root_logger.addHandler(logging_handler)
+    root_logger.addHandler(console_handler)
+
+    # Configure structlog to use standard logging
+    structlog.configure(
+        processors=[
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.add_logger_name,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.JSONRenderer() if not sys.stderr.isatty() else structlog.dev.ConsoleRenderer()
+        ],
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )
+
+
 class GestureControllerApp:
     """Top-level application coordinator wiring Engine, Tray, Overlay, and Settings."""
 
@@ -22,11 +60,27 @@ class GestureControllerApp:
             Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
         )
 
+        # Set up structured file logging
+        from gesture_controller.core.config_manager import USER_CONFIG_DIRS
+        import platform
+        user_dir = USER_CONFIG_DIRS.get(platform.system(), Path.home())
+        setup_logging(user_dir)
+
         self._app = QApplication.instance()
         if self._app is None:
             self._app = QApplication(sys.argv)
         self._app.setQuitOnLastWindowClosed(False)  # Tray keeps app alive
         self._app.setApplicationName("Gesture Controller")
+
+        # i18n setup: Load translation file based on system locale (S3-15)
+        from PyQt6.QtCore import QTranslator, QLocale
+        self._translator = QTranslator()
+        translation_dir = Path(__file__).parent.parent / "data" / "translations"
+        translation_dir.mkdir(parents=True, exist_ok=True)
+        locale_name = QLocale.system().name()
+        if self._translator.load(f"gesture_controller_{locale_name}", str(translation_dir)):
+            self._app.installTranslator(self._translator)
+            logger.info("Loaded translation file", locale=locale_name)
 
         # ── Initialize Engine ──────────────────────────────────────────────
         from gesture_controller.core.engine import GestureEngine
@@ -66,6 +120,8 @@ class GestureControllerApp:
         self._tray.pause_toggled.connect(self._engine.set_paused)
         # Tray -> Settings window
         self._tray.settings_requested.connect(self._show_settings)
+        # Tray -> Export Diagnostics
+        self._tray.export_diagnostics_requested.connect(self._export_diagnostics)
         # Tray -> Quit
         self._tray.quit_requested.connect(self._shutdown)
         # Settings -> Config reload
@@ -130,6 +186,68 @@ class GestureControllerApp:
         self._settings.show()
         self._settings.raise_()
         self._settings.activateWindow()
+
+    def _export_diagnostics(self) -> None:
+        """Export system logs, user configurations, custom gesture templates, and plugins to a ZIP archive."""
+        from PyQt6.QtWidgets import QFileDialog, QMessageBox
+        import zipfile
+        from gesture_controller.core.config_manager import USER_CONFIG_DIRS
+        import platform
+
+        save_path, _ = QFileDialog.getSaveFileName(
+            None,
+            "Save Diagnostics Archive",
+            "gesture_controller_diagnostics.zip",
+            "Zip Archives (*.zip)"
+        )
+        if not save_path:
+            return
+
+        try:
+            user_dir = USER_CONFIG_DIRS.get(platform.system())
+            if not user_dir:
+                raise RuntimeError("Could not determine user config directory path")
+
+            with zipfile.ZipFile(save_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                # 1. Export user config.yaml if it exists
+                config_file = user_dir / "config.yaml"
+                if config_file.exists():
+                    zipf.write(config_file, arcname="config.yaml")
+
+                # 2. Export logs directory if it exists
+                log_dir = user_dir / "logs"
+                if log_dir.exists():
+                    for f in log_dir.glob("*"):
+                        if f.is_file():
+                            zipf.write(f, arcname=f"logs/{f.name}")
+
+                # 3. Export custom gesture templates directory if it exists
+                template_dir = user_dir / "templates"
+                if template_dir.exists():
+                    for f in template_dir.glob("**/*"):
+                        if f.is_file():
+                            zipf.write(f, arcname=f"templates/{f.relative_to(template_dir)}")
+
+                # 4. Export plugins directory if it exists
+                plugins_dir = user_dir / "plugins"
+                if plugins_dir.exists():
+                    for f in plugins_dir.glob("**/*"):
+                        if f.is_file():
+                            zipf.write(f, arcname=f"plugins/{f.relative_to(plugins_dir)}")
+
+            QMessageBox.information(
+                None,
+                "Diagnostics Exported",
+                f"Successfully exported diagnostics to:\n{save_path}"
+            )
+            logger.info("Diagnostics archive successfully exported", path=save_path)
+        except Exception as e:
+            logger.exception("Failed to export diagnostics", error=str(e))
+            QMessageBox.critical(
+                None,
+                "Export Failed",
+                f"Failed to export diagnostics archive:\n{str(e)}"
+            )
 
     # ── Lifecycle ──────────────────────────────────────────────────────────
 

@@ -78,13 +78,13 @@ class OnboardingWizard(QDialog):
         layout.setSpacing(20)
         
         # Header title
-        self.title_label = QLabel("Welcome to Maestro")
+        self.title_label = QLabel(self.tr("Welcome to Maestro"))
         self.title_label.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.title_label)
         
         # Main instruction/status description
-        self.desc_label = QLabel("To get started, we need to verify a few system permissions to ensure gesture detection and OS controls work properly on your machine.")
+        self.desc_label = QLabel(self.tr("To get started, we need to verify a few system permissions to ensure gesture detection and OS controls work properly on your machine."))
         self.desc_label.setWordWrap(True)
         self.desc_label.setFont(QFont("Segoe UI", 11))
         self.desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -99,9 +99,9 @@ class OnboardingWizard(QDialog):
         self.cam_row = QWidget()
         cam_layout = QHBoxLayout(self.cam_row)
         cam_layout.setContentsMargins(0, 0, 0, 0)
-        self.cam_title = QLabel("📷 Camera Access:")
+        self.cam_title = QLabel(self.tr("📷 Camera Access:"))
         self.cam_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
-        self.cam_status = QLabel("Checking...")
+        self.cam_status = QLabel(self.tr("Checking..."))
         self.cam_status.setAlignment(Qt.AlignmentFlag.AlignRight)
         cam_layout.addWidget(self.cam_title)
         cam_layout.addWidget(self.cam_status)
@@ -111,9 +111,9 @@ class OnboardingWizard(QDialog):
         self.os_row = QWidget()
         os_layout = QHBoxLayout(self.os_row)
         os_layout.setContentsMargins(0, 0, 0, 0)
-        self.os_title = QLabel("⚙️ OS Input Control:")
+        self.os_title = QLabel(self.tr("⚙️ OS Input Control:"))
         self.os_title.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
-        self.os_status = QLabel("Checking...")
+        self.os_status = QLabel(self.tr("Checking..."))
         self.os_status.setAlignment(Qt.AlignmentFlag.AlignRight)
         os_layout.addWidget(self.os_title)
         os_layout.addWidget(self.os_status)
@@ -123,19 +123,22 @@ class OnboardingWizard(QDialog):
         
         # Footer buttons
         btn_layout = QHBoxLayout()
-        self.help_btn = QPushButton("Grant Permission")
+        self.help_btn = QPushButton(self.tr("Grant Permission"))
         self.help_btn.setObjectName("secondary")
+        self.help_btn.setAccessibleName("Grant System Permission Button")
         self.help_btn.clicked.connect(self.request_system_permissions)
         btn_layout.addWidget(self.help_btn)
         
         btn_layout.addStretch()
         
-        self.check_btn = QPushButton("Re-check")
+        self.check_btn = QPushButton(self.tr("Re-check"))
         self.check_btn.setObjectName("secondary")
+        self.check_btn.setAccessibleName("Re-check System Permissions Button")
         self.check_btn.clicked.connect(self.check_permissions)
         btn_layout.addWidget(self.check_btn)
         
-        self.next_btn = QPushButton("Continue")
+        self.next_btn = QPushButton(self.tr("Continue"))
+        self.next_btn.setAccessibleName("Continue to Application Button")
         self.next_btn.clicked.connect(self.complete_onboarding)
         btn_layout.addWidget(self.next_btn)
         

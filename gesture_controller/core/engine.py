@@ -38,15 +38,58 @@ class GestureEngine:
         self._fps_frame_count = 0
         self._gesture_count = 0
 
-        # Initialize PluginLoader
+        self._frame_shm = None
+        self._camera_process = None
+        self._plugin_loader = None
+        self._dispatcher = None
+        self._frame_ready_event = None
+
+        try:
+            self._init_plugins()
+            self._init_shared_memory()
+            self._init_camera_process()
+            self._init_landmark_extractor()
+            self._init_fsm_manager()
+            self._init_platform_controller()
+            self._init_custom_gesture_matcher()
+            self._init_signals()
+        except Exception as e:
+            logger.critical("Engine initialization failed, rolling back resources...", error=str(e))
+            self._rollback_init()
+            raise
+
+    def _init_plugins(self) -> None:
         self._plugin_loader = PluginLoader(self._event_bus)
         self._plugin_loader.discover_all()
-        plugin_gestures = self._plugin_loader.get_all_gestures()
 
-        # Initialize CustomGestureMatcher
-        self._custom_matcher = CustomGestureMatcher(self._config._config)
+    def _init_shared_memory(self) -> None:
+        import multiprocessing as mp
+        self._frame_ready_event = mp.Event()
+        
+        self._frame_size = 640 * 480 * 3
+        self._frame_shm = shared_memory.SharedMemory(create=True, size=self._frame_size)
+        self._shm_name = self._frame_shm.name
+        
+        # Tighten SharedMemory permissions on Unix (S3-14)
+        if platform.system() != "Windows":
+            shm_file = Path("/dev/shm") / f"psm_{self._shm_name}"
+            if shm_file.exists():
+                try:
+                    shm_file.chmod(0o600)
+                    logger.debug("Tightened shared memory file permissions", path=str(shm_file), mode="0600")
+                except Exception as e:
+                    logger.warning("Failed to chmod shared memory segment", path=str(shm_file), error=str(e))
+        logger.info("Shared memory buffer created", name=self._shm_name, size=self._frame_size)
 
-        # Load predefined gestures YAML config
+    def _init_camera_process(self) -> None:
+        self._camera_process = start_camera_process(self._config._config, self._shm_name, self._frame_ready_event)
+        logger.info("Camera Stream process spawned")
+
+    def _init_landmark_extractor(self) -> None:
+        self._extractor = LandmarkExtractor(self._config._config)
+
+    def _init_fsm_manager(self) -> None:
+        plugin_gestures = self._plugin_loader.get_all_gestures() if self._plugin_loader else []
         gestures_yaml_path = Path(__file__).parent.parent / "data" / "predefined_gestures.yaml"
         gestures_config = {}
         if gestures_yaml_path.exists():
@@ -56,44 +99,25 @@ class GestureEngine:
             except Exception as e:
                 logger.error("Failed loading predefined_gestures.yaml in engine", error=str(e))
 
-        # Merge predefined gestures with plugin gestures
         predefined_list = gestures_config.get("gestures", [])
         combined_gestures = predefined_list + plugin_gestures
         gestures_config["gestures"] = combined_gestures
 
-        # Merge configs so FSMManager gets global engine defaults and gesture lists
         merged_config = self._config._config.copy()
         merged_config.update(gestures_config)
 
-        # 1. Create SharedMemory segment for frame exchanging
-        self._frame_size = 640 * 480 * 3
-        self._frame_shm = shared_memory.SharedMemory(create=True, size=self._frame_size)
-        self._shm_name = self._frame_shm.name
-        logger.info("Shared memory buffer created", name=self._shm_name, size=self._frame_size)
-
-        # 2. Spawn Camera Stream capture process (Process A)
-        self._camera_process = start_camera_process(self._config._config, self._shm_name)
-        logger.info("Camera Stream process spawned")
-
-        # 3. Initialize Landmark Extractor (Process B)
-        self._extractor = LandmarkExtractor(self._config._config)
-
-        # 4. Initialize One-Euro Filters dict
         self._filters: dict[str, OneEuroFilter] = {}
-
-        # 5. Initialize Gesture FSM Manager
         self._fsm_manager = GestureFSMManager(merged_config, self._event_bus)
-        
-        # Subscribe to plugin reloads to dynamically rebuild the FSM instances
         self._event_bus.subscribe("plugin_reloaded", self._on_plugin_reloaded)
 
-        # 6. Instantiate Platform Controller
+    def _init_platform_controller(self) -> None:
         self._controller = self._create_os_controller()
-
-        # 7. Initialize Action Dispatcher (Subscribes to gesture_triggered on event_bus)
         self._dispatcher = ActionDispatcher(self._controller, self._config, self._event_bus)
 
-        # Register signal handlers for graceful shutdown (SIGINT/SIGTERM)
+    def _init_custom_gesture_matcher(self) -> None:
+        self._custom_matcher = CustomGestureMatcher(self._config._config)
+
+    def _init_signals(self) -> None:
         import signal
         try:
             self._old_sigint = signal.signal(signal.SIGINT, self._handle_signal)
@@ -101,6 +125,23 @@ class GestureEngine:
         except ValueError:
             self._old_sigint = None
             self._old_sigterm = None
+
+    def _rollback_init(self) -> None:
+        """Rollback all initialized resources on startup failure."""
+        if self._camera_process:
+            try:
+                self._camera_process.terminate()
+                self._camera_process.join(timeout=1.0)
+                if self._camera_process.is_alive():
+                    self._camera_process.kill()
+            except Exception as e:
+                logger.warning("Failed to terminate camera process during rollback", error=str(e))
+        if self._frame_shm:
+            try:
+                self._frame_shm.close()
+                self._frame_shm.unlink()
+            except Exception as e:
+                logger.warning("Failed to unlink shared memory segment during rollback", error=str(e))
 
     def _handle_signal(self, signum: int, frame: Any) -> None:
         import sys
@@ -211,6 +252,16 @@ class GestureEngine:
                     time.sleep(0.01)
                     continue
                 
+                # Block until camera process announces frame ready, with 100ms timeout
+                if self._frame_ready_event and not self._frame_ready_event.wait(timeout=0.1):
+                    continue
+                
+                if self._frame_ready_event:
+                    self._frame_ready_event.clear()
+                
+                import uuid
+                correlation_id = str(uuid.uuid4())
+
                 # Rolling FPS calculation
                 self._fps_frame_count += 1
                 now = time.monotonic()
@@ -218,6 +269,7 @@ class GestureEngine:
                     self._fps = self._fps_frame_count / (now - self._last_fps_time)
                     self._fps_frame_count = 0
                     self._last_fps_time = now
+                    logger.info("metric_fps", fps=self._fps, frame_count=self._frame_count, correlation_id=correlation_id)
 
                 timestamp = now
                 hands = self._extractor.extract(self._shm_name, int(timestamp * 1000))
@@ -274,15 +326,15 @@ class GestureEngine:
                         self._custom_matcher.update_buffer(smoothed_hand)
 
                         # 4. Evaluate FSM transitions
-                        event = self._fsm_manager.evaluate(features)
+                        event = self._fsm_manager.evaluate(features, correlation_id)
                         if not event:
-                            event = self._custom_matcher.match(timestamp)
+                            event = self._custom_matcher.match(timestamp, correlation_id)
 
                         if event:
                             # Propagate trigger to subscribers (dispatcher is subscribed to this)
                             self._event_bus.publish("gesture_triggered", event)
                             self._gesture_count += 1
-                            logger.info("Gesture Triggered", gesture=event.gesture_name, action=event.action)
+                            logger.info("Gesture Triggered", gesture=event.gesture_name, action=event.action, correlation_id=correlation_id)
                     self._current_hands = smoothed_hands
                 else:
                     self._current_hands = []
@@ -295,8 +347,6 @@ class GestureEngine:
                 self._frame_count += 1
             except Exception as e:
                 logger.error("Error inside engine main loop", error=str(e))
-            # Sleep 1ms to allow CPU context switching, max ~1000 Hz polling rate
-            time.sleep(0.001)
 
     def shutdown(self) -> None:
         """Gracefully shuts down background engine thread, camera process and SharedMemory."""

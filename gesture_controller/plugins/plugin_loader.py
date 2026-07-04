@@ -70,6 +70,13 @@ class PluginLoader:
                 "version": {"type": "string"},
                 "description": {"type": "string"},
                 "author": {"type": "string"},
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ["os:input", "ui:hud", "camera:read"]
+                    }
+                }
             },
         }
 
@@ -118,6 +125,53 @@ class PluginLoader:
                             raise PluginLoadError(str(path), f"PLUGIN_META must be a literal dict: {e}")
         return None
 
+    def _scan_ast_for_unsafe_code(self, path: Path, permissions: list[str]) -> None:
+        """Scan AST for unsafe imports or calls based on manifest permissions (S3-12)."""
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except Exception as e:
+            raise PluginLoadError(str(path), f"Syntax error: {e}")
+
+        # Block list of packages that require permissions
+        blocked_packages = {"pyautogui", "ctypes", "evdev", "Quartz", "AppKit", "win32api", "win32con", "subprocess", "os", "sys"}
+        
+        # If "os:input" is granted, we allow input simulation libraries
+        allowed_packages = {"typing", "structlog", "math", "numpy", "mediapipe"}
+        if "os:input" in permissions:
+            allowed_packages.update({"pyautogui", "ctypes", "evdev", "Quartz", "AppKit", "win32api", "win32con"})
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    base_mod = alias.name.split(".")[0]
+                    if base_mod in blocked_packages and base_mod not in allowed_packages:
+                        raise PluginLoadError(
+                            str(path),
+                            f"Unauthorized import of '{alias.name}'. Declared permissions do not allow it."
+                        )
+            elif isinstance(node, ast.ImportFrom):
+                if node.module:
+                    base_mod = node.module.split(".")[0]
+                    if base_mod in blocked_packages and base_mod not in allowed_packages:
+                        raise PluginLoadError(
+                            str(path),
+                            f"Unauthorized import from '{node.module}'. Declared permissions do not allow it."
+                        )
+
+            # Check calls to dangerous builtins or system executing methods
+            if isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Name):
+                    if node.func.id in {"eval", "exec", "__import__"}:
+                        raise PluginLoadError(str(path), f"Use of blocked builtin function '{node.func.id}'.")
+                elif isinstance(node.func, ast.Attribute):
+                    if isinstance(node.func.value, ast.Name):
+                        val_id = node.func.value.id
+                        attr_name = node.func.attr
+                        if val_id == "os" and attr_name in {"system", "popen", "spawn"}:
+                            raise PluginLoadError(str(path), f"Use of blocked system API '{val_id}.{attr_name}'.")
+                        if val_id == "subprocess" and attr_name in {"run", "Popen", "call"}:
+                            raise PluginLoadError(str(path), f"Use of blocked subprocess execution API '{val_id}.{attr_name}'.")
+
     def _load_plugin(self, path: Path) -> Plugin:
         """Load and validate a single plugin file.
 
@@ -133,6 +187,9 @@ class PluginLoader:
             jsonschema.validate(meta, self._schema)
         except jsonschema.ValidationError as e:
             raise PluginLoadError(str(path), f"Invalid PLUGIN_META: {e.message}")
+
+        # 1.5 Scan AST for unsafe imports / calls (S3-12)
+        self._scan_ast_for_unsafe_code(path, meta.get("permissions", []))
 
         # 2. Only execute after manifest is validated
         module_name = f"gesture_controller.plugins.{path.stem}"

@@ -21,7 +21,7 @@ def dummy_config() -> dict:
     }
 
 def test_camera_connection_success(dummy_config: dict) -> None:
-    stream = CameraStream(dummy_config, "dummy_shm")
+    stream = CameraStream(dummy_config, "dummy_shm", MagicMock())
     mock_cap = MagicMock()
     mock_cap.isOpened.return_value = True
     
@@ -31,7 +31,7 @@ def test_camera_connection_success(dummy_config: dict) -> None:
         mock_vc.assert_called()
 
 def test_camera_connection_failures_raises(dummy_config: dict) -> None:
-    stream = CameraStream(dummy_config, "dummy_shm")
+    stream = CameraStream(dummy_config, "dummy_shm", MagicMock())
     mock_cap = MagicMock()
     mock_cap.isOpened.return_value = False
     
@@ -41,7 +41,7 @@ def test_camera_connection_failures_raises(dummy_config: dict) -> None:
 
 def test_capture_loop_writes_to_shared_memory(dummy_config: dict, shared_memory_frame: tuple[shared_memory.SharedMemory, np.ndarray]) -> None:
     shm, frame_np = shared_memory_frame
-    stream = CameraStream(dummy_config, shm.name)
+    stream = CameraStream(dummy_config, shm.name, MagicMock())
     
     mock_cap = MagicMock()
     # Create a uniform BGR test frame (all blue: 255, 0, 0)
@@ -70,7 +70,7 @@ def test_capture_loop_writes_to_shared_memory(dummy_config: dict, shared_memory_
 
 def test_camera_watchdog_timeout(dummy_config: dict, shared_memory_frame: tuple[shared_memory.SharedMemory, np.ndarray]) -> None:
     shm, _ = shared_memory_frame
-    stream = CameraStream(dummy_config, shm.name)
+    stream = CameraStream(dummy_config, shm.name, MagicMock())
     
     mock_cap = MagicMock()
     # read() returns (False, None) to simulate temporary frame drop
@@ -89,11 +89,11 @@ def test_camera_watchdog_timeout(dummy_config: dict, shared_memory_frame: tuple[
 def test_start_camera_process(dummy_config: dict) -> None:
     with patch("multiprocessing.Process") as mock_process_class:
         from gesture_controller.vision.camera_stream import start_camera_process
-        proc = start_camera_process(dummy_config, "shm_name")
+        proc = start_camera_process(dummy_config, "shm_name", MagicMock())
         mock_process_class.assert_called_once()
 
 def test_camera_stream_run_loop(dummy_config: dict) -> None:
-    stream = CameraStream(dummy_config, "shm_name")
+    stream = CameraStream(dummy_config, "shm_name", MagicMock())
     
     # We want run() to execute _connect_camera and capture once, then exit when _running becomes False
     with patch.object(stream, "_connect_camera") as mock_connect, \
