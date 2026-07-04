@@ -83,7 +83,7 @@ def test_settings_window_apply_overrides(qapp: QApplication, tmp_path: Path) -> 
     assert config.get("camera.device_id") == 2
     assert config.get("sensitivity.global_multiplier") == 1.5
     assert config.get("hud.enabled") is False
-    assert config.get("pause_hotkey") == "Ctrl+Alt+Q"
+    assert config.get("safety.toggle_recognition_hotkey") == "Ctrl+Alt+Q"
 
     # Clean up to prevent segfaults
     window.deleteLater()

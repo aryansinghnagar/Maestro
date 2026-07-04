@@ -82,3 +82,10 @@ def test_onboarding_linux_permissions(mock_access, mock_sys, qapp) -> None:
     wizard = OnboardingWizard()
     wizard.check_permissions()
     assert wizard.os_status.text() == "✅ /dev/uinput Writable"
+
+def test_onboarding_accessibility_names(qapp) -> None:
+    wizard = OnboardingWizard()
+    assert wizard.help_btn.accessibleName() == "Grant System Permission Button"
+    assert wizard.check_btn.accessibleName() == "Re-check System Permissions Button"
+    assert wizard.next_btn.accessibleName() == "Continue to Application Button"
+

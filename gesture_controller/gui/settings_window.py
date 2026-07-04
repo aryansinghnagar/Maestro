@@ -103,54 +103,115 @@ class SettingsWindow(QDialog):
     def _setup_ui(self) -> None:
         self.setWindowTitle("Settings")
         self.setMinimumSize(600, 500)
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #121212;
-                color: #ffffff;
-            }
-            QTabWidget::pane {
-                border: 1px solid #333;
-                background-color: #1e1e1e;
-            }
-            QTabBar::tab {
-                background: #2e2e2e;
-                color: #b0b0b0;
-                padding: 10px;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
-                min-width: 80px;
-            }
-            QTabBar::tab:selected {
-                background: #1e1e1e;
-                color: #00ffcc;
-                border-bottom: 2px solid #00ffcc;
-            }
-            QLabel {
-                color: #ffffff;
-            }
-            QLineEdit, QComboBox {
-                background-color: #2e2e2e;
-                border: 1px solid #444;
-                color: #fff;
-                padding: 4px;
-                border-radius: 4px;
-            }
-            QPushButton {
-                background-color: #00ffcc;
-                color: #121212;
-                font-weight: bold;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-            }
-            QPushButton:hover {
-                background-color: #00ddbb;
-            }
-            QPushButton:disabled {
-                background-color: #444;
-                color: #888;
-            }
-        """)
+        
+        # Detect system dark/light theme dynamically (S3-17)
+        from PyQt6.QtGui import QGuiApplication, QPalette
+        is_dark = True
+        try:
+            from PyQt6.QtCore import Qt
+            is_dark = (QGuiApplication.styleHints().colorScheme() == Qt.ColorScheme.Dark)
+        except AttributeError:
+            bg_color = QGuiApplication.palette().color(QPalette.ColorRole.Window)
+            is_dark = ((bg_color.red() * 299 + bg_color.green() * 587 + bg_color.blue() * 114) / 1000) < 128
+
+        if is_dark:
+            self.setStyleSheet("""
+                QDialog {
+                    background-color: #121212;
+                    color: #ffffff;
+                }
+                QTabWidget::pane {
+                    border: 1px solid #333;
+                    background-color: #1e1e1e;
+                }
+                QTabBar::tab {
+                    background: #2e2e2e;
+                    color: #b0b0b0;
+                    padding: 10px;
+                    border-top-left-radius: 4px;
+                    border-top-right-radius: 4px;
+                    min-width: 80px;
+                }
+                QTabBar::tab:selected {
+                    background: #1e1e1e;
+                    color: #00ffcc;
+                    border-bottom: 2px solid #00ffcc;
+                }
+                QLabel {
+                    color: #ffffff;
+                }
+                QLineEdit, QComboBox {
+                    background-color: #2e2e2e;
+                    border: 1px solid #444;
+                    color: #fff;
+                    padding: 4px;
+                    border-radius: 4px;
+                }
+                QPushButton {
+                    background-color: #00ffcc;
+                    color: #121212;
+                    font-weight: bold;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                }
+                QPushButton:hover {
+                    background-color: #00ddbb;
+                }
+                QPushButton:disabled {
+                    background-color: #444;
+                    color: #888;
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                QDialog {
+                    background-color: #f5f5f5;
+                    color: #333333;
+                }
+                QTabWidget::pane {
+                    border: 1px solid #ccc;
+                    background-color: #ffffff;
+                }
+                QTabBar::tab {
+                    background: #e0e0e0;
+                    color: #555555;
+                    padding: 10px;
+                    border-top-left-radius: 4px;
+                    border-top-right-radius: 4px;
+                    min-width: 80px;
+                }
+                QTabBar::tab:selected {
+                    background: #ffffff;
+                    color: #0088cc;
+                    border-bottom: 2px solid #0088cc;
+                }
+                QLabel {
+                    color: #333333;
+                }
+                QLineEdit, QComboBox {
+                    background-color: #ffffff;
+                    border: 1px solid #ccc;
+                    color: #333;
+                    padding: 4px;
+                    border-radius: 4px;
+                }
+                QPushButton {
+                    background-color: #0088cc;
+                    color: #ffffff;
+                    font-weight: bold;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                }
+                QPushButton:hover {
+                    background-color: #006699;
+                }
+                QPushButton:disabled {
+                    background-color: #ddd;
+                    color: #888;
+                }
+            """)
 
         layout = QVBoxLayout(self)
         self._tabs = QTabWidget()
@@ -233,6 +294,11 @@ class SettingsWindow(QDialog):
         hotkey_layout.addWidget(self._hotkey_widget)
         layout.addLayout(hotkey_layout)
         
+        self._camera_device.setAccessibleName("Camera Device Selection")
+        self._camera_res.setAccessibleName("Camera Resolution Selection")
+        self._auto_reconnect.setAccessibleName("Auto Reconnect Checkbox")
+        self._hotkey_widget.setAccessibleName("Pause Resume Hotkey Input")
+        
         layout.addStretch()
 
     def _setup_sensitivity_tab(self) -> None:
@@ -268,6 +334,9 @@ class SettingsWindow(QDialog):
         cutoff_row.addWidget(self._cutoff_label)
         layout.addLayout(cutoff_row)
 
+        self._sens_slider.setAccessibleName("Sensitivity Multiplier Slider")
+        self._cutoff_slider.setAccessibleName("One Euro Filter Min Cutoff Slider")
+
         layout.addStretch()
 
     def _setup_gestures_tab(self) -> None:
@@ -283,6 +352,9 @@ class SettingsWindow(QDialog):
         self._gestures_tree.setHeaderLabels(["Gesture", "Type", "Default Action"])
         self._gestures_tree.setStyleSheet("background-color: #2e2e2e; border: 1px solid #444; color: #fff;")
         layout.addWidget(self._gestures_tree)
+        
+        self._record_btn.setAccessibleName("Record Custom Gesture Button")
+        self._gestures_tree.setAccessibleName("Predefined and Custom Gestures Table")
 
     def _setup_hud_tab(self) -> None:
         layout = QVBoxLayout(self._tab_hud)
@@ -311,6 +383,11 @@ class SettingsWindow(QDialog):
         self._show_ring = QCheckBox("Show Gesture Progress Ring")
         layout.addWidget(self._show_ring)
         
+        self._hud_enabled.setAccessibleName("Enable HUD Checkbox")
+        self._hud_opacity.setAccessibleName("HUD Opacity Slider")
+        self._show_points.setAccessibleName("Show Joint Tracking Dots Checkbox")
+        self._show_ring.setAccessibleName("Show Gesture Progress Ring Checkbox")
+        
         layout.addStretch()
 
     def _load_current_config(self) -> None:
@@ -332,7 +409,7 @@ class SettingsWindow(QDialog):
         self._show_ring.setChecked(self._config.get("hud.show_progress_ring", True))
         
         # Load hotkey
-        self._hotkey_widget.setText(self._config.get("pause_hotkey", "Ctrl+Alt+P"))
+        self._hotkey_widget.setText(self._config.get("safety.toggle_recognition_hotkey", "Ctrl+Alt+P"))
 
         # Populate predefined gestures list
         self._gestures_tree.clear()
@@ -414,7 +491,7 @@ class SettingsWindow(QDialog):
         self._config.set("hud.show_tracking_points", self._show_points.isChecked())
         self._config.set("hud.show_progress_ring", self._show_ring.isChecked())
         
-        self._config.set("pause_hotkey", self._hotkey_widget.text())
+        self._config.set("safety.toggle_recognition_hotkey", self._hotkey_widget.text())
 
         # Save to config.yaml file
         sys_name = platform.system()

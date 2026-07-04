@@ -28,6 +28,27 @@ class LandmarkExtractor:
         if not MODEL_PATH.exists():
             raise FileNotFoundError(f"MediaPipe Hand Landmarker model file not found at {model_path_str}")
 
+        # Verify SHA256 integrity unless disabled in config
+        skip_verify = config.get("engine", {}).get("skip_model_verification", False)
+        if not skip_verify:
+            import hashlib
+            expected_sha256 = "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1"
+            h = hashlib.sha256()
+            try:
+                with open(MODEL_PATH, "rb") as f:
+                    for chunk in iter(lambda: f.read(65536), b""):
+                        h.update(chunk)
+                file_hash = h.hexdigest().lower()
+                if file_hash != expected_sha256:
+                    raise RuntimeError(
+                        f"MediaPipe Hand Landmarker model file integrity check failed! "
+                        f"Expected hash: {expected_sha256}, got: {file_hash}."
+                    )
+            except Exception as e:
+                if isinstance(e, (RuntimeError, FileNotFoundError)):
+                    raise
+                raise RuntimeError(f"Failed to calculate model file hash: {e}") from e
+
         # Configure Tasks HandLandmarker options
         base_options = python.BaseOptions(model_asset_path=model_path_str)
         self._options = vision.HandLandmarkerOptions(

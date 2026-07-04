@@ -63,9 +63,29 @@ def test_engine_main_loop_publishing() -> None:
         
         # Start and let the main loop iterate a few times, then stop
         engine.start()
-        time.sleep(0.05)
+        for _ in range(5):
+            engine._frame_ready_event.set()
+            time.sleep(0.01)
         engine.shutdown()
         
         # We should have successfully published raw landmark events
         assert len(events_published) > 0
         assert events_published[0] == dummy_hands
+
+def test_engine_initialization_rollback() -> None:
+    mock_shm = MagicMock()
+    mock_shm.name = "mock_shm_segment"
+    mock_process = MagicMock()
+    
+    with patch("gesture_controller.core.engine.LandmarkExtractor", side_effect=RuntimeError("MediaPipe failed")), \
+         patch("gesture_controller.core.engine.start_camera_process", return_value=mock_process), \
+         patch("multiprocessing.shared_memory.SharedMemory", return_value=mock_shm), \
+         patch("gesture_controller.core.engine.PluginLoader"), \
+         patch("gesture_controller.core.engine.CustomGestureMatcher"):
+         
+        with pytest.raises(RuntimeError, match="MediaPipe failed"):
+            GestureEngine()
+            
+        mock_process.terminate.assert_called_once()
+        mock_shm.close.assert_called_once()
+        mock_shm.unlink.assert_called_once()

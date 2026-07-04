@@ -65,7 +65,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "pause_hotkey": { "type": "string" },
+        "toggle_recognition_hotkey": { "type": "string" },
         "safety_gesture_enabled": { "type": "boolean" }
       }
     },

@@ -87,3 +87,21 @@ def test_landmark_extractor_missing_shm(dummy_config: dict) -> None:
         extractor = LandmarkExtractor(dummy_config)
         hands = extractor.extract("nonexistent_shm_name")
         assert hands is None
+
+def test_landmark_extractor_invalid_hash(dummy_config: dict) -> None:
+    mock_hash = MagicMock()
+    mock_hash.hexdigest.return_value = "wronghash123"
+    with patch("hashlib.sha256", return_value=mock_hash):
+        with patch("mediapipe.tasks.python.vision.HandLandmarker.create_from_options"):
+            with pytest.raises(RuntimeError, match="integrity check failed"):
+                LandmarkExtractor(dummy_config)
+
+def test_landmark_extractor_skip_hash(dummy_config: dict) -> None:
+    dummy_config["engine"]["skip_model_verification"] = True
+    mock_hash = MagicMock()
+    mock_hash.hexdigest.return_value = "wronghash123"
+    with patch("hashlib.sha256", return_value=mock_hash):
+        with patch("mediapipe.tasks.python.vision.HandLandmarker.create_from_options") as mock_create:
+            mock_create.return_value = MagicMock()
+            extractor = LandmarkExtractor(dummy_config)
+            assert extractor is not None
