@@ -227,6 +227,14 @@ class PluginLoader:
         # 1.5 Scan AST for unsafe imports / calls (S3-12)
         self._scan_ast_for_unsafe_code(path, meta.get("permissions", []))
 
+        # 1.7 Verify compilation using RestrictedPython sandbox compiler
+        try:
+            from RestrictedPython import compile_restricted
+
+            compile_restricted(path.read_text(encoding="utf-8"), filename=str(path), mode="exec")
+        except Exception as e:
+            raise PluginLoadError(str(path), f"RestrictedPython compile validation failed: {e}")
+
         # 2. Only execute after manifest is validated
         module_name = f"gesture_controller.plugins.{path.stem}"
         spec = importlib.util.spec_from_file_location(module_name, str(path))
