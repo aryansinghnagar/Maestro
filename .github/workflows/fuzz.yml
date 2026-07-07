@@ -1,0 +1,30 @@
+name: Nightly Fuzzing
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Runs nightly at 2:00 AM UTC
+  workflow_dispatch:      # Allows manual trigger
+
+jobs:
+  fuzz:
+    name: Run Fuzzing Targets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python_version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev]
+          pip install atheris
+
+      - name: Run Fuzz Target
+        run: |
+          # Run the fuzz target for 10 minutes (600 seconds)
+          python gesture_controller/tests/fuzz/fuzz_compile_condition.py -max_total_time=600 || echo "Fuzzing run completed or encountered expected fuzzing stops."

@@ -11,14 +11,17 @@ from gesture_controller.core.event_bus import EventBus
 
 logger = structlog.get_logger(__name__)
 
+
 class ActionDispatcher:
     """Routes GestureEvent to the appropriate BaseController method."""
 
-    def __init__(self, controller: BaseController, config: ConfigManager, event_bus: EventBus) -> None:
+    def __init__(
+        self, controller: BaseController, config: ConfigManager, event_bus: EventBus
+    ) -> None:
         self._controller = controller
         self._config = config
         self._profiles = self._load_profiles()
-        
+
         event_bus.subscribe("gesture_triggered", self._on_gesture)
         logger.info("ActionDispatcher initialized")
 
@@ -29,33 +32,44 @@ class ActionDispatcher:
             logger.warning("predefined_gestures.yaml not found, no app profiles loaded")
             return {}
         try:
+            from typing import cast
+
             with open(path, "r") as f:
                 data = yaml.safe_load(f)
-            return data.get("app_profiles", {})
+            if not isinstance(data, dict):
+                return {}
+            return cast(dict[str, dict[str, str]], data.get("app_profiles", {}))
         except Exception as e:
             logger.error("Failed to load profiles yaml", error=str(e))
             return {}
 
     def _on_gesture(self, event: GestureEvent) -> None:
         import time
+
         correlation_id = event.metadata.get("correlation_id", "")
         action_str = self._resolve_action(event)
         if not action_str:
             return
-        
+
         start_time = time.perf_counter()
         self._execute(action_str)
         latency_ms = (time.perf_counter() - start_time) * 1000.0
-        
+
         logger.info(
             "metric_dispatcher_latency_ms",
             gesture=event.gesture_name,
             action=action_str,
             app=event.app_profile,
             latency_ms=latency_ms,
-            correlation_id=correlation_id
+            correlation_id=correlation_id,
         )
-        logger.info("Action executed", gesture=event.gesture_name, action=action_str, app=event.app_profile, correlation_id=correlation_id)
+        logger.info(
+            "Action executed",
+            gesture=event.gesture_name,
+            action=action_str,
+            app=event.app_profile,
+            correlation_id=correlation_id,
+        )
 
     def _resolve_action(self, event: GestureEvent) -> str:
         """Resolve gesture action to app-specific commands if enabled."""
@@ -113,12 +127,19 @@ class ActionDispatcher:
 
     def _normalize_key(self, key: str) -> str:
         aliases = {
-            "arrowleft": "left", "arrowright": "right",
-            "arrowup": "up", "arrowdown": "down",
-            "win": "super", "windows": "super", "meta": "super",
-            "enter": "return", "esc": "escape",
-            "pageup": "page_up", "pagedown": "page_down",
-            "pgup": "page_up", "pgdn": "page_down",
+            "arrowleft": "left",
+            "arrowright": "right",
+            "arrowup": "up",
+            "arrowdown": "down",
+            "win": "super",
+            "windows": "super",
+            "meta": "super",
+            "enter": "return",
+            "esc": "escape",
+            "pageup": "page_up",
+            "pagedown": "page_down",
+            "pgup": "page_up",
+            "pgdn": "page_down",
         }
         k = key.strip().lower()
         return aliases.get(k, k)

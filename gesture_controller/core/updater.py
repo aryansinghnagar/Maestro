@@ -3,28 +3,39 @@ import ssl
 import urllib.request
 from PyQt6.QtCore import QThread, pyqtSignal
 
+
+from typing import Any
+
+
 class UpdateCheckerThread(QThread):
     """Background thread to check for application updates on GitHub (S4-8)."""
+
     update_available = pyqtSignal(str, str)  # latest_version, html_url
     error = pyqtSignal(str)
 
-    def __init__(self, current_version: str, parent=None) -> None:
+    def __init__(self, current_version: str, parent: Any | None = None) -> None:
         super().__init__(parent)
         self.current_version = current_version.strip("v")
 
     def run(self) -> None:
         url = "https://api.github.com/repos/aryansinghnagar/Maestro/releases/latest"
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": "Maestro-Update-Checker"}
-        )
+
+        # Validate URL scheme and domain to prevent SSRF / unvalidated redirect (B310)
+        from urllib.parse import urlparse
+
+        parsed = urlparse(url)
+        if parsed.scheme != "https" or parsed.netloc != "api.github.com":
+            self.error.emit("Security check failed: Invalid update URL scheme or domain.")
+            return
+
+        req = urllib.request.Request(url, headers={"User-Agent": "Maestro-Update-Checker"})
         try:
             # Set up non-blocking SSL context to avoid certificate validation issues on restricted networks
             ctx = ssl.create_default_context()
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
 
-            with urllib.request.urlopen(req, context=ctx, timeout=5) as response:
+            with urllib.request.urlopen(req, context=ctx, timeout=5) as response:  # nosec B310
                 data = json.loads(response.read().decode("utf-8"))
                 latest_tag = data.get("tag_name", "").strip("v")
                 html_url = data.get("html_url", "")

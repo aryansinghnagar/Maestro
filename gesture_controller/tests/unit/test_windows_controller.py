@@ -1,24 +1,21 @@
 import sys
 import platform
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
 
 # Mock ctypes before importing WindowsController to avoid dependency errors on non-Windows
 mock_windll = MagicMock()
 mock_user32 = MagicMock()
 mock_windll.user32 = mock_user32
 
-# Set up ctypes mocks so they don't crash on import/init
 sys.modules["ctypes.wintypes"] = MagicMock()
 
-with patch("platform.system", return_value="Windows"), \
-     patch("ctypes.windll", mock_windll):
+with (
+    patch("platform.system", return_value="Windows"),
+    patch("ctypes.windll", mock_windll, create=True),
+):
     from gesture_controller.os_integration.windows_controller import WindowsController
 
-@pytest.fixture
-def mock_pyautogui():
-    with patch("gesture_controller.os_integration.windows_controller.pyautogui") as mock_pag:
-        yield mock_pag
 
 @pytest.fixture
 def mock_ctypes():
@@ -35,90 +32,102 @@ def mock_ctypes():
         mock_c.windll.user32.GetWindowThreadProcessId.return_value = None
         yield mock_c
 
+
 @patch("platform.system", return_value="Windows")
 def test_windows_is_supported(mock_sys) -> None:
     ctrl = WindowsController()
     assert ctrl.is_supported() is True
+
 
 @patch("platform.system", return_value="Linux")
 def test_windows_not_supported_on_linux(mock_sys) -> None:
     with pytest.raises(RuntimeError):
         WindowsController()
 
+
 @patch("platform.system", return_value="Windows")
-def test_windows_key_press(mock_sys, mock_pyautogui) -> None:
+def test_windows_key_press(mock_sys, mock_ctypes) -> None:
     ctrl = WindowsController()
-    
+
     # Simple key press
     ctrl.key_press("a")
-    mock_pyautogui.press.assert_called_once_with("a")
-    
+    # Should call SendInput twice (keydown, keyup)
+    assert mock_ctypes.windll.user32.SendInput.call_count == 2
+
     # Key press with modifiers
-    mock_pyautogui.reset_mock()
+    mock_ctypes.windll.user32.SendInput.reset_mock()
     ctrl.key_press("a", modifiers=["ctrl", "alt"])
-    mock_pyautogui.hotkey.assert_called_once_with("ctrl", "alt", "a")
-    
-    # Normalized key press
-    mock_pyautogui.reset_mock()
-    ctrl.key_press("super")
-    mock_pyautogui.press.assert_called_once_with("win")
+    # 2 modifiers keydown, 1 key keydown, 1 key keyup, 2 modifiers keyup = 6 SendInput calls
+    assert mock_ctypes.windll.user32.SendInput.call_count == 6
+
 
 @patch("platform.system", return_value="Windows")
-def test_windows_key_release(mock_sys, mock_pyautogui) -> None:
+def test_windows_key_release(mock_sys, mock_ctypes) -> None:
     ctrl = WindowsController()
     ctrl.key_release("super")
-    mock_pyautogui.keyUp.assert_called_once_with("win")
+    assert mock_ctypes.windll.user32.SendInput.call_count == 1
+
 
 @patch("platform.system", return_value="Windows")
-def test_windows_key_combo(mock_sys, mock_pyautogui) -> None:
+def test_windows_key_combo(mock_sys, mock_ctypes) -> None:
     ctrl = WindowsController()
     ctrl.key_combo(["ctrl", "alt", "delete"])
-    mock_pyautogui.hotkey.assert_called_once_with("ctrl", "alt", "delete")
+    # 3 keydowns, 3 keyups = 6 SendInput calls
+    assert mock_ctypes.windll.user32.SendInput.call_count == 6
+
 
 @patch("platform.system", return_value="Windows")
-def test_windows_mouse_click(mock_sys, mock_pyautogui) -> None:
+def test_windows_mouse_click(mock_sys, mock_ctypes) -> None:
     ctrl = WindowsController()
-    
+
     # Click at current position
     ctrl.mouse_click("left")
-    mock_pyautogui.click.assert_called_once_with(button="left")
-    
+    # 1 down, 1 up = 2 SendInput calls
+    assert mock_ctypes.windll.user32.SendInput.call_count == 2
+
     # Click at coordinate
-    mock_pyautogui.reset_mock()
+    mock_ctypes.windll.user32.SendInput.reset_mock()
     ctrl.mouse_click("right", x=100, y=200)
-    mock_pyautogui.click.assert_called_once_with(100, 200, button="right")
+    mock_ctypes.windll.user32.SetCursorPos.assert_called_once_with(100, 200)
+    assert mock_ctypes.windll.user32.SendInput.call_count == 2
+
 
 @patch("platform.system", return_value="Windows")
-def test_windows_mouse_double_click(mock_sys, mock_pyautogui) -> None:
+def test_windows_mouse_double_click(mock_sys, mock_ctypes) -> None:
     ctrl = WindowsController()
     ctrl.mouse_double_click("left", x=150, y=250)
-    mock_pyautogui.doubleClick.assert_called_once_with(150, 250, button="left")
+    mock_ctypes.windll.user32.SetCursorPos.assert_has_calls([call(150, 250), call(150, 250)])
+    # 2 clicks * (1 down + 1 up) = 4 SendInput calls
+    assert mock_ctypes.windll.user32.SendInput.call_count == 4
+
 
 @patch("platform.system", return_value="Windows")
-def test_windows_mouse_move(mock_sys, mock_pyautogui) -> None:
+def test_windows_mouse_move(mock_sys, mock_ctypes) -> None:
     ctrl = WindowsController()
-    
+
     # Absolute move
     ctrl.mouse_move(10, 20, absolute=True)
-    mock_pyautogui.moveTo.assert_called_once_with(10, 20)
-    
+    mock_ctypes.windll.user32.SetCursorPos.assert_called_once_with(10, 20)
+
     # Relative move
-    mock_pyautogui.reset_mock()
+    mock_ctypes.windll.user32.SendInput.reset_mock()
     ctrl.mouse_move(5, -5, absolute=False)
-    mock_pyautogui.move.assert_called_once_with(5, -5)
+    assert mock_ctypes.windll.user32.SendInput.call_count == 1
+
 
 @patch("platform.system", return_value="Windows")
-def test_windows_mouse_scroll(mock_sys, mock_pyautogui) -> None:
+def test_windows_mouse_scroll(mock_sys, mock_ctypes) -> None:
     ctrl = WindowsController()
-    
+
     # Vertical scroll
     ctrl.mouse_scroll(delta_y=-5)
-    mock_pyautogui.scroll.assert_called_once_with(-5)
-    
+    assert mock_ctypes.windll.user32.SendInput.call_count == 1
+
     # Horizontal scroll
-    mock_pyautogui.reset_mock()
+    mock_ctypes.windll.user32.SendInput.reset_mock()
     ctrl.mouse_scroll(delta_x=3)
-    mock_pyautogui.hscroll.assert_called_once_with(3)
+    assert mock_ctypes.windll.user32.SendInput.call_count == 1
+
 
 @patch("platform.system", return_value="Windows")
 def test_windows_minimize_active_window(mock_sys, mock_ctypes) -> None:
@@ -127,36 +136,41 @@ def test_windows_minimize_active_window(mock_sys, mock_ctypes) -> None:
     mock_ctypes.windll.user32.GetForegroundWindow.assert_called_once()
     mock_ctypes.windll.user32.ShowWindow.assert_called_once_with(12345, 6)
 
-@patch("platform.system", return_value="Windows")
-def test_windows_shortcuts(mock_sys, mock_pyautogui) -> None:
-    ctrl = WindowsController()
-    
-    # switch_window
-    ctrl.switch_window()
-    mock_pyautogui.hotkey.assert_any_call("alt", "tab")
-    
-    # show_desktop
-    ctrl.show_desktop()
-    mock_pyautogui.hotkey.assert_any_call("win", "d")
 
 @patch("platform.system", return_value="Windows")
-def test_windows_media_controls(mock_sys, mock_pyautogui) -> None:
+def test_windows_shortcuts(mock_sys, mock_ctypes) -> None:
     ctrl = WindowsController()
-    
+
+    # switch_window
+    ctrl.switch_window()
+    assert mock_ctypes.windll.user32.SendInput.call_count == 4  # alt down, tab down, tab up, alt up
+
+    # show_desktop
+    mock_ctypes.windll.user32.SendInput.reset_mock()
+    ctrl.show_desktop()
+    assert mock_ctypes.windll.user32.SendInput.call_count == 4  # win down, d down, d up, win up
+
+
+@patch("platform.system", return_value="Windows")
+def test_windows_media_controls(mock_sys, mock_ctypes) -> None:
+    ctrl = WindowsController()
+
     ctrl.media_play_pause()
-    mock_pyautogui.press.assert_any_call("playpause")
-    
+    assert mock_ctypes.windll.user32.SendInput.call_count == 2
+
     ctrl.media_next()
-    mock_pyautogui.press.assert_any_call("nexttrack")
-    
+    assert mock_ctypes.windll.user32.SendInput.call_count == 4
+
     ctrl.media_previous()
-    mock_pyautogui.press.assert_any_call("prevtrack")
-    
+    assert mock_ctypes.windll.user32.SendInput.call_count == 6
+
     ctrl.media_volume_up()
-    assert mock_pyautogui.press.call_count == 6  # 3 volume up, plus previous presses
-    
+    # 3 presses * 2 events = 6 events + 6 previous = 12 events
+    assert mock_ctypes.windll.user32.SendInput.call_count == 12
+
     ctrl.media_volume_down()
-    assert mock_pyautogui.press.call_count == 9  # 3 volume down
+    assert mock_ctypes.windll.user32.SendInput.call_count == 18
+
 
 @patch("platform.system", return_value="Windows")
 @patch("psutil.Process")
@@ -165,11 +179,11 @@ def test_windows_get_foreground_app(mock_psutil_proc, mock_sys, mock_ctypes) -> 
     mock_proc = MagicMock()
     mock_proc.name.return_value = "Chrome.exe"
     mock_psutil_proc.return_value = mock_proc
-    
+
     ctrl = WindowsController()
     app = ctrl.get_foreground_app()
     assert app == "chrome.exe"
-    
+
     # Test traceback fallback to window title
     mock_psutil_proc.side_effect = Exception()
     app = ctrl.get_foreground_app()

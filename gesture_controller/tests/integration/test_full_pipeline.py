@@ -1,8 +1,12 @@
 """Integration tests verifying the startup flow of the app entry coordinator.
 Ensures tray is active and overlay is visible.
 """
+
 import sys
+import pytest
+import PyQt6.QtWidgets
 from unittest.mock import MagicMock, patch
+
 
 # Define dummy wrapper classes that inherit from MagicMock
 # but do not treat the first positional argument (parent widget) as a spec.
@@ -10,28 +14,42 @@ class DummySystemTrayIcon(MagicMock):
     class MessageIcon:
         Warning = 1
         Information = 2
-        
+
+    class ActivationReason:
+        DoubleClick = 2
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__()
+
 
 class DummyMenu(MagicMock):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__()
 
-# Mock PyQt6 QSystemTrayIcon and QMenu at the module level before any other imports
-import PyQt6.QtWidgets
-PyQt6.QtWidgets.QSystemTrayIcon = DummySystemTrayIcon
-PyQt6.QtWidgets.QMenu = DummyMenu
 
-import pytest
+@pytest.fixture(autouse=True)
+def patch_qt(monkeypatch):
+    """Replace QSystemTrayIcon and QMenu with dummies for the duration of each test."""
+    import gesture_controller.gui.tray_icon
+
+    monkeypatch.setattr(PyQt6.QtWidgets, "QSystemTrayIcon", DummySystemTrayIcon)
+    monkeypatch.setattr(PyQt6.QtWidgets, "QMenu", DummyMenu)
+    monkeypatch.setattr(gesture_controller.gui.tray_icon, "QSystemTrayIcon", DummySystemTrayIcon)
+    monkeypatch.setattr(gesture_controller.gui.tray_icon, "QMenu", DummyMenu)
+    yield
+
+
 from PyQt6.QtWidgets import QApplication
 from gesture_controller.gui.app_entry import GestureControllerApp
 
+
 def test_full_pipeline_gui_flow(qapp: QApplication) -> None:
     """Verify tray icon becomes visible and overlay widget opens on app start."""
-    with patch("gesture_controller.core.engine.GestureEngine") as MockEngine, \
-         patch("PyQt6.QtCore.QTimer.singleShot") as MockSingleShot:
-         
+    with (
+        patch("gesture_controller.core.engine.GestureEngine") as MockEngine,
+        patch("PyQt6.QtCore.QTimer.singleShot") as MockSingleShot,
+    ):
+
         # Mock engine instance config & internal components
         engine_instance = MagicMock()
         engine_instance._config = MagicMock()
@@ -40,20 +58,16 @@ def test_full_pipeline_gui_flow(qapp: QApplication) -> None:
             "hud.opacity": 0.8,
             "hud.show_tracking_points": True,
         }.get(key, default)
-        
+
         engine_instance._config._config = {
-            "hud": {
-                "enabled": True,
-                "opacity": 0.8,
-                "show_tracking_points": True
-            }
+            "hud": {"enabled": True, "opacity": 0.8, "show_tracking_points": True}
         }
         engine_instance._event_bus = MagicMock()
         engine_instance.get_current_hands.return_value = []
         engine_instance.get_fps.return_value = 30.0
         engine_instance.get_gesture_count.return_value = 0
         MockEngine.return_value = engine_instance
-        
+
         # Initialize coordinator app
         app = GestureControllerApp()
 
