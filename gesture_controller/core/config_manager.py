@@ -19,6 +19,7 @@ USER_CONFIG_DIRS = {
     "Linux": Path.home() / ".config" / "gesture_controller",
 }
 
+
 class SafeExpressionEvaluator:
     """A safe AST-based compiler and evaluator for boolean expression strings.
     It restricts AST node types to an allow-list and evaluates expressions recursively,
@@ -57,12 +58,16 @@ class SafeExpressionEvaluator:
     def validate_node(cls, node: ast.AST) -> None:
         """Recursively check if the AST nodes are in the allow-list."""
         if type(node) not in cls.ALLOWED_NODES:
-            raise ValueError(f"AST node type '{type(node).__name__}' is not allowed for security reasons.")
+            raise ValueError(
+                f"AST node type '{type(node).__name__}' is not allowed for security reasons."
+            )
         # If it's a function call, restrict the function name to allowed names only (e.g. abs)
         if isinstance(node, ast.Call):
             if not isinstance(node.func, ast.Name) or node.func.id not in {"abs"}:
                 func_name = node.func.id if isinstance(node.func, ast.Name) else "complex"
-                raise ValueError(f"Function call to '{func_name}' is not allowed for security reasons.")
+                raise ValueError(
+                    f"Function call to '{func_name}' is not allowed for security reasons."
+                )
         for child in ast.iter_child_nodes(node):
             cls.validate_node(child)
 
@@ -70,7 +75,7 @@ class SafeExpressionEvaluator:
     def compile_expression(cls, expr_str: str) -> ast.Expression:
         """Parse, validate and compile a safe expression string into an AST Expression."""
         try:
-            tree = ast.parse(expr_str.strip(), mode='eval')
+            tree = ast.parse(expr_str.strip(), mode="eval")
             cls.validate_node(tree)
             return tree
         except Exception as e:
@@ -89,7 +94,7 @@ class SafeExpressionEvaluator:
     def _evaluate_node(cls, node: ast.AST, context: dict[str, Any]) -> Any:
         if isinstance(node, ast.Constant):
             return node.value
-            
+
         elif isinstance(node, ast.Name):
             if node.id == "True":
                 return True
@@ -98,7 +103,7 @@ class SafeExpressionEvaluator:
             if node.id in context:
                 return context[node.id]
             raise NameError(f"Name '{node.id}' is not defined in context.")
-            
+
         elif isinstance(node, ast.UnaryOp):
             operand = cls._evaluate_node(node.operand, context)
             if isinstance(node.op, ast.Not):
@@ -106,7 +111,7 @@ class SafeExpressionEvaluator:
             elif isinstance(node.op, ast.USub):
                 return -operand
             raise TypeError(f"Unsupported unary operator: {type(node.op)}")
-            
+
         elif isinstance(node, ast.BinOp):
             left = cls._evaluate_node(node.left, context)
             right = cls._evaluate_node(node.right, context)
@@ -135,26 +140,26 @@ class SafeExpressionEvaluator:
                         return True
                 return False
             raise TypeError(f"Unsupported logical operator: {type(node.op)}")
-            
+
         elif isinstance(node, ast.Compare):
             left = cls._evaluate_node(node.left, context)
             for op, comparator_node in zip(node.ops, node.comparators):
                 right = cls._evaluate_node(comparator_node, context)
                 if isinstance(op, ast.Eq):
-                    res = (left == right)
+                    res = left == right
                 elif isinstance(op, ast.NotEq):
-                    res = (left != right)
+                    res = left != right
                 elif isinstance(op, ast.Lt):
-                    res = (left < right)
+                    res = left < right
                 elif isinstance(op, ast.LtE):
-                    res = (left <= right)
+                    res = left <= right
                 elif isinstance(op, ast.Gt):
-                    res = (left > right)
+                    res = left > right
                 elif isinstance(op, ast.GtE):
-                    res = (left >= right)
+                    res = left >= right
                 else:
                     raise TypeError(f"Unsupported comparison operator: {type(op)}")
-                
+
                 if not res:
                     return False
                 left = right
@@ -166,7 +171,7 @@ class SafeExpressionEvaluator:
                     raise ValueError("abs() takes exactly 1 argument.")
                 return abs(cls._evaluate_node(node.args[0], context))
             raise ValueError(f"Calling function '{node.func}' is not permitted.")
-            
+
         raise ValueError(f"Unsupported AST node type: {type(node).__name__}")
 
 
@@ -192,10 +197,10 @@ class ConfigManager:
         paths: list[Path] = []
         if config_path:
             paths.append(config_path)
-            
+
         # Add system defaults path
         paths.append(DEFAULT_CONFIG_PATH)
-        
+
         # Add user overrides path
         sys_name = platform.system()
         user_dir = USER_CONFIG_DIRS.get(sys_name)
@@ -209,25 +214,30 @@ class ConfigManager:
         ordered_paths: list[Path] = []
         if DEFAULT_CONFIG_PATH.exists():
             ordered_paths.append(DEFAULT_CONFIG_PATH)
-        
+
         if user_dir:
             user_path = user_dir / "config.yaml"
             if user_path.exists():
                 try:
                     with open(user_path, "r", encoding="utf-8") as f:
                         user_data = yaml.safe_load(f) or {}
-                    
+
                     from gesture_controller.core.config_migrator import migrate_config
+
                     migrated_data = migrate_config(user_data)
-                    
+
                     if migrated_data != user_data:
                         with open(user_path, "w", encoding="utf-8") as f:
                             yaml.safe_dump(migrated_data, f)
                         logger.info("Migrated user config file on disk", path=str(user_path))
                 except Exception as e:
-                    logger.warning("Failed to migrate user config file on disk", path=str(user_path), error=str(e))
+                    logger.warning(
+                        "Failed to migrate user config file on disk",
+                        path=str(user_path),
+                        error=str(e),
+                    )
                 ordered_paths.append(user_path)
-                
+
         if config_path and config_path.exists() and config_path not in ordered_paths:
             ordered_paths.append(config_path)
 

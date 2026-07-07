@@ -15,12 +15,15 @@ logger = structlog.get_logger(__name__)
 # Operators allowed in FSM conditions for AST compilation
 import numpy as np
 
-def compile_condition(expr_str: str, thresholds: dict[str, float]) -> Callable[[FeatureVector], bool]:
+
+def compile_condition(
+    expr_str: str, thresholds: dict[str, float]
+) -> Callable[[FeatureVector], bool]:
     """Parse a condition string into a safe callable. Raises ValueError on disallowed constructs."""
     from gesture_controller.core.config_manager import SafeExpressionEvaluator
-    
+
     compiled_ast = SafeExpressionEvaluator.compile_expression(expr_str)
-    
+
     def _execute(fv: FeatureVector) -> bool:
         context = dict(thresholds)
         for key in dir(fv):
@@ -33,14 +36,14 @@ def compile_condition(expr_str: str, thresholds: dict[str, float]) -> Callable[[
             if callable(val):
                 continue
             context[key] = val
-            
+
             if isinstance(val, (tuple, list, np.ndarray)) and len(val) == 3:
                 context[f"{key}_x"] = float(val[0])
                 context[f"{key}_y"] = float(val[1])
                 context[f"{key}_z"] = float(val[2])
-                
+
         return SafeExpressionEvaluator.evaluate(compiled_ast, context)
-        
+
     return _execute
 
 
@@ -72,14 +75,14 @@ class GestureFSM:
         priority: int,
         gesture_type: str,
         states: dict[str, FSMState],
-        initial_state: str = "Idle"
+        initial_state: str = "Idle",
     ) -> None:
         self.name = name
         self.priority = priority
         self.gesture_type = gesture_type
         self.states = states
         self.initial_state = initial_state
-        
+
         self.current_state = initial_state
         self.state_entered_at: float | None = None
         self.last_triggered_at: float | None = None
@@ -87,7 +90,9 @@ class GestureFSM:
         self._cooldown_until = 0.0
         self._features_at_state_entry: FeatureVector | None = None
 
-    def evaluate(self, features: FeatureVector, timestamp: float, correlation_id: str = "") -> GestureEvent | None:
+    def evaluate(
+        self, features: FeatureVector, timestamp: float, correlation_id: str = ""
+    ) -> GestureEvent | None:
         """Evaluate one frame against this FSM. Returns GestureEvent or None."""
         state = self.states.get(self.current_state)
         if not state:
@@ -114,7 +119,9 @@ class GestureFSM:
 
         # 2. Timeout check (max_duration)
         if duration_ms > state.max_duration_ms and not state.is_terminal:
-            logger.debug("FSM state timeout", fsm=self.name, state=self.current_state, duration=duration_ms)
+            logger.debug(
+                "FSM state timeout", fsm=self.name, state=self.current_state, duration=duration_ms
+            )
             self.current_state = self.initial_state
             self.state_entered_at = None
             self._features_at_state_entry = None
@@ -127,17 +134,30 @@ class GestureFSM:
         # Populate delta values dynamically based on state entry features
         if self._features_at_state_entry is not None:
             features = copy.copy(features)
-            features.index_tip_delta_y = features.index_tip[1] - self._features_at_state_entry.index_tip[1]
-            features.palm_center_delta_x = features.palm_center[0] - self._features_at_state_entry.palm_center[0]
-            features.palm_center_delta_y = features.palm_center[1] - self._features_at_state_entry.palm_center[1]
-            features.palm_delta_y = features.palm_center[1] - self._features_at_state_entry.palm_center[1]
+            features.index_tip_delta_y = (
+                features.index_tip[1] - self._features_at_state_entry.index_tip[1]
+            )
+            features.palm_center_delta_x = (
+                features.palm_center[0] - self._features_at_state_entry.palm_center[0]
+            )
+            features.palm_center_delta_y = (
+                features.palm_center[1] - self._features_at_state_entry.palm_center[1]
+            )
+            features.palm_delta_y = (
+                features.palm_center[1] - self._features_at_state_entry.palm_center[1]
+            )
 
         # 4. Evaluate transitions
         for transition in state.transitions:
             try:
                 condition_met = transition.condition_fn(features)
             except Exception as e:
-                logger.error("Error evaluating condition", fsm=self.name, error=str(e), condition=transition.condition)
+                logger.error(
+                    "Error evaluating condition",
+                    fsm=self.name,
+                    error=str(e),
+                    condition=transition.condition,
+                )
                 condition_met = False
 
             if condition_met:
@@ -157,7 +177,7 @@ class GestureFSM:
                     fsm=self.name,
                     from_state=old_state,
                     to_state=transition.target_state,
-                    correlation_id=correlation_id
+                    correlation_id=correlation_id,
                 )
 
                 new_state = self.states.get(transition.target_state)
@@ -175,7 +195,7 @@ class GestureFSM:
                         hand=features.handedness,
                         timestamp=timestamp,
                         gesture_source="fsm",
-                        metadata={"correlation_id": correlation_id}
+                        metadata={"correlation_id": correlation_id},
                     )
                     self.last_triggered_at = timestamp
                     self.is_in_cooldown = True
@@ -191,7 +211,7 @@ class GestureFSM:
             # Retrieve active action from Trigger definition
             trigger_state = self.states.get("Trigger")
             action_str = trigger_state.action if trigger_state else None
-            
+
             if action_str:
                 if "delta" in action_str and self._features_at_state_entry is not None:
                     # Scroll amount scale (approx. 0.1 relative translation is 3 scroll units)
@@ -207,7 +227,7 @@ class GestureFSM:
                     hand=features.handedness,
                     timestamp=timestamp,
                     gesture_source="fsm",
-                    metadata={"correlation_id": correlation_id}
+                    metadata={"correlation_id": correlation_id},
                 )
 
         return None
@@ -230,11 +250,11 @@ class GestureFSMManager:
         self._event_bus = event_bus
         self._global_cooldown_until = 0.0
         self._lock = threading.RLock()
-        
+
         engine_cfg = config.get("engine", {})
         self._global_cooldown_ms = float(engine_cfg.get("global_cooldown_ms", 200.0))
         self._thresholds = config.get("config", {}).get("default_thresholds", {})
-        
+
         self._load_gestures(config)
 
     def reload_gestures(self, config: dict[str, Any]) -> None:
@@ -257,7 +277,7 @@ class GestureFSMManager:
             name = g.get("name", "Unknown")
             g_type = g.get("type", "static")
             priority = g.get("priority", 999)
-            
+
             # Combine default thresholds with gesture-specific overrides
             g_thresholds = self._thresholds.copy()
             g_thresholds.update(g.get("thresholds", {}))
@@ -266,7 +286,7 @@ class GestureFSMManager:
             for s in g.get("states", []):
                 s_id = s.get("id")
                 is_term = s.get("is_terminal", s_id == "Trigger")
-                
+
                 min_dur = float(s.get("min_duration_ms", 0.0))
                 # Support both timeout_ms and max_duration_ms
                 max_dur = float(s.get("max_duration_ms") or s.get("timeout_ms") or float("inf"))
@@ -278,14 +298,16 @@ class GestureFSMManager:
                     to_state = t.get("to")
                     cond_str = t.get("condition", "True")
                     is_abort = t.get("abort", False)
-                    
+
                     compiled_fn = compile_condition(cond_str, g_thresholds)
-                    transitions.append(FSMTransition(
-                        target_state=to_state,
-                        condition=cond_str,
-                        condition_fn=compiled_fn,
-                        is_abort=is_abort
-                    ))
+                    transitions.append(
+                        FSMTransition(
+                            target_state=to_state,
+                            condition=cond_str,
+                            condition_fn=compiled_fn,
+                            is_abort=is_abort,
+                        )
+                    )
 
                 states_dict[s_id] = FSMState(
                     id=s_id,
@@ -294,12 +316,12 @@ class GestureFSMManager:
                     max_duration_ms=max_dur,
                     transitions=transitions,
                     action=action,
-                    cooldown_ms=cooldown
+                    cooldown_ms=cooldown,
                 )
 
             fsm = GestureFSM(name, priority, g_type, states_dict)
             self._fsms.append(fsm)
-            
+
         # Sort FSMs by priority (lower priority values are executed first)
         self._fsms.sort(key=lambda x: x.priority)
         logger.info("Loaded and sorted gesture FSMs", count=len(self._fsms))
@@ -312,7 +334,9 @@ class GestureFSMManager:
         for fsm in fsms_snapshot:
             # Skip evaluation for discrete FSMs if in global cooldown, but allow active continuous scrolling to evaluate
             in_global_cooldown = features.timestamp < self._global_cooldown_until
-            if in_global_cooldown and not (fsm.gesture_type == "continuous" and fsm.current_state == "ScrollingActive"):
+            if in_global_cooldown and not (
+                fsm.gesture_type == "continuous" and fsm.current_state == "ScrollingActive"
+            ):
                 continue
 
             event = fsm.evaluate(features, features.timestamp, correlation_id)
@@ -326,14 +350,14 @@ class GestureFSMManager:
 
         # Resolve conflict
         best_event = self._resolve_conflict(candidates)
-        
+
         # Only set global cooldown for discrete triggers (continuous scroll does not trigger it)
         if best_event.gesture_type != "continuous":
             self._global_cooldown_until = features.timestamp + (self._global_cooldown_ms / 1000.0)
         return best_event
 
     def _resolve_conflict(self, candidates: list[GestureEvent]) -> GestureEvent:
-        """Priority conflict resolution: 
+        """Priority conflict resolution:
         1. Highest confidence
         2. Lowest priority number (Priority 1 > Priority 2)
         3. YAML definition order (which is preserved in our sorted _fsms list)
@@ -354,7 +378,11 @@ class GestureFSMManager:
             progress = 0.0
             if fsm.state_entered_at is not None and fsm.current_state != "Idle":
                 state_obj = fsm.states.get(fsm.current_state)
-                if state_obj and state_obj.max_duration_ms < float("inf") and state_obj.max_duration_ms > 0:
+                if (
+                    state_obj
+                    and state_obj.max_duration_ms < float("inf")
+                    and state_obj.max_duration_ms > 0
+                ):
                     elapsed = (time.monotonic() - fsm.state_entered_at) * 1000.0
                     progress = min(elapsed / state_obj.max_duration_ms, 1.0)
             states[fsm.name] = (fsm.current_state, progress)

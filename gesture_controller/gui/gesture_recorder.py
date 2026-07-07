@@ -2,8 +2,15 @@ import json
 from datetime import datetime, timezone
 import numpy as np
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QSlider, QMessageBox, QWidget
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QSlider,
+    QMessageBox,
+    QWidget,
 )
 from PyQt6.QtCore import pyqtSignal, QTimer, Qt, QPointF
 from PyQt6.QtGui import QPainter, QPen, QColor
@@ -11,8 +18,10 @@ from PyQt6.QtGui import QPainter, QPen, QColor
 from gesture_controller.models.dtw_matcher import to_hand_frame, normalize_sequence
 from gesture_controller.models.data_types import Landmark3D
 
+
 class GestureCanvas(QWidget):
     """Custom canvas showing live hand skeleton feedback."""
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.landmarks = []
@@ -26,40 +35,55 @@ class GestureCanvas(QWidget):
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        
+
         if not self.landmarks:
             painter.setPen(QPen(QColor("#777"), 1))
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "No Hand Detected")
             return
-            
+
         w, h = self.width(), self.height()
         xs = [l.x for l in self.landmarks]
         ys = [l.y for l in self.landmarks]
         min_x, max_x = min(xs), max(xs)
         min_y, max_y = min(ys), max(ys)
-        
+
         span_x = max_x - min_x
         span_y = max_y - min_y
         scale = min((w - 40) / max(span_x, 1e-5), (h - 40) / max(span_y, 1e-5))
-        
+
         offset_x = (w - span_x * scale) / 2.0 - min_x * scale
         offset_y = (h - span_y * scale) / 2.0 - min_y * scale
-        
+
         points = []
         for l in self.landmarks:
             px = l.x * scale + offset_x
             py = l.y * scale + offset_y
             points.append(QPointF(px, py))
-            
+
         # Draw skeleton connections
         painter.setPen(QPen(QColor("#00ffcc"), 2))
         connections = [
-            (0, 1), (1, 2), (2, 3), (3, 4),      # Thumb
-            (0, 5), (5, 6), (6, 7), (7, 8),      # Index
-            (5, 9), (9, 10), (10, 11), (11, 12),  # Middle
-            (9, 13), (13, 14), (14, 15), (15, 16), # Ring
-            (13, 17), (17, 18), (18, 19), (19, 20), # Pinky
-            (0, 17)                              # Palm base
+            (0, 1),
+            (1, 2),
+            (2, 3),
+            (3, 4),  # Thumb
+            (0, 5),
+            (5, 6),
+            (6, 7),
+            (7, 8),  # Index
+            (5, 9),
+            (9, 10),
+            (10, 11),
+            (11, 12),  # Middle
+            (9, 13),
+            (13, 14),
+            (14, 15),
+            (15, 16),  # Ring
+            (13, 17),
+            (17, 18),
+            (18, 19),
+            (19, 20),  # Pinky
+            (0, 17),  # Palm base
         ]
         for start, end in connections:
             if start < len(points) and end < len(points):
@@ -69,6 +93,7 @@ class GestureCanvas(QWidget):
         painter.setPen(QPen(QColor("#ffffff"), 6))
         for p in points:
             painter.drawPoint(p)
+
 
 class GestureRecorder(QDialog):
     """Dialog for recording custom gestures."""
@@ -183,7 +208,10 @@ class GestureRecorder(QDialog):
         hand = self._landmark_callback()  # Get current Hand from engine
         if hand:
             landmarks = to_hand_frame(hand.landmarks, hand.handedness)
-            flat = np.array([l.x for l in landmarks] + [l.y for l in landmarks] + [l.z for l in landmarks], dtype=np.float64)
+            flat = np.array(
+                [l.x for l in landmarks] + [l.y for l in landmarks] + [l.z for l in landmarks],
+                dtype=np.float64,
+            )
             self._current_recording.append(flat)
             self._canvas.update_hand(landmarks)
 
@@ -192,13 +220,13 @@ class GestureRecorder(QDialog):
         if self._record_timer:
             self._record_timer.stop()
             self._record_timer = None
-            
+
         if len(self._current_recording) >= 10:  # Minimum viable recording
             self._recordings.append(self._current_recording)
             self._progress_label.setText(
                 f"Recordings: {len(self._recordings)} / {self._required_examples}"
             )
-            
+
         self._record_btn.setEnabled(len(self._recordings) < self._required_examples)
         if len(self._recordings) < self._required_examples:
             self._record_btn.setText(
@@ -209,8 +237,11 @@ class GestureRecorder(QDialog):
 
     def _on_save(self) -> None:
         if len(self._recordings) < self._required_examples:
-            QMessageBox.warning(self, "Not Enough Recordings",
-                f"Need {self._required_examples} recordings, have {len(self._recordings)}")
+            QMessageBox.warning(
+                self,
+                "Not Enough Recordings",
+                f"Need {self._required_examples} recordings, have {len(self._recordings)}",
+            )
             return
 
         name = self._name_input.text().strip()

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class BaseController(ABC):
     """Abstract base class defining OS action simulation interface."""
 
@@ -29,7 +30,9 @@ class BaseController(ABC):
         pass
 
     @abstractmethod
-    def mouse_double_click(self, button: str = "left", x: int | None = None, y: int | None = None) -> None:
+    def mouse_double_click(
+        self, button: str = "left", x: int | None = None, y: int | None = None
+    ) -> None:
         """Perform a mouse double click."""
         pass
 

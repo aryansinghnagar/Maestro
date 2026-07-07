@@ -22,16 +22,73 @@ if platform.system() == "Linux":
 
 # Linux keycodes (input-event-codes.h)
 LINUX_KEYCODES = {
-    "a": 30, "b": 48, "c": 46, "d": 32, "e": 18, "f": 33, "g": 34, "h": 35,
-    "i": 23, "j": 36, "k": 37, "l": 38, "m": 50, "n": 49, "o": 24, "p": 25,
-    "q": 16, "r": 19, "s": 31, "t": 20, "u": 22, "v": 47, "w": 17, "x": 45,
-    "y": 21, "z": 44, "return": 28, "escape": 1, "space": 57, "tab": 15,
-    "delete": 111, "up": 103, "down": 108, "left": 105, "right": 106,
-    "f1": 59, "f2": 60, "f3": 61, "f4": 62, "f5": 63, "f6": 64,
-    "f7": 65, "f8": 66, "f9": 67, "f10": 68, "f11": 87, "f12": 88,
-    "ctrl": 29, "shift": 42, "alt": 56, "super": 125,
-    "0": 11, "1": 2, "2": 3, "3": 4, "4": 5, "5": 6, "6": 7, "7": 8, "8": 9, "9": 10,
-    "backspace": 14, "home": 102, "end": 107, "page_up": 104, "page_down": 109, "insert": 110,
+    "a": 30,
+    "b": 48,
+    "c": 46,
+    "d": 32,
+    "e": 18,
+    "f": 33,
+    "g": 34,
+    "h": 35,
+    "i": 23,
+    "j": 36,
+    "k": 37,
+    "l": 38,
+    "m": 50,
+    "n": 49,
+    "o": 24,
+    "p": 25,
+    "q": 16,
+    "r": 19,
+    "s": 31,
+    "t": 20,
+    "u": 22,
+    "v": 47,
+    "w": 17,
+    "x": 45,
+    "y": 21,
+    "z": 44,
+    "return": 28,
+    "escape": 1,
+    "space": 57,
+    "tab": 15,
+    "delete": 111,
+    "up": 103,
+    "down": 108,
+    "left": 105,
+    "right": 106,
+    "f1": 59,
+    "f2": 60,
+    "f3": 61,
+    "f4": 62,
+    "f5": 63,
+    "f6": 64,
+    "f7": 65,
+    "f8": 66,
+    "f9": 67,
+    "f10": 68,
+    "f11": 87,
+    "f12": 88,
+    "ctrl": 29,
+    "shift": 42,
+    "alt": 56,
+    "super": 125,
+    "0": 11,
+    "1": 2,
+    "2": 3,
+    "3": 4,
+    "4": 5,
+    "5": 6,
+    "6": 7,
+    "7": 8,
+    "8": 9,
+    "9": 10,
+    "backspace": 14,
+    "home": 102,
+    "end": 107,
+    "page_up": 104,
+    "page_down": 109,
+    "insert": 110,
 }
 
 LINUX_MODIFIER_MAP = {
@@ -41,6 +98,7 @@ LINUX_MODIFIER_MAP = {
     "cmd": "super",
     "super": "super",
 }
+
 
 class LinuxWaylandController(BaseController):
     """Linux-native input simulator supporting Wayland via /dev/uinput and X11 fallbacks."""
@@ -79,9 +137,15 @@ class LinuxWaylandController(BaseController):
             fcntl.ioctl(fd, UI_SET_EVBIT, evdev.ecodes.EV_KEY)
             for code in LINUX_KEYCODES.values():
                 fcntl.ioctl(fd, UI_SET_KEYBIT, code)
-            
+
             # Volume & Media keys
-            for code in [114, 115, 163, 164, 165]: # VOLUMEDOWN, VOLUMEUP, NEXTSONG, PLAYPAUSE, PREVIOUSSONG
+            for code in [
+                114,
+                115,
+                163,
+                164,
+                165,
+            ]:  # VOLUMEDOWN, VOLUMEUP, NEXTSONG, PLAYPAUSE, PREVIOUSSONG
                 fcntl.ioctl(fd, UI_SET_KEYBIT, code)
 
             # Enable mouse relative move and scroll
@@ -213,7 +277,9 @@ class LinuxWaylandController(BaseController):
                 cmd = ["xdotool", "mousemove", str(x), str(y), "click", btn_idx]
             subprocess.run(cmd, capture_output=True)
 
-    def mouse_double_click(self, button: str = "left", x: int | None = None, y: int | None = None) -> None:
+    def mouse_double_click(
+        self, button: str = "left", x: int | None = None, y: int | None = None
+    ) -> None:
         if not self.is_supported():
             return
 
@@ -278,15 +344,19 @@ class LinuxWaylandController(BaseController):
                 res = subprocess.run(["swaymsg", "-t", "get_tree"], capture_output=True, text=True)
                 if res.returncode == 0:
                     import json
+
                     tree = json.loads(res.stdout)
                     return self._find_active_sway_window(tree)
             except Exception:
                 pass
         elif wm == "hyprland":
             try:
-                res = subprocess.run(["hyprctl", "activewindow", "-j"], capture_output=True, text=True)
+                res = subprocess.run(
+                    ["hyprctl", "activewindow", "-j"], capture_output=True, text=True
+                )
                 if res.returncode == 0:
                     import json
+
                     data = json.loads(res.stdout)
                     return data.get("class", "").lower()
             except Exception:
@@ -296,7 +366,9 @@ class LinuxWaylandController(BaseController):
                 res = subprocess.run(["xdotool", "getactivewindow"], capture_output=True, text=True)
                 if res.returncode == 0:
                     win_id = res.stdout.strip()
-                    res_class = subprocess.run(["xdotool", "getwindowclassname", win_id], capture_output=True, text=True)
+                    res_class = subprocess.run(
+                        ["xdotool", "getwindowclassname", win_id], capture_output=True, text=True
+                    )
                     if res_class.returncode == 0:
                         return res_class.stdout.strip().lower()
             except Exception:
@@ -306,7 +378,9 @@ class LinuxWaylandController(BaseController):
 
     def _find_active_sway_window(self, node: dict) -> str:
         if node.get("focused") and node.get("type") == "con":
-            return (node.get("app_id") or node.get("window_properties", {}).get("class") or "").lower()
+            return (
+                node.get("app_id") or node.get("window_properties", {}).get("class") or ""
+            ).lower()
         for child in node.get("nodes", []) + node.get("floating_nodes", []):
             res = self._find_active_sway_window(child)
             if res:
@@ -321,14 +395,22 @@ class LinuxWaylandController(BaseController):
         if wm == "sway":
             subprocess.run(["swaymsg", "[focused] move scratchpad"], capture_output=True, timeout=2)
         elif wm == "hyprland":
-            subprocess.run(["hyprctl", "dispatch", "movetoworkspacesilent", "special"], capture_output=True, timeout=2)
+            subprocess.run(
+                ["hyprctl", "dispatch", "movetoworkspacesilent", "special"],
+                capture_output=True,
+                timeout=2,
+            )
         elif wm == "xdotool" or self._has_xdotool():
             try:
-                res = subprocess.run(["xdotool", "getactivewindow"], capture_output=True, text=True, timeout=2)
+                res = subprocess.run(
+                    ["xdotool", "getactivewindow"], capture_output=True, text=True, timeout=2
+                )
                 if res.returncode == 0:
                     win_id = res.stdout.strip()
                     if win_id:
-                        subprocess.run(["xdotool", "windowminimize", win_id], capture_output=True, timeout=2)
+                        subprocess.run(
+                            ["xdotool", "windowminimize", win_id], capture_output=True, timeout=2
+                        )
             except subprocess.TimeoutExpired:
                 logger.warning("xdotool minimize timed out")
         elif wm == "gnome":
@@ -374,11 +456,15 @@ class LinuxWaylandController(BaseController):
             self._emit_event(evdev.ecodes.EV_KEY, 115, 1)  # KEY_VOLUMEUP
             self._emit_event(evdev.ecodes.EV_KEY, 115, 0)
         else:
-            subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%"], capture_output=True)
+            subprocess.run(
+                ["pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%"], capture_output=True
+            )
 
     def media_volume_down(self) -> None:
         if self._use_uinput and evdev is not None:
             self._emit_event(evdev.ecodes.EV_KEY, 114, 1)  # KEY_VOLUMEDOWN
             self._emit_event(evdev.ecodes.EV_KEY, 114, 0)
         else:
-            subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", "-5%"], capture_output=True)
+            subprocess.run(
+                ["pactl", "set-sink-volume", "@DEFAULT_SINK@", "-5%"], capture_output=True
+            )

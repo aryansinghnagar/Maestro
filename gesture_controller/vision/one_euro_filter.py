@@ -1,11 +1,13 @@
 import numpy as np
 import structlog
+
 logger = structlog.get_logger(__name__)
 from typing import Any
 
+
 class OneEuroFilter:
     """Vectorized One-Euro filter for hand landmark smoothing.
-    
+
     Reference: "1-Euro Filter: A Simple Speed-based Low-Pass Filter for Noisy Input"
     by Gery Casiez, Nicolas Roussel, Daniel Vogel. CHI 2012.
     """
@@ -31,26 +33,28 @@ class OneEuroFilter:
         self._prev_timestamp = 0.0
 
     def filter(
-        self, 
-        landmarks: np.ndarray, 
+        self,
+        landmarks: np.ndarray,
         timestamp: float,
-        lighting_metric: float | None = None, 
-        depth_metric: float | None = None
+        lighting_metric: float | None = None,
+        depth_metric: float | None = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Filter landmarks and return (filtered, velocity, acceleration).
-        
+
         Args:
             landmarks: (21, 3) array of [x, y, z] per landmark
             timestamp: current time in seconds
             lighting_metric: avg pixel intensity [0, 255] for dynamic adaptation
             depth_metric: wrist-to-MCP distance for dynamic adaptation
-            
+
         Returns:
             (filtered_landmarks, velocity, acceleration) each (21, 3)
         """
         # NaN or Inf input recovery: reset filter state and return zero vectors
         if not np.isfinite(landmarks).all():
-            logger.warning("NaN or Inf detected in landmarks input; resetting One-Euro filter state")
+            logger.warning(
+                "NaN or Inf detected in landmarks input; resetting One-Euro filter state"
+            )
             self.reset()
             landmarks = np.where(np.isfinite(landmarks), landmarks, 0.0)
             return landmarks, np.zeros_like(landmarks), np.zeros_like(landmarks)
@@ -58,12 +62,12 @@ class OneEuroFilter:
         # Dynamic parameter adaptation
         min_cutoff = self._min_cutoff
         beta = self._beta
-        
+
         if self._dynamic.get("lighting_enabled", False) and lighting_metric is not None:
             # Low light (smaller metric) -> more smoothing (lower min_cutoff)
             light_factor = np.clip(lighting_metric / 128.0, 0.3, 1.0)
             min_cutoff *= light_factor
-            
+
         if self._dynamic.get("depth_scaling_enabled", False) and depth_metric is not None:
             # Far hand (smaller depth metric) -> more smoothing (smaller beta)
             depth_factor = np.clip(depth_metric * 5.0, 0.5, 2.0)

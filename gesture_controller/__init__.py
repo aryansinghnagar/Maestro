@@ -10,8 +10,10 @@ __version__ = "0.1.0"
 # Apply Windows ctypes patch for MediaPipe on Python 3.14+.
 # Gate behind env var so tests and non-MediaPipe consumers can opt out.
 import os
+
 if os.name == "nt":
     import ctypes
+
     if os.environ.get("MAESTRO_PATCH_CDLL", "1") == "1":
         _orig_cdll_init = ctypes.CDLL.__init__
         _msvcrt = ctypes.CDLL("msvcrt")
@@ -23,4 +25,3 @@ if os.name == "nt":
                 self.free = _msvcrt_free  # Reuse a single msvcrt handle
 
         ctypes.CDLL.__init__ = _patched_cdll_init  # type: ignore[method-assign]
-
