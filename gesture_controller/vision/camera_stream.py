@@ -13,6 +13,7 @@ FRAME_HEIGHT = 480
 FRAME_CHANNELS = 3
 FRAME_SIZE = FRAME_WIDTH * FRAME_HEIGHT * FRAME_CHANNELS
 
+
 class CameraStream:
     """Process A: Captures frames from webcam and writes to SharedMemory."""
 
@@ -88,7 +89,9 @@ class CameraStream:
 
     def _capture_loop(self) -> None:
         shm = shared_memory.SharedMemory(name=self.shm_name)
-        frame_buf = np.ndarray((FRAME_HEIGHT, FRAME_WIDTH, FRAME_CHANNELS), dtype=np.uint8, buffer=shm.buf)
+        frame_buf = np.ndarray(
+            (FRAME_HEIGHT, FRAME_WIDTH, FRAME_CHANNELS), dtype=np.uint8, buffer=shm.buf
+        )
         watchdog_timeout = self.config.get("camera", {}).get("watchdog_timeout_ms", 2000) / 1000.0
         last_frame_time = time.monotonic()
 
@@ -137,7 +140,9 @@ class CameraStream:
         self._disconnect()
 
 
-def start_camera_process(config: dict[str, Any], shm_name: str, frame_ready_event: Any) -> mp.Process:
+def start_camera_process(
+    config: dict[str, Any], shm_name: str, frame_ready_event: Any
+) -> mp.Process:
     """Spawn camera capture as a separate process."""
     stream = CameraStream(config, shm_name, frame_ready_event)
     process = mp.Process(target=stream.run, daemon=True, name="camera_capture")

@@ -19,23 +19,42 @@ from gesture_controller.os_integration.windows_controller import WindowsControll
 from gesture_controller.os_integration.macos_controller import MacOSController
 from gesture_controller.os_integration.linux_wayland_controller import LinuxWaylandController
 
+
 @patch("platform.system", return_value="Windows")
-@patch("gesture_controller.os_integration.windows_controller.WindowsController.is_supported", return_value=True)
-def test_factory_returns_windows_controller(mock_supported: MagicMock, mock_system: MagicMock) -> None:
+@patch(
+    "gesture_controller.os_integration.windows_controller.WindowsController.is_supported",
+    return_value=True,
+)
+def test_factory_returns_windows_controller(
+    mock_supported: MagicMock, mock_system: MagicMock
+) -> None:
     ctrl = create_controller()
     assert isinstance(ctrl, WindowsController)
 
+
 @patch("platform.system", return_value="Darwin")
-@patch("gesture_controller.os_integration.macos_controller.MacOSController.is_supported", return_value=True)
-def test_factory_returns_macos_controller(mock_supported: MagicMock, mock_system: MagicMock) -> None:
+@patch(
+    "gesture_controller.os_integration.macos_controller.MacOSController.is_supported",
+    return_value=True,
+)
+def test_factory_returns_macos_controller(
+    mock_supported: MagicMock, mock_system: MagicMock
+) -> None:
     ctrl = create_controller()
     assert isinstance(ctrl, MacOSController)
 
+
 @patch("platform.system", return_value="Linux")
-@patch("gesture_controller.os_integration.linux_wayland_controller.LinuxWaylandController.is_supported", return_value=True)
-def test_factory_returns_linux_controller(mock_supported: MagicMock, mock_system: MagicMock) -> None:
+@patch(
+    "gesture_controller.os_integration.linux_wayland_controller.LinuxWaylandController.is_supported",
+    return_value=True,
+)
+def test_factory_returns_linux_controller(
+    mock_supported: MagicMock, mock_system: MagicMock
+) -> None:
     ctrl = create_controller()
     assert isinstance(ctrl, LinuxWaylandController)
+
 
 @patch("platform.system", return_value="FreeBSD")
 def test_factory_raises_runtime_error_on_unsupported_os(mock_system: MagicMock) -> None:

@@ -3,13 +3,15 @@
 HARD RULE: no QWidget/QObject subclass may call event_bus.subscribe directly.
 All engine-thread → GUI-thread communication goes through this bridge.
 """
+
 from PyQt6.QtCore import QObject, pyqtSignal
 
+
 class GuiEventBridge(QObject):
-    gesture_triggered = pyqtSignal(str, str)   # gesture_name, action
+    gesture_triggered = pyqtSignal(str, str)  # gesture_name, action
     camera_disconnected = pyqtSignal()
     camera_recovered = pyqtSignal()
-    plugin_reloaded = pyqtSignal(str)          # plugin_name
+    plugin_reloaded = pyqtSignal(str)  # plugin_name
 
     def __init__(self, event_bus, parent=None) -> None:
         super().__init__(parent)

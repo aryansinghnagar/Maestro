@@ -1,11 +1,13 @@
 """Post-install verification script.
 Runs diagnostics to verify dependencies, camera connection, and config integrity.
 """
+
 import sys
 from pathlib import Path
 import structlog
 
 logger = structlog.get_logger(__name__)
+
 
 def check_imports() -> bool:
     """Verify that all core libraries are importable."""
@@ -18,15 +20,18 @@ def check_imports() -> bool:
         import jsonschema
         import structlog
         import numba
+
         return True
     except ImportError as e:
         print(f"Missing dependency check: {e}")
         return False
 
+
 def check_camera() -> bool:
     """Verify camera device accessibility."""
     try:
         import cv2
+
         # Try to open the default camera index
         cap = cv2.VideoCapture(0)
         ok = cap.isOpened()
@@ -36,21 +41,25 @@ def check_camera() -> bool:
         print(f"Camera diagnostic check encountered error: {e}")
         return False
 
+
 def check_mediapipe() -> bool:
     """Verify MediaPipe Hands Solutions interface is loaded."""
     try:
         import mediapipe as mp
+
         # Check tasks API or solutions
         return hasattr(mp, "tasks") or hasattr(mp, "solutions")
     except Exception as e:
         print(f"MediaPipe diagnostic check failed: {e}")
         return False
 
+
 def check_config() -> bool:
     """Verify default configurations are present and valid YAML."""
     try:
         import yaml
         import sys
+
         if hasattr(sys, "_MEIPASS"):
             config_path = Path(sys._MEIPASS) / "data" / "default_config.yaml"
         else:
@@ -66,6 +75,7 @@ def check_config() -> bool:
     except Exception as e:
         print(f"Config diagnostic check failed: {e}")
         return False
+
 
 def main() -> int:
     """Run all verification tests."""
@@ -87,13 +97,14 @@ def main() -> int:
         except Exception as e:
             print(f"  [FAIL] {name}: {e}")
             all_ok = False
-            
+
     if all_ok:
         print("All diagnostic checks passed successfully!")
         return 0
     else:
         print("Some diagnostic checks failed. Check output above.")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

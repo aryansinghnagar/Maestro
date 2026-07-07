@@ -2,6 +2,7 @@
 PyQt6 QApplication init, wires GUI to engine.
 Combined desktop app coordinator entry point.
 """
+
 import sys
 import signal
 import structlog
@@ -23,9 +24,13 @@ def setup_logging(user_dir: Path) -> None:
     log_file = log_dir / "app.log"
 
     # Configure standard logging
-    logging_handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=3, encoding="utf-8")
-    logging_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
-    
+    logging_handler = RotatingFileHandler(
+        log_file, maxBytes=10 * 1024 * 1024, backupCount=3, encoding="utf-8"
+    )
+    logging_handler.setFormatter(
+        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    )
+
     console_handler = logging.StreamHandler(sys.stderr)
     console_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
 
@@ -42,7 +47,11 @@ def setup_logging(user_dir: Path) -> None:
             structlog.processors.TimeStamper(fmt="iso"),
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,
-            structlog.processors.JSONRenderer() if not sys.stderr.isatty() else structlog.dev.ConsoleRenderer()
+            (
+                structlog.processors.JSONRenderer()
+                if not sys.stderr.isatty()
+                else structlog.dev.ConsoleRenderer()
+            ),
         ],
         context_class=dict,
         logger_factory=structlog.stdlib.LoggerFactory(),
@@ -63,6 +72,7 @@ class GestureControllerApp:
         # Set up structured file logging
         from gesture_controller.core.config_manager import USER_CONFIG_DIRS
         import platform
+
         user_dir = USER_CONFIG_DIRS.get(platform.system(), Path.home())
         setup_logging(user_dir)
 
@@ -74,6 +84,7 @@ class GestureControllerApp:
 
         # i18n setup: Load translation file based on system locale (S3-15)
         from PyQt6.QtCore import QTranslator, QLocale
+
         self._translator = QTranslator()
         translation_dir = Path(__file__).parent.parent / "data" / "translations"
         translation_dir.mkdir(parents=True, exist_ok=True)
@@ -100,19 +111,23 @@ class GestureControllerApp:
 
         self._tray = TrayController(self._event_bus)
         self._overlay = OverlayHUD(self._config._config)
-        
+
         # Provide a callback so GestureRecorder can pull live hand data
         def _get_current_hand():
             hands = self._engine.get_current_hands()
             return hands[0] if hands else None
 
-        template_dir = Path(self._engine._custom_matcher._template_dir) if hasattr(self._engine._custom_matcher, "_template_dir") else None
+        template_dir = (
+            Path(self._engine._custom_matcher._template_dir)
+            if hasattr(self._engine._custom_matcher, "_template_dir")
+            else None
+        )
         self._settings = SettingsWindow(
             self._config,
             landmark_callback=_get_current_hand,
             template_dir=template_dir,
             reload_callback=self._engine._custom_matcher.load_templates,
-            parent=None
+            parent=None,
         )
 
         # ── Signal wiring ──────────────────────────────────────────────────
@@ -126,7 +141,7 @@ class GestureControllerApp:
         self._tray.quit_requested.connect(self._shutdown)
         # Settings -> Config reload
         self._settings.config_changed.connect(self._on_config_changed)
-        
+
         # Bridge engine-thread events to GUI thread via Qt signals
         self._bridge = GuiEventBridge(self._event_bus, parent=self._app)
         self._bridge.gesture_triggered.connect(self._on_gesture_triggered_gui)
@@ -135,10 +150,11 @@ class GestureControllerApp:
 
         # ── Initialize Update Checker ──────────────────────────────────────
         from gesture_controller.core.updater import UpdateCheckerThread
+
         self._updater_thread = UpdateCheckerThread(current_version="0.1.0", parent=self._app)
         self._updater_thread.update_available.connect(self._on_update_available)
         self._updater_thread.start()
-        
+
         self._tray.message_clicked.connect(self._on_tray_message_clicked)
 
         # ── Polling timer: Engine -> GUI bridge ────────────────────────────
@@ -168,10 +184,7 @@ class GestureControllerApp:
 
     def _update_tray_status(self) -> None:
         """Update tray tooltip with live stats."""
-        self._tray.update_status(
-            self._engine.get_fps(),
-            self._engine.get_gesture_count()
-        )
+        self._tray.update_status(self._engine.get_fps(), self._engine.get_gesture_count())
 
     def _on_gesture_triggered_gui(self, gesture_name: str, action: str) -> None:
         """Show action confirmation on HUD overlay. Runs on GUI thread."""
@@ -206,7 +219,7 @@ class GestureControllerApp:
             None,
             "Save Diagnostics Archive",
             "gesture_controller_diagnostics.zip",
-            "Zip Archives (*.zip)"
+            "Zip Archives (*.zip)",
         )
         if not save_path:
             return
@@ -216,7 +229,7 @@ class GestureControllerApp:
             if not user_dir:
                 raise RuntimeError("Could not determine user config directory path")
 
-            with zipfile.ZipFile(save_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            with zipfile.ZipFile(save_path, "w", zipfile.ZIP_DEFLATED) as zipf:
                 # 1. Export user config.yaml if it exists
                 config_file = user_dir / "config.yaml"
                 if config_file.exists():
@@ -244,17 +257,13 @@ class GestureControllerApp:
                             zipf.write(f, arcname=f"plugins/{f.relative_to(plugins_dir)}")
 
             QMessageBox.information(
-                None,
-                "Diagnostics Exported",
-                f"Successfully exported diagnostics to:\n{save_path}"
+                None, "Diagnostics Exported", f"Successfully exported diagnostics to:\n{save_path}"
             )
             logger.info("Diagnostics archive successfully exported", path=save_path)
         except Exception as e:
             logger.exception("Failed to export diagnostics", error=str(e))
             QMessageBox.critical(
-                None,
-                "Export Failed",
-                f"Failed to export diagnostics archive:\n{str(e)}"
+                None, "Export Failed", f"Failed to export diagnostics archive:\n{str(e)}"
             )
 
     def _on_update_available(self, latest_version: str, download_url: str) -> None:
@@ -263,13 +272,14 @@ class GestureControllerApp:
         self._download_url = download_url
         self._tray.show_message(
             "Update Available",
-            f"A newer version (v{latest_version}) of Maestro is available. Click here to download."
+            f"A newer version (v{latest_version}) of Maestro is available. Click here to download.",
         )
 
     def _on_tray_message_clicked(self) -> None:
         """Open web browser to update release page when balloon message is clicked."""
         if hasattr(self, "_download_url") and self._download_url:
             import webbrowser
+
             webbrowser.open(self._download_url)
 
     # ── Lifecycle ──────────────────────────────────────────────────────────
@@ -296,6 +306,7 @@ class GestureControllerApp:
         """Start the Qt event loop. Blocks until quit."""
         # First-run onboarding check
         from gesture_controller.gui.onboarding import is_onboarded, OnboardingWizard
+
         if not is_onboarded():
             wizard = OnboardingWizard()
             if not wizard.exec():
@@ -311,6 +322,7 @@ class GestureControllerApp:
 def main() -> None:
     """CLI entry point for the gesture controller desktop application."""
     import argparse
+
     parser = argparse.ArgumentParser(description="Gesture Controller Desktop App")
     parser.add_argument("--config", type=str, default=None, help="Path to custom config YAML")
     args = parser.parse_args()

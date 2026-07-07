@@ -14,7 +14,7 @@ if platform.system() == "Darwin":
         import Quartz
         import AppKit
         import ApplicationServices
-        
+
         MAC_MODIFIER_FLAGS = {
             "cmd": Quartz.kCGEventFlagMaskCommand,
             "shift": Quartz.kCGEventFlagMaskShift,
@@ -26,18 +26,69 @@ if platform.system() == "Darwin":
 
 # virtual keycode mappings for macOS standard keyboard keys
 MAC_KEYCODES = {
-    "a": 0x00, "s": 0x01, "d": 0x02, "f": 0x03, "h": 0x04, "g": 0x05, "z": 0x06,
-    "x": 0x07, "c": 0x08, "v": 0x09, "b": 0x0B, "q": 0x0C, "w": 0x0D, "e": 0x0E,
-    "r": 0x0F, "y": 0x10, "t": 0x11, "u": 0x20, "i": 0x22, "o": 0x1F, "p": 0x23,
-    "j": 0x26, "k": 0x28, "l": 0x25, "m": 0x2E, "n": 0x2D,
-    "0": 0x1D, "1": 0x12, "2": 0x13, "3": 0x14, "4": 0x15,
-    "5": 0x17, "6": 0x16, "7": 0x1A, "8": 0x1C, "9": 0x19,
-    "return": 0x24, "escape": 0x35, "space": 0x31,
-    "tab": 0x30, "delete": 0x33, "up": 0x7E, "down": 0x7D, "left": 0x7B, "right": 0x7C,
-    "f1": 0x7A, "f2": 0x78, "f3": 0x63, "f4": 0x76, "f5": 0x60, "f6": 0x61,
-    "f7": 0x62, "f8": 0x64, "f9": 0x65, "f10": 0x6D, "f11": 0x67, "f12": 0x6F,
-    "home": 0x73, "end": 0x77, "page_up": 0x74, "page_down": 0x79,
+    "a": 0x00,
+    "s": 0x01,
+    "d": 0x02,
+    "f": 0x03,
+    "h": 0x04,
+    "g": 0x05,
+    "z": 0x06,
+    "x": 0x07,
+    "c": 0x08,
+    "v": 0x09,
+    "b": 0x0B,
+    "q": 0x0C,
+    "w": 0x0D,
+    "e": 0x0E,
+    "r": 0x0F,
+    "y": 0x10,
+    "t": 0x11,
+    "u": 0x20,
+    "i": 0x22,
+    "o": 0x1F,
+    "p": 0x23,
+    "j": 0x26,
+    "k": 0x28,
+    "l": 0x25,
+    "m": 0x2E,
+    "n": 0x2D,
+    "0": 0x1D,
+    "1": 0x12,
+    "2": 0x13,
+    "3": 0x14,
+    "4": 0x15,
+    "5": 0x17,
+    "6": 0x16,
+    "7": 0x1A,
+    "8": 0x1C,
+    "9": 0x19,
+    "return": 0x24,
+    "escape": 0x35,
+    "space": 0x31,
+    "tab": 0x30,
+    "delete": 0x33,
+    "up": 0x7E,
+    "down": 0x7D,
+    "left": 0x7B,
+    "right": 0x7C,
+    "f1": 0x7A,
+    "f2": 0x78,
+    "f3": 0x63,
+    "f4": 0x76,
+    "f5": 0x60,
+    "f6": 0x61,
+    "f7": 0x62,
+    "f8": 0x64,
+    "f9": 0x65,
+    "f10": 0x6D,
+    "f11": 0x67,
+    "f12": 0x6F,
+    "home": 0x73,
+    "end": 0x77,
+    "page_up": 0x74,
+    "page_down": 0x79,
 }
+
 
 class MacOSController(BaseController):
     """macOS-native input simulation and window management controller using Quartz."""
@@ -96,9 +147,7 @@ class MacOSController(BaseController):
         flags = 0
         for mod in modifiers:
             flags |= MAC_MODIFIER_FLAGS.get(mod, 0)
-            mod_code = {
-                "cmd": 55, "shift": 56, "ctrl": 59, "alt": 58
-            }.get(mod, 0)
+            mod_code = {"cmd": 55, "shift": 56, "ctrl": 59, "alt": 58}.get(mod, 0)
             if mod_code:
                 self._post_keyboard_event(mod_code, True)
 
@@ -108,9 +157,7 @@ class MacOSController(BaseController):
             self._post_keyboard_event(main_code, False, flags)
 
         for mod in reversed(modifiers):
-            mod_code = {
-                "cmd": 55, "shift": 56, "ctrl": 59, "alt": 58
-            }.get(mod, 0)
+            mod_code = {"cmd": 55, "shift": 56, "ctrl": 59, "alt": 58}.get(mod, 0)
             if mod_code:
                 self._post_keyboard_event(mod_code, False)
 
@@ -141,7 +188,9 @@ class MacOSController(BaseController):
         Quartz.CGEventPost(Quartz.kCGHIDEventTap, event_down)
         Quartz.CGEventPost(Quartz.kCGHIDEventTap, event_up)
 
-    def mouse_double_click(self, button: str = "left", x: int | None = None, y: int | None = None) -> None:
+    def mouse_double_click(
+        self, button: str = "left", x: int | None = None, y: int | None = None
+    ) -> None:
         if not self.is_supported():
             return
 
@@ -272,8 +321,8 @@ class MacOSController(BaseController):
 
     def media_volume_up(self) -> None:
         if self.is_supported():
-            self._post_media_key(0)   # NX_KEYTYPE_SOUND_UP
+            self._post_media_key(0)  # NX_KEYTYPE_SOUND_UP
 
     def media_volume_down(self) -> None:
         if self.is_supported():
-            self._post_media_key(1)   # NX_KEYTYPE_SOUND_DOWN
+            self._post_media_key(1)  # NX_KEYTYPE_SOUND_DOWN

@@ -22,7 +22,7 @@ logger = structlog.get_logger(__name__)
 
 # Plugin discovery directories
 PLUGIN_DIRS = [
-    Path(__file__).parent / "builtin",          # Built-in plugins
+    Path(__file__).parent / "builtin",  # Built-in plugins
     Path(__file__).parent.parent / "data" / "plugins",  # Bundled plugins
 ]
 
@@ -30,11 +30,14 @@ PLUGIN_DIRS = [
 if platform.system() == "Windows":
     USER_PLUGIN_DIR = Path(os.environ.get("APPDATA", "")) / "gesture_controller" / "plugins"
 elif platform.system() == "Darwin":
-    USER_PLUGIN_DIR = Path.home() / "Library" / "Application Support" / "gesture_controller" / "plugins"
+    USER_PLUGIN_DIR = (
+        Path.home() / "Library" / "Application Support" / "gesture_controller" / "plugins"
+    )
 else:
     USER_PLUGIN_DIR = Path.home() / ".config" / "gesture_controller" / "plugins"
 
 PLUGIN_DIRS.append(USER_PLUGIN_DIR)
+
 
 class PluginLoadError(Exception):
     def __init__(self, plugin_path: str, reason: str) -> None:
@@ -42,15 +45,25 @@ class PluginLoadError(Exception):
         self.reason = reason
         super().__init__(f"Failed to load plugin {plugin_path}: {reason}")
 
+
 class Plugin:
     """Loaded plugin wrapper containing metadata, gestures, and action handlers."""
-    def __init__(self, path: Path, module: Any, meta: dict, gestures: list[dict], actions: dict[str, Callable]) -> None:
+
+    def __init__(
+        self,
+        path: Path,
+        module: Any,
+        meta: dict,
+        gestures: list[dict],
+        actions: dict[str, Callable],
+    ) -> None:
         self.path = path
         self.module = module
         self.meta = meta
         self.gestures = gestures
         self.actions = actions
         self.loaded_at = time.monotonic()
+
 
 class PluginLoader:
     """Discovers, validates, and manages gesture/action plugins with hot-reloading capabilities."""
@@ -72,11 +85,8 @@ class PluginLoader:
                 "author": {"type": "string"},
                 "permissions": {
                     "type": "array",
-                    "items": {
-                        "type": "string",
-                        "enum": ["os:input", "ui:hud", "camera:read"]
-                    }
-                }
+                    "items": {"type": "string", "enum": ["os:input", "ui:hud", "camera:read"]},
+                },
             },
         }
 
@@ -98,7 +108,11 @@ class PluginLoader:
                 try:
                     plugin = self._load_plugin(py_file)
                     if plugin.meta["name"] in seen_names:
-                        logger.warning("Duplicate plugin name, skipping", name=plugin.meta["name"], path=str(py_file))
+                        logger.warning(
+                            "Duplicate plugin name, skipping",
+                            name=plugin.meta["name"],
+                            path=str(py_file),
+                        )
                         continue
                     seen_names.add(plugin.meta["name"])
                     plugins.append(plugin)
@@ -122,7 +136,9 @@ class PluginLoader:
                         try:
                             return ast.literal_eval(node.value)
                         except (ValueError, SyntaxError) as e:
-                            raise PluginLoadError(str(path), f"PLUGIN_META must be a literal dict: {e}")
+                            raise PluginLoadError(
+                                str(path), f"PLUGIN_META must be a literal dict: {e}"
+                            )
         return None
 
     def _scan_ast_for_unsafe_code(self, path: Path, permissions: list[str]) -> None:
@@ -133,12 +149,25 @@ class PluginLoader:
             raise PluginLoadError(str(path), f"Syntax error: {e}")
 
         # Block list of packages that require permissions
-        blocked_packages = {"pyautogui", "ctypes", "evdev", "Quartz", "AppKit", "win32api", "win32con", "subprocess", "os", "sys"}
-        
+        blocked_packages = {
+            "pyautogui",
+            "ctypes",
+            "evdev",
+            "Quartz",
+            "AppKit",
+            "win32api",
+            "win32con",
+            "subprocess",
+            "os",
+            "sys",
+        }
+
         # If "os:input" is granted, we allow input simulation libraries
         allowed_packages = {"typing", "structlog", "math", "numpy", "mediapipe"}
         if "os:input" in permissions:
-            allowed_packages.update({"pyautogui", "ctypes", "evdev", "Quartz", "AppKit", "win32api", "win32con"})
+            allowed_packages.update(
+                {"pyautogui", "ctypes", "evdev", "Quartz", "AppKit", "win32api", "win32con"}
+            )
 
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -147,7 +176,7 @@ class PluginLoader:
                     if base_mod in blocked_packages and base_mod not in allowed_packages:
                         raise PluginLoadError(
                             str(path),
-                            f"Unauthorized import of '{alias.name}'. Declared permissions do not allow it."
+                            f"Unauthorized import of '{alias.name}'. Declared permissions do not allow it.",
                         )
             elif isinstance(node, ast.ImportFrom):
                 if node.module:
@@ -155,22 +184,29 @@ class PluginLoader:
                     if base_mod in blocked_packages and base_mod not in allowed_packages:
                         raise PluginLoadError(
                             str(path),
-                            f"Unauthorized import from '{node.module}'. Declared permissions do not allow it."
+                            f"Unauthorized import from '{node.module}'. Declared permissions do not allow it.",
                         )
 
             # Check calls to dangerous builtins or system executing methods
             if isinstance(node, ast.Call):
                 if isinstance(node.func, ast.Name):
                     if node.func.id in {"eval", "exec", "__import__"}:
-                        raise PluginLoadError(str(path), f"Use of blocked builtin function '{node.func.id}'.")
+                        raise PluginLoadError(
+                            str(path), f"Use of blocked builtin function '{node.func.id}'."
+                        )
                 elif isinstance(node.func, ast.Attribute):
                     if isinstance(node.func.value, ast.Name):
                         val_id = node.func.value.id
                         attr_name = node.func.attr
                         if val_id == "os" and attr_name in {"system", "popen", "spawn"}:
-                            raise PluginLoadError(str(path), f"Use of blocked system API '{val_id}.{attr_name}'.")
+                            raise PluginLoadError(
+                                str(path), f"Use of blocked system API '{val_id}.{attr_name}'."
+                            )
                         if val_id == "subprocess" and attr_name in {"run", "Popen", "call"}:
-                            raise PluginLoadError(str(path), f"Use of blocked subprocess execution API '{val_id}.{attr_name}'.")
+                            raise PluginLoadError(
+                                str(path),
+                                f"Use of blocked subprocess execution API '{val_id}.{attr_name}'.",
+                            )
 
     def _load_plugin(self, path: Path) -> Plugin:
         """Load and validate a single plugin file.
@@ -220,7 +256,9 @@ class PluginLoader:
                 except jsonschema.ValidationError as e:
                     # Clean up imported module from sys.modules on validation failure
                     sys.modules.pop(module_name, None)
-                    raise PluginLoadError(str(path), f"Invalid GESTURE_DEFINITIONS at index {idx}: {e.message}")
+                    raise PluginLoadError(
+                        str(path), f"Invalid GESTURE_DEFINITIONS at index {idx}: {e.message}"
+                    )
                 except Exception as e:
                     sys.modules.pop(module_name, None)
                     raise PluginLoadError(str(path), f"Failed to validate gestures: {e}")

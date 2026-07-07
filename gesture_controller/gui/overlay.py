@@ -3,20 +3,21 @@ from PyQt6.QtWidgets import QWidget, QApplication
 from PyQt6.QtCore import Qt, QTimer, QRectF, QPointF
 from PyQt6.QtGui import QPainter, QColor, QPen, QBrush, QFont
 
+
 class OverlayHUD(QWidget):
     """Translucent, click-through overlay showing gesture tracking visualization."""
 
     def __init__(self, config: dict, parent=None) -> None:
         super().__init__(parent)
         self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint |
-            Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool |
-            Qt.WindowType.WindowTransparentForInput  # Click-through
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Tool
+            | Qt.WindowType.WindowTransparentForInput  # Click-through
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
-        
+
         # Windows-specific: ensure click-through mouse events propagate
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
@@ -26,9 +27,10 @@ class OverlayHUD(QWidget):
         self._action_feedback: str | None = None
         self._action_feedback_time: float = 0
         self._fsm_progress: float = 0.0
-        
+
         # Monitor changes tracking (S4-7)
         from PyQt6.QtGui import QGuiApplication
+
         app = QGuiApplication.instance()
         if app:
             app.screenAdded.connect(lambda _: self.reposition())
@@ -41,6 +43,7 @@ class OverlayHUD(QWidget):
     def reposition(self) -> None:
         """Cover screen geometries based on monitor selection config (S4-7)."""
         from PyQt6.QtGui import QGuiApplication
+
         screen_cfg = self._config.get("hud", {}).get("multi_monitor_mode", "primary")
         primary = QGuiApplication.primaryScreen()
         if primary:
@@ -61,7 +64,7 @@ class OverlayHUD(QWidget):
         self._hands = hands
         self._active_gesture = None
         self._fsm_progress = 0.0
-        
+
         if fsm_states:
             for name, (state, progress) in fsm_states.items():
                 if state not in ("Idle",):
@@ -74,7 +77,7 @@ class OverlayHUD(QWidget):
         """Flash action name on screen for visual confirmation."""
         self._action_feedback = f"{gesture_name} -> {action}"
         self._action_feedback_time = time.monotonic()
-        
+
         duration = self._config.get("hud", {}).get("confirmation_duration_ms", 800)
         QTimer.singleShot(duration, self._clear_feedback)
         self.update()
@@ -117,12 +120,27 @@ class OverlayHUD(QWidget):
 
         # Bones connection map
         CONNECTIONS = [
-            (0, 1), (1, 2), (2, 3), (3, 4),        # Thumb
-            (0, 5), (5, 6), (6, 7), (7, 8),        # Index
-            (5, 9), (9, 10), (10, 11), (11, 12),    # Middle
-            (9, 13), (13, 14), (14, 15), (15, 16),  # Ring
-            (13, 17), (17, 18), (18, 19), (19, 20), # Pinky
-            (0, 17)                                # Palm base
+            (0, 1),
+            (1, 2),
+            (2, 3),
+            (3, 4),  # Thumb
+            (0, 5),
+            (5, 6),
+            (6, 7),
+            (7, 8),  # Index
+            (5, 9),
+            (9, 10),
+            (10, 11),
+            (11, 12),  # Middle
+            (9, 13),
+            (13, 14),
+            (14, 15),
+            (15, 16),  # Ring
+            (13, 17),
+            (17, 18),
+            (18, 19),
+            (19, 20),  # Pinky
+            (0, 17),  # Palm base
         ]
 
         # Convert normalized coordinates [0, 1] to pixel space
@@ -188,5 +206,5 @@ class OverlayHUD(QWidget):
         painter.drawText(
             QRectF(center_x - 70, center_y + radius + 5, 140, 20),
             Qt.AlignmentFlag.AlignCenter,
-            gesture_name
+            gesture_name,
         )

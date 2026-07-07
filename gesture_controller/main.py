@@ -1,6 +1,7 @@
 """
 Daemon entry point.
 """
+
 import sys
 from gesture_controller.gui.app_entry import main
 

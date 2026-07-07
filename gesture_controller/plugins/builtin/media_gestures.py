@@ -16,9 +16,9 @@ GESTURE_DEFINITIONS = [
                 "transitions": [
                     {
                         "to": "ThumbUpPose",
-                        "condition": "thumb_extended == True and index_extended == False and middle_extended == False and ring_extended == False and pinky_extended == False"
+                        "condition": "thumb_extended == True and index_extended == False and middle_extended == False and ring_extended == False and pinky_extended == False",
                     }
-                ]
+                ],
             },
             {
                 "id": "ThumbUpPose",
@@ -26,15 +26,15 @@ GESTURE_DEFINITIONS = [
                 "max_duration_ms": 2000,
                 "transitions": [
                     {"to": "Trigger", "condition": "True"},
-                    {"to": "Idle", "condition": "thumb_extended == False", "abort": True}
-                ]
+                    {"to": "Idle", "condition": "thumb_extended == False", "abort": True},
+                ],
             },
             {
                 "id": "Trigger",
                 "is_terminal": True,
                 "action": "Media:PlayPause",
-                "cooldown_ms": 1000
-            }
-        ]
+                "cooldown_ms": 1000,
+            },
+        ],
     }
 ]

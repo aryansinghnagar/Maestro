@@ -18,6 +18,7 @@ FRAME_CHANNELS = 3
 
 MODEL_PATH = Path(__file__).parent.parent / "data" / "hand_landmarker.task"
 
+
 class LandmarkExtractor:
     """Wraps MediaPipe HandLandmarker Tasks API.
     Reads from SharedMemory, outputs project Hand dataclasses.
@@ -26,12 +27,15 @@ class LandmarkExtractor:
     def __init__(self, config: dict[str, Any]) -> None:
         model_path_str = str(MODEL_PATH)
         if not MODEL_PATH.exists():
-            raise FileNotFoundError(f"MediaPipe Hand Landmarker model file not found at {model_path_str}")
+            raise FileNotFoundError(
+                f"MediaPipe Hand Landmarker model file not found at {model_path_str}"
+            )
 
         # Verify SHA256 integrity unless disabled in config
         skip_verify = config.get("engine", {}).get("skip_model_verification", False)
         if not skip_verify:
             import hashlib
+
             expected_sha256 = "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1"
             h = hashlib.sha256()
             try:
@@ -55,8 +59,12 @@ class LandmarkExtractor:
             base_options=base_options,
             running_mode=vision.RunningMode.VIDEO,
             num_hands=config.get("engine", {}).get("max_hands", 2),
-            min_hand_detection_confidence=config.get("engine", {}).get("min_detection_confidence", 0.7),
-            min_hand_presence_confidence=config.get("engine", {}).get("min_tracking_confidence", 0.5),
+            min_hand_detection_confidence=config.get("engine", {}).get(
+                "min_detection_confidence", 0.7
+            ),
+            min_hand_presence_confidence=config.get("engine", {}).get(
+                "min_tracking_confidence", 0.5
+            ),
         )
         self._landmarker = vision.HandLandmarker.create_from_options(self._options)
         logger.info("MediaPipe HandLandmarker Tasks API initialized in VIDEO mode")
@@ -109,11 +117,11 @@ class LandmarkExtractor:
                 )
                 for lm in hand_landmarks
             )
-            
+
             # handedness is a list of Category objects
             hand_type = handedness[0].category_name
             confidence = float(handedness[0].score)
-            
+
             hand = Hand(
                 landmarks=landmarks,
                 handedness=hand_type,
