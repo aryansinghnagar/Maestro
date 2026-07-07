@@ -11,7 +11,9 @@ Maestro is a production-grade, low-latency, cross-platform hand-gesture controll
 - **📈 Vectorized Filtering:** One-Euro vectorized filter smooths high-frequency hand jitter dynamically based on depth and speed.
 - **🧠 JIT-Compiled DTW Matcher:** Dynamic Time Warping (DTW) matching utilizing Numba JIT-compiled distance matrix algorithms for fast custom gesture recognition.
 - **🔒 Secure AST Condition Parsing:** YAML-based gesture transition rules are safely parsed and compiled via strict AST allow-lists, preventing arbitrary code execution.
+- **🛡️ RestrictedPython Sandboxing:** Executes dynamic plugin modules within a RestrictedPython sandbox compiled environment to prevent arbitrary execution exploits.
 - **🔌 Dynamic Plugin Architecture:** Support for loading, validating (via JSON schema), and hot-reloading (via file watchdogs) custom gesture profiles and action handlers.
+- **📊 Structured Metrics Collector:** Periodically compiles and logs structured latency metrics summaries (counters, gauges, and p50/p90/p99 histograms).
 - **🎨 Glassmorphism Transparent HUD:** Translucent overlay built with PyQt6 that stays on top, rendering skeletal hand structures, FSM state progress rings, and event confirmation banners.
 - **⚙️ Integrated Settings Dashboard:** Dark-mode configuration window featuring general adjustments, camera select, sensitivity sliders, hotkey capture, and a custom gesture recording canvas.
 
@@ -59,8 +61,7 @@ Maestro requires Python 3.10+ (tested on Python 3.14.2 on Windows, macOS, and Li
 
 2. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
-   pip install -r requirements-dev.txt
+   pip install -e .[dev]
    ```
 
 3. **Download the MediaPipe Task Model:**
@@ -72,7 +73,7 @@ Maestro requires Python 3.10+ (tested on Python 3.14.2 on Windows, macOS, and Li
 4. **Verify Installation:**
    Run the post-install diagnostic script to verify that dependencies, camera, MediaPipe, and configuration paths are resolved:
    ```bash
-   python scripts/verify_install.py
+   python -m gesture_controller.cli.verify_install
    ```
 
 ---
