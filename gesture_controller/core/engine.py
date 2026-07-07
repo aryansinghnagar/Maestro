@@ -22,6 +22,7 @@ from gesture_controller.os_integration.action_dispatcher import ActionDispatcher
 
 logger = structlog.get_logger(__name__)
 
+
 class GestureEngine:
     """Master daemon coordinator. Coordinates Process A and Process B pipeline flow."""
 
@@ -38,11 +39,11 @@ class GestureEngine:
         self._fps_frame_count = 0
         self._gesture_count = 0
 
-        self._frame_shm = None
-        self._camera_process = None
-        self._plugin_loader = None
-        self._dispatcher = None
-        self._frame_ready_event = None
+        self._frame_shm: shared_memory.SharedMemory | None = None
+        self._camera_process: Any = None
+        self._plugin_loader: PluginLoader | None = None
+        self._dispatcher: ActionDispatcher | None = None
+        self._frame_ready_event: Any = None
 
         try:
             self._init_plugins()
@@ -59,39 +60,51 @@ class GestureEngine:
             raise
 
     def _init_plugins(self) -> None:
-        self._plugin_loader = PluginLoader(self._event_bus)
-        self._plugin_loader.discover_all()
+        loader = PluginLoader(self._event_bus)
+        loader.discover_all()
+        self._plugin_loader = loader
 
     def _init_shared_memory(self) -> None:
         import multiprocessing as mp
-        self._frame_ready_event = mp.Event()
-        
+
+        evt = mp.Event()
+        self._frame_ready_event = evt
+
         self._frame_size = 640 * 480 * 3
-        self._frame_shm = shared_memory.SharedMemory(create=True, size=self._frame_size)
-        self._shm_name = self._frame_shm.name
-        
+        shm = shared_memory.SharedMemory(create=True, size=self._frame_size)
+        self._shm_name = shm.name
+        self._frame_shm = shm
+
         # Tighten SharedMemory permissions on Unix (S3-14)
         if platform.system() != "Windows":
-            shm_file = Path("/dev/shm") / f"psm_{self._shm_name}"
+            shm_file = Path("/dev/shm") / f"psm_{self._shm_name}"  # nosec B108
             if shm_file.exists():
                 try:
                     shm_file.chmod(0o600)
-                    logger.debug("Tightened shared memory file permissions", path=str(shm_file), mode="0600")
+                    logger.debug(
+                        "Tightened shared memory file permissions", path=str(shm_file), mode="0600"
+                    )
                 except Exception as e:
-                    logger.warning("Failed to chmod shared memory segment", path=str(shm_file), error=str(e))
+                    logger.warning(
+                        "Failed to chmod shared memory segment", path=str(shm_file), error=str(e)
+                    )
         logger.info("Shared memory buffer created", name=self._shm_name, size=self._frame_size)
 
     def _init_camera_process(self) -> None:
-        self._camera_process = start_camera_process(self._config._config, self._shm_name, self._frame_ready_event)
+        self._camera_process = start_camera_process(
+            self._config._config, self._shm_name, self._frame_ready_event
+        )
         logger.info("Camera Stream process spawned")
 
     def _init_landmark_extractor(self) -> None:
         self._extractor = LandmarkExtractor(self._config._config)
 
     def _init_fsm_manager(self) -> None:
-        plugin_gestures = self._plugin_loader.get_all_gestures() if self._plugin_loader else []
+        plugin_gestures: list[Any] = (
+            self._plugin_loader.get_all_gestures() if self._plugin_loader else []
+        )
         gestures_yaml_path = Path(__file__).parent.parent / "data" / "predefined_gestures.yaml"
-        gestures_config = {}
+        gestures_config: dict[str, Any] = {}
         if gestures_yaml_path.exists():
             try:
                 with open(gestures_yaml_path, "r") as f:
@@ -119,6 +132,7 @@ class GestureEngine:
 
     def _init_signals(self) -> None:
         import signal
+
         try:
             self._old_sigint = signal.signal(signal.SIGINT, self._handle_signal)
             self._old_sigterm = signal.signal(signal.SIGTERM, self._handle_signal)
@@ -141,14 +155,17 @@ class GestureEngine:
                 self._frame_shm.close()
                 self._frame_shm.unlink()
             except Exception as e:
-                logger.warning("Failed to unlink shared memory segment during rollback", error=str(e))
+                logger.warning(
+                    "Failed to unlink shared memory segment during rollback", error=str(e)
+                )
 
     def _handle_signal(self, signum: int, frame: Any) -> None:
         import sys
         import signal
+
         logger.info("Signal received, shutting down...", signal=signum)
         self.shutdown()
-        
+
         # Restore old handler and forward signal, or exit
         old_handler = self._old_sigint if signum == signal.SIGINT else self._old_sigterm
         if old_handler and old_handler is not signal.SIG_DFL and old_handler is not signal.SIG_IGN:
@@ -162,60 +179,90 @@ class GestureEngine:
         current_os = platform.system()
         try:
             from gesture_controller.os_integration import create_controller
+
             return create_controller()
         except Exception as e:
-            logger.warning("Failed to create platform controller, falling back to dummy controller", error=str(e), os=current_os)
+            logger.warning(
+                "Failed to create platform controller, falling back to dummy controller",
+                error=str(e),
+                os=current_os,
+            )
             from gesture_controller.os_integration.base_controller import BaseController
+
             class DummyController(BaseController):
                 def is_supported(self) -> bool:
                     return False
+
                 def key_press(self, key: str, modifiers: list[str] | None = None) -> None:
                     pass
+
                 def key_release(self, key: str) -> None:
                     pass
+
                 def key_combo(self, keys: list[str]) -> None:
                     pass
-                def mouse_click(self, button: str = "left", x: int | None = None, y: int | None = None) -> None:
+
+                def mouse_click(
+                    self, button: str = "left", x: int | None = None, y: int | None = None
+                ) -> None:
                     pass
-                def mouse_double_click(self, button: str = "left", x: int | None = None, y: int | None = None) -> None:
+
+                def mouse_double_click(
+                    self, button: str = "left", x: int | None = None, y: int | None = None
+                ) -> None:
                     pass
+
                 def mouse_move(self, x: int, y: int, absolute: bool = True) -> None:
                     pass
+
                 def mouse_scroll(self, delta_x: int = 0, delta_y: int = 0) -> None:
                     pass
+
                 def get_foreground_app(self) -> str:
                     return ""
+
                 def minimize_active_window(self) -> None:
                     pass
+
                 def switch_window(self) -> None:
                     pass
+
                 def show_desktop(self) -> None:
                     pass
+
                 def media_play_pause(self) -> None:
                     pass
+
                 def media_next(self) -> None:
                     pass
+
                 def media_previous(self) -> None:
                     pass
+
                 def media_volume_up(self) -> None:
                     pass
+
                 def media_volume_down(self) -> None:
                     pass
-            return DummyController()
 
+            return DummyController()
 
     def _on_plugin_reloaded(self, plugin_name: str) -> None:
         """Handle plugin reload event by re-fetching and reloading FSM templates."""
         logger.info("Handling plugin reload in engine", plugin=plugin_name)
+        if not self._plugin_loader:
+            return
         plugin_gestures = self._plugin_loader.get_all_gestures()
         gestures_yaml_path = Path(__file__).parent.parent / "data" / "predefined_gestures.yaml"
-        gestures_config = {}
+        gestures_config: dict[str, Any] = {}
         if gestures_yaml_path.exists():
             try:
                 with open(gestures_yaml_path, "r") as f:
                     gestures_config = yaml.safe_load(f) or {}
             except Exception as e:
-                logger.error("Failed loading predefined_gestures.yaml during FSM reload", error=str(e))
+                logger.error(
+                    "Failed loading predefined_gestures.yaml during FSM reload", error=str(e)
+                )
 
         predefined_list = gestures_config.get("gestures", [])
         combined_gestures = predefined_list + plugin_gestures
@@ -239,7 +286,8 @@ class GestureEngine:
         if self._running:
             return
         self._running = True
-        self._plugin_loader.start_hot_reload()
+        if self._plugin_loader:
+            self._plugin_loader.start_hot_reload()
         self._thread = threading.Thread(target=self._main_loop, daemon=True, name="engine_loop")
         self._thread.start()
         logger.info("GestureEngine main thread started")
@@ -251,15 +299,16 @@ class GestureEngine:
                 if self._paused:
                     time.sleep(0.01)
                     continue
-                
+
                 # Block until camera process announces frame ready, with 100ms timeout
                 if self._frame_ready_event and not self._frame_ready_event.wait(timeout=0.1):
                     continue
-                
+
                 if self._frame_ready_event:
                     self._frame_ready_event.clear()
-                
+
                 import uuid
+
                 correlation_id = str(uuid.uuid4())
 
                 # Rolling FPS calculation
@@ -269,20 +318,27 @@ class GestureEngine:
                     self._fps = self._fps_frame_count / (now - self._last_fps_time)
                     self._fps_frame_count = 0
                     self._last_fps_time = now
-                    logger.info("metric_fps", fps=self._fps, frame_count=self._frame_count, correlation_id=correlation_id)
+                    logger.info(
+                        "metric_fps",
+                        fps=self._fps,
+                        frame_count=self._frame_count,
+                        correlation_id=correlation_id,
+                    )
 
                 timestamp = now
                 hands = self._extractor.extract(self._shm_name, int(timestamp * 1000))
-                
+
                 if hands:
                     # Publish raw landmarks (useful for debug overlays/visualizers)
                     self._event_bus.publish("raw_landmarks", hands)
-                    
+
                     smoothed_hands = []
                     for hand in hands:
                         # Convert hand landmarks to numpy coordinates
-                        lm_array = np.array([[l.x, l.y, l.z] for l in hand.landmarks], dtype=np.float64)
-                        
+                        lm_array = np.array(
+                            [[l.x, l.y, l.z] for l in hand.landmarks], dtype=np.float64
+                        )
+
                         # Get or create One-Euro filter per hand/handedness
                         filt = self._filters.get(hand.handedness)
                         if filt is None:
@@ -293,15 +349,12 @@ class GestureEngine:
                         mcp5 = lm_array[5]
                         wrist = lm_array[0]
                         depth_metric = float(np.linalg.norm(mcp5 - wrist))
-                        
+
                         # 1. Apply One-Euro filter
                         filtered, velocity, acceleration = filt.filter(
-                            lm_array, 
-                            timestamp,
-                            lighting_metric=None,
-                            depth_metric=depth_metric
+                            lm_array, timestamp, lighting_metric=None, depth_metric=depth_metric
                         )
-                        
+
                         # 2. Reconstruct Hand with filtered positions
                         smoothed_landmarks = tuple(
                             Landmark3D(x=f[0], y=f[1], z=f[2]) for f in filtered
@@ -309,19 +362,15 @@ class GestureEngine:
                         smoothed_hand = Hand(
                             landmarks=smoothed_landmarks,
                             handedness=hand.handedness,
-                            confidence=hand.confidence
+                            confidence=hand.confidence,
                         )
                         smoothed_hands.append(smoothed_hand)
-                        
+
                         # 3. Compute invariant features
                         features = compute_features(
-                            smoothed_hand, 
-                            velocity, 
-                            acceleration, 
-                            timestamp, 
-                            self._frame_count
+                            smoothed_hand, velocity, acceleration, timestamp, self._frame_count
                         )
-                        
+
                         # Update CustomGestureMatcher rolling buffer
                         self._custom_matcher.update_buffer(smoothed_hand)
 
@@ -334,7 +383,12 @@ class GestureEngine:
                             # Propagate trigger to subscribers (dispatcher is subscribed to this)
                             self._event_bus.publish("gesture_triggered", event)
                             self._gesture_count += 1
-                            logger.info("Gesture Triggered", gesture=event.gesture_name, action=event.action, correlation_id=correlation_id)
+                            logger.info(
+                                "Gesture Triggered",
+                                gesture=event.gesture_name,
+                                action=event.action,
+                                correlation_id=correlation_id,
+                            )
                     self._current_hands = smoothed_hands
                 else:
                     self._current_hands = []
@@ -352,32 +406,35 @@ class GestureEngine:
         """Gracefully shuts down background engine thread, camera process and SharedMemory."""
         logger.info("Shutting down GestureEngine...")
         self._running = False
-        
+
         # Stop plugin hot reloading
-        self._plugin_loader.stop_hot_reload()
+        if self._plugin_loader:
+            self._plugin_loader.stop_hot_reload()
 
         if self._thread:
             self._thread.join(timeout=2.0)
             self._thread = None
 
         # Try to join camera stream process cleanly
-        if self._camera_process.is_alive():
-            self._camera_process.join(timeout=2.0)
+        if self._camera_process:
             if self._camera_process.is_alive():
-                logger.warning("Camera stream process did not stop cleanly, terminating...")
-                self._camera_process.terminate()
-                self._camera_process.join()
+                self._camera_process.join(timeout=2.0)
+                if self._camera_process.is_alive():
+                    logger.warning("Camera stream process did not stop cleanly, terminating...")
+                    self._camera_process.terminate()
+                    self._camera_process.join()
 
         # Close MediaPipe Hands
         self._extractor.close()
 
         # Tear down shared memory segment
-        try:
-            self._frame_shm.close()
-            self._frame_shm.unlink()
-            logger.info("Shared memory segment cleanly unlinked")
-        except Exception as e:
-            logger.error("Failed unlinking shared memory segment during shutdown", error=str(e))
+        if self._frame_shm:
+            try:
+                self._frame_shm.close()
+                self._frame_shm.unlink()
+                logger.info("Shared memory segment cleanly unlinked")
+            except Exception as e:
+                logger.error("Failed unlinking shared memory segment during shutdown", error=str(e))
 
     def get_current_hands(self) -> list[Hand]:
         """Return the latest detected and filtered Hand data."""

@@ -1,5 +1,8 @@
 import sys
+import pytest
+import PyQt6.QtWidgets
 from unittest.mock import MagicMock
+
 
 # Define dummy wrapper classes that inherit from MagicMock
 # but do not treat the first positional argument (parent widget) as a spec.
@@ -7,23 +10,35 @@ class DummySystemTrayIcon(MagicMock):
     class MessageIcon:
         Warning = 1
         Information = 2
-        
+
+    class ActivationReason:
+        DoubleClick = 2
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__()
+
 
 class DummyMenu(MagicMock):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__()
 
-# Mock PyQt6 QSystemTrayIcon and QMenu at the module level before any other imports
-import PyQt6.QtWidgets
-PyQt6.QtWidgets.QSystemTrayIcon = DummySystemTrayIcon
-PyQt6.QtWidgets.QMenu = DummyMenu
 
-import pytest
+@pytest.fixture(autouse=True)
+def patch_qt(monkeypatch):
+    """Replace QSystemTrayIcon and QMenu with dummies for the duration of each test."""
+    import gesture_controller.gui.tray_icon
+
+    monkeypatch.setattr(PyQt6.QtWidgets, "QSystemTrayIcon", DummySystemTrayIcon)
+    monkeypatch.setattr(PyQt6.QtWidgets, "QMenu", DummyMenu)
+    monkeypatch.setattr(gesture_controller.gui.tray_icon, "QSystemTrayIcon", DummySystemTrayIcon)
+    monkeypatch.setattr(gesture_controller.gui.tray_icon, "QMenu", DummyMenu)
+    yield
+
+
 from PyQt6.QtWidgets import QApplication
 from gesture_controller.core.event_bus import EventBus
 from gesture_controller.gui.tray_icon import TrayController, create_tray_icon
+
 
 # Ensure a QApplication singleton is available for Qt widgets testing
 @pytest.fixture(scope="module")
@@ -33,6 +48,7 @@ def qapp() -> QApplication:
         app = QApplication(sys.argv)
     return app
 
+
 def test_create_tray_icon(qapp: QApplication) -> None:
     # Under mock, create_tray_icon still runs its QIcon drawing logic
     icon_active = create_tray_icon(paused=False)
@@ -40,10 +56,11 @@ def test_create_tray_icon(qapp: QApplication) -> None:
     assert icon_active is not None
     assert icon_paused is not None
 
+
 def test_tray_controller_initialization(qapp: QApplication) -> None:
     mock_bus = MagicMock(spec=EventBus)
     tray = TrayController(mock_bus)
-        
+
     assert tray._paused is False
     assert tray._camera_active is True
 
@@ -51,19 +68,20 @@ def test_tray_controller_initialization(qapp: QApplication) -> None:
     tray.deleteLater()
     qapp.processEvents()
 
+
 def test_tray_controller_toggle_pause(qapp: QApplication) -> None:
     mock_bus = MagicMock(spec=EventBus)
     tray = TrayController(mock_bus)
-    
+
     signals = []
     tray.pause_toggled.connect(lambda v: signals.append(v))
-    
+
     # Toggle once (pauses)
     tray.toggle_pause()
     assert tray._paused is True
     assert len(signals) == 1
     assert signals[0] is True
-    
+
     # Toggle twice (resumes)
     tray.toggle_pause()
     assert tray._paused is False
@@ -74,14 +92,15 @@ def test_tray_controller_toggle_pause(qapp: QApplication) -> None:
     tray.deleteLater()
     qapp.processEvents()
 
+
 def test_tray_controller_camera_events(qapp: QApplication) -> None:
     mock_bus = MagicMock(spec=EventBus)
     tray = TrayController(mock_bus)
-    
+
     # Trigger disconnected handler
     tray._on_camera_disconnected_gui()
     assert tray._camera_active is False
-    
+
     # Trigger recovered handler
     tray._on_camera_recovered_gui()
     assert tray._camera_active is True
@@ -90,27 +109,27 @@ def test_tray_controller_camera_events(qapp: QApplication) -> None:
     tray.deleteLater()
     qapp.processEvents()
 
+
 def test_tray_update_status(qapp: QApplication) -> None:
     mock_bus = MagicMock(spec=EventBus)
     tray = TrayController(mock_bus)
-    
+
     tray.update_status(fps=30.0, gesture_count=5)
-    
+
     # ToolTip should be set on the mock system tray icon
     tray._tray_icon.setToolTip.assert_called_once()
     tooltip = tray._tray_icon.setToolTip.call_args[0][0]
     assert "30.0" in tooltip
     assert "5" in tooltip
 
+
 def test_tray_export_diagnostics_signal(qapp: QApplication) -> None:
     mock_bus = MagicMock(spec=EventBus)
     tray = TrayController(mock_bus)
-    
+
     # Assert that Export Diagnostics action was added to the context menu
     tray._menu.addAction.assert_any_call("Export Diagnostics")
 
     # Clean up
     tray.deleteLater()
     qapp.processEvents()
-
-

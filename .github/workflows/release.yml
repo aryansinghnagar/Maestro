@@ -1,104 +1,67 @@
-name: Release
+name: Release Builder
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
-  build-windows:
-    name: Build & Package Windows
+  build:
+    name: Build and Package Release
     runs-on: windows-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python_version: '3.11'
           cache: 'pip'
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e .[dev]
+          pip install .[dev]
+          pip install cyclonedx-python-lib
+
+      - name: Generate CycloneDX SBOM
+        run: |
+          cyclonedx-py poetry --outfile sbom.json --format json || cyclonedx-py requirements --outfile sbom.json --format json
+
+      - name: Build Executable via PyInstaller
+        run: |
           pip install pyinstaller
+          pyinstaller --onefile --noconsole --name Maestro gesture_controller/main.py
 
-      - name: Build Binary with PyInstaller
+      - name: Code Sign (Windows)
+        shell: powershell
         run: |
-          pyinstaller gesture_controller.spec
+          # Azure Key Vault Code Signing simulation/placeholder
+          if ("${{ secrets.AZURE_CLIENT_ID }}" -ne "") {
+            echo "Running Azure SignTool..."
+            # dotnet tool install --global SignTool
+            # signtool sign-svs ...
+          } else {
+            echo "Skipping Windows signing: Secrets not configured."
+          }
 
-      - name: Setup NSIS
-        run: |
-          choco install nsis -y
-
-      - name: Compile NSIS Installer Setup
-        run: |
-          makensis packaging/windows_installer.nsi
-
-      - name: Authenticode Code Signing Stub (S2-10)
-        shell: bash
-        run: |
-          echo "=== Windows Authenticode Signing Stub ==="
-          # In production, replace with actual SignTool or digital certificate signing:
-          # signtool sign /f certificate.pfx /p "${{ secrets.WIN_SIGNING_PASSWORD }}" /tr http://timestamp.digicert.com /td sha256 /fd sha256 dist/windows/GestureController-Setup-*.exe
-          echo "Signing setup binary using credentials if available..."
-
-      - name: Upload Setup Asset to Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload SBOM and Binaries
+        uses: actions/upload-artifact@v4
         with:
-          files: packaging/GestureController-Setup-*.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: Maestro-Windows-Artifacts
+          path: |
+            dist/Maestro.exe
+            sbom.json
 
-  build-macos:
-    name: Build & Package macOS
-    runs-on: macos-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .[dev]
-          pip install pyinstaller
-
-      - name: Build Bundle with PyInstaller
-        run: |
-          pyinstaller gesture_controller.spec
-
-      - name: macOS Code Signing Stub (S2-9)
-        run: |
-          echo "=== macOS Developer Code Signing Stub ==="
-          # In production, import signing certificates and run:
-          # codesign --force --options runtime --self-sign - --entitlements packaging/macos/entitlements.plist dist/GestureController.app
-          echo "Signing app bundle..."
-
-      - name: Create DMG Bundle
-        run: |
-          hdiutil create -fs HFS+ -srcfolder dist/GestureController.app -volname "GestureController" dist/GestureController.dmg
-
-      - name: macOS Notarization Stub (S2-9)
-        run: |
-          echo "=== macOS Notarization Stub ==="
-          # In production, run xcrun notarytool:
-          # xcrun notarytool submit dist/GestureController.dmg --apple-id "${{ secrets.APPLE_ID }}" --password "${{ secrets.APPLE_PASSWORD }}" --team-id "${{ secrets.APPLE_TEAM_ID }}" --wait
-          # xcrun stapler staple dist/GestureController.dmg
-          echo "Notarizing DMG bundle..."
-
-      - name: Upload DMG Asset to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/GestureController.dmg
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  provenance:
+    needs: build
+    name: Generate SLSA Build Provenance
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.9.0
+    with:
+      base64-subjects: "${{ needs.build.outputs.hashes }}"
+      upload-assets: true
