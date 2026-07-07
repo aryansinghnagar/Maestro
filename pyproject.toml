@@ -37,6 +37,7 @@ dependencies = [
     "pyautogui>=0.9.54",
     "psutil>=5.9.0",
     "watchdog>=3.0.0",
+    "RestrictedPython>=6.0",
     # Platform-specific — declared with markers so non-target platforms skip them
     "evdev>=1.6.0; sys_platform == 'linux'",
     "pyobjc-framework-Quartz>=9.0; sys_platform == 'darwin'",

@@ -19,6 +19,7 @@ from gesture_controller.core.state_machine import GestureFSMManager
 from gesture_controller.plugins.plugin_loader import PluginLoader
 from gesture_controller.models.dtw_matcher import CustomGestureMatcher
 from gesture_controller.os_integration.action_dispatcher import ActionDispatcher
+from gesture_controller.core.metrics import MetricsCollector
 
 logger = structlog.get_logger(__name__)
 
@@ -44,6 +45,7 @@ class GestureEngine:
         self._plugin_loader: PluginLoader | None = None
         self._dispatcher: ActionDispatcher | None = None
         self._frame_ready_event: Any = None
+        self._metrics = MetricsCollector()
 
         try:
             self._init_plugins()
@@ -307,6 +309,8 @@ class GestureEngine:
                 if self._frame_ready_event:
                     self._frame_ready_event.clear()
 
+                loop_start = time.perf_counter()
+
                 import uuid
 
                 correlation_id = str(uuid.uuid4())
@@ -318,6 +322,8 @@ class GestureEngine:
                     self._fps = self._fps_frame_count / (now - self._last_fps_time)
                     self._fps_frame_count = 0
                     self._last_fps_time = now
+                    self._metrics.set_gauge("fps", self._fps)
+                    self._metrics.emit()
                     logger.info(
                         "metric_fps",
                         fps=self._fps,
@@ -399,6 +405,9 @@ class GestureEngine:
                     self._custom_matcher.reset()
 
                 self._frame_count += 1
+                self._metrics.observe(
+                    "frame_processing_latency_seconds", time.perf_counter() - loop_start
+                )
             except Exception as e:
                 logger.error("Error inside engine main loop", error=str(e))
 
