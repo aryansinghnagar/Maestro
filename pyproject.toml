@@ -55,7 +55,7 @@ Changelog = "https://github.com/aryansinghnagar/Maestro/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 dev = [
     "pytest>=9.0.3,<10.0",
-    "pytest-cov>=4.1.0,<6.0",
+    "pytest-cov>=4.1.0,<8.0",
     "pytest-benchmark>=4.0.0",
     "pytest-timeout>=2.1.0",
     "pytest-xdist>=3.3.0",
