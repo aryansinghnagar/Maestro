@@ -1,4 +1,5 @@
 import pytest
+import time
 from unittest.mock import MagicMock, patch
 from gesture_controller.os_integration.action_dispatcher import ActionDispatcher
 from gesture_controller.models.data_types import GestureEvent
@@ -42,6 +43,7 @@ def test_action_dispatcher_routing_os(
     )
 
     event_bus.publish("gesture_triggered", event)
+    time.sleep(0.05)
     mock_controller.minimize_active_window.assert_called_once()
 
 
@@ -60,6 +62,7 @@ def test_action_dispatcher_routing_keypress(
     )
 
     event_bus.publish("gesture_triggered", event)
+    time.sleep(0.05)
     mock_controller.key_combo.assert_called_once_with(["ctrl", "shift", "c"])
 
 
@@ -78,6 +81,7 @@ def test_action_dispatcher_routing_scroll(
     )
 
     event_bus.publish("gesture_triggered", event)
+    time.sleep(0.05)
     mock_controller.mouse_scroll.assert_called_once_with(delta_y=-4)
 
 
@@ -96,6 +100,7 @@ def test_action_dispatcher_routing_media(
     )
 
     event_bus.publish("gesture_triggered", event)
+    time.sleep(0.05)
     mock_controller.media_play_pause.assert_called_once()
 
 
@@ -117,6 +122,7 @@ def test_action_dispatcher_app_profile_resolution(
     )
 
     event_bus.publish("gesture_triggered", event)
+    time.sleep(0.05)
 
     # Verify that the action executed was the profile-specific override hotkey combo
     mock_controller.key_combo.assert_called_once_with(["ctrl", "shift", "tab"])

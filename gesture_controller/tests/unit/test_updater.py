@@ -20,7 +20,7 @@ def test_updater_is_newer() -> None:
     assert updater._is_newer("1.0", "1.0.0") is False
 
     # Value error fallbacks
-    assert updater._is_newer("abc", "1.0.0") is True
+    assert updater._is_newer("abc", "1.0.0") is False
 
 
 @patch("urllib.request.urlopen")

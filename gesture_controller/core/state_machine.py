@@ -246,7 +246,8 @@ class GestureFSMManager:
     """Loads and manages all gesture FSMs, evaluating candidates and resolving conflicts."""
 
     def __init__(self, config: dict[str, Any], event_bus: EventBus) -> None:
-        self._fsms: list[GestureFSM] = []
+        self._fsms_prototypes: list[GestureFSM] = []
+        self._hand_fsms: dict[int, list[GestureFSM]] = {}
         self._event_bus = event_bus
         self._global_cooldown_until = 0.0
         self._lock = threading.RLock()
@@ -260,15 +261,16 @@ class GestureFSMManager:
     def reload_gestures(self, config: dict[str, Any]) -> None:
         """Clear and reload all gestures from config."""
         with self._lock:
-            prev_fsms = self._fsms
-            self._fsms = []
+            prev_prototypes = self._fsms_prototypes
+            self._fsms_prototypes = []
             try:
                 self._load_gestures(config)
+                self._hand_fsms.clear()
             except Exception:
-                self._fsms = prev_fsms
+                self._fsms_prototypes = prev_prototypes
                 logger.exception("Gesture reload failed; keeping previous FSM set")
                 return
-            logger.info("GestureFSMManager reloaded gestures", count=len(self._fsms))
+            logger.info("GestureFSMManager reloaded gestures", count=len(self._fsms_prototypes))
 
     def _load_gestures(self, config: dict[str, Any]) -> None:
         """Load gestures from config yaml."""
@@ -320,17 +322,24 @@ class GestureFSMManager:
                 )
 
             fsm = GestureFSM(name, priority, g_type, states_dict)
-            self._fsms.append(fsm)
+            self._fsms_prototypes.append(fsm)
 
         # Sort FSMs by priority (lower priority values are executed first)
-        self._fsms.sort(key=lambda x: x.priority)
-        logger.info("Loaded and sorted gesture FSMs", count=len(self._fsms))
+        self._fsms_prototypes.sort(key=lambda x: x.priority)
+        logger.info("Loaded and sorted gesture FSM prototypes", count=len(self._fsms_prototypes))
 
-    def evaluate(self, features: FeatureVector, correlation_id: str = "") -> GestureEvent | None:
-        """Evaluate all FSMs. Return best GestureEvent or None."""
+    def evaluate(
+        self, features: FeatureVector, correlation_id: str = "", track_id: int = 0
+    ) -> GestureEvent | None:
+        """Evaluate FSMs for a specific hand track ID. Return best GestureEvent or None."""
+        import copy
+
         candidates = []
         with self._lock:
-            fsms_snapshot = list(self._fsms)
+            if track_id not in self._hand_fsms:
+                self._hand_fsms[track_id] = copy.deepcopy(self._fsms_prototypes)
+            fsms_snapshot = list(self._hand_fsms[track_id])
+
         for fsm in fsms_snapshot:
             # Skip evaluation for discrete FSMs if in global cooldown, but allow active continuous scrolling to evaluate
             in_global_cooldown = features.timestamp < self._global_cooldown_until
@@ -366,15 +375,29 @@ class GestureFSMManager:
         candidates.sort(key=lambda e: (-e.confidence, e.metadata.get("priority", 999)))
         return candidates[0]
 
+    def remove_hand(self, track_id: int) -> None:
+        """Clean up FSM state for a retired hand track ID."""
+        with self._lock:
+            self._hand_fsms.pop(track_id, None)
+
     def reset_all(self) -> None:
-        """Reset all state machines."""
-        for fsm in self._fsms:
-            fsm.reset()
+        """Reset all state machines across all tracked hands."""
+        with self._lock:
+            self._hand_fsms.clear()
+            self._global_cooldown_until = 0.0
 
     def get_states(self) -> dict[str, tuple[str, float]]:
-        """Return a mapping of FSM name -> (current_state, progress_ratio)."""
+        """Return a mapping of FSM name -> (current_state, progress_ratio) for the first active hand."""
         states = {}
-        for fsm in self._fsms:
+        with self._lock:
+            if not self._hand_fsms:
+                for fsm in self._fsms_prototypes:
+                    states[fsm.name] = ("Idle", 0.0)
+                return states
+            first_track_id = min(self._hand_fsms.keys())
+            fsms = self._hand_fsms[first_track_id]
+
+        for fsm in fsms:
             progress = 0.0
             if fsm.state_entered_at is not None and fsm.current_state != "Idle":
                 state_obj = fsm.states.get(fsm.current_state)
