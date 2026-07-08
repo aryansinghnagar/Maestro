@@ -5,7 +5,7 @@ from gesture_controller.core.event_bus import EventBus
 
 
 def test_sync_publish() -> None:
-    # sync event "gesture_triggered" runs in same thread
+    # Now gesture_triggered is async too, so it runs on worker thread
     bus = EventBus()
     events = []
     current_thread_id = threading.get_ident()
@@ -19,8 +19,11 @@ def test_sync_publish() -> None:
     bus.subscribe("gesture_triggered", handler)
     bus.publish("gesture_triggered", "click")
 
+    time.sleep(0.05)
+
     assert events == ["click"]
-    assert handler_thread_id == current_thread_id
+    assert handler_thread_id is not None
+    assert handler_thread_id != current_thread_id
 
 
 def test_async_publish() -> None:
@@ -55,8 +58,11 @@ def test_unsubscribe() -> None:
 
     bus.subscribe("gesture_triggered", handler)
     bus.publish("gesture_triggered", "first")
+    time.sleep(0.05)
+
     bus.unsubscribe("gesture_triggered", handler)
     bus.publish("gesture_triggered", "second")
+    time.sleep(0.05)
 
     assert events == ["first"]
 
@@ -74,6 +80,7 @@ def test_multiple_subscribers() -> None:
     bus.subscribe("gesture_triggered", h1)
     bus.subscribe("gesture_triggered", h2)
     bus.publish("gesture_triggered", 5)
+    time.sleep(0.05)
 
     assert results["h1"] == 5
     assert results["h2"] == 10
@@ -94,6 +101,7 @@ def test_handler_exception_does_not_crash_publisher() -> None:
 
     # Should not raise exception
     bus.publish("gesture_triggered", "safe")
+    time.sleep(0.05)
 
     assert events == ["safe"]
 
@@ -117,6 +125,7 @@ def test_handler_consecutive_failures_unsubscribes() -> None:
     # Trigger 3 failures
     for i in range(3):
         bus.publish("gesture_triggered", f"event_{i}")
+        time.sleep(0.05)
 
     assert call_count == 3
     assert events == ["event_0", "event_1", "event_2"]
@@ -124,6 +133,7 @@ def test_handler_consecutive_failures_unsubscribes() -> None:
     # Publisher should have unsubscribed the bad handler
     # So publishing again should NOT invoke failing_handler
     bus.publish("gesture_triggered", "event_3")
+    time.sleep(0.05)
 
     assert call_count == 3  # remains 3
     assert events == ["event_0", "event_1", "event_2", "event_3"]

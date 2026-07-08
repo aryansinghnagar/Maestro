@@ -18,6 +18,8 @@ def test_no_unsafe_eval_or_exec_in_codebase() -> None:
 
         # Allow only config_manager.py to use eval()
         is_config_manager = py_file.name == "config_manager.py"
+        # Allow plugin_loader.py to use exec() under the sandbox
+        is_plugin_loader = py_file.name == "plugin_loader.py"
 
         with open(py_file, "r", encoding="utf-8") as f:
             content = f.read()
@@ -37,4 +39,7 @@ def test_no_unsafe_eval_or_exec_in_codebase() -> None:
                                 f"Unsafe Call to eval() found in {py_file.relative_to(gc_dir)}"
                             )
                     elif func_name == "exec":
-                        pytest.fail(f"Unsafe Call to exec() found in {py_file.relative_to(gc_dir)}")
+                        if not is_plugin_loader:
+                            pytest.fail(
+                                f"Unsafe Call to exec() found in {py_file.relative_to(gc_dir)}"
+                            )

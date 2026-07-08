@@ -10,6 +10,7 @@ from multiprocessing import shared_memory
 
 from gesture_controller.core.config_manager import ConfigManager
 from gesture_controller.core.event_bus import EventBus
+from gesture_controller.core.hand_tracker import HandTracker
 from gesture_controller.vision.camera_stream import start_camera_process
 from gesture_controller.vision.landmark_extractor import LandmarkExtractor
 from gesture_controller.vision.one_euro_filter import OneEuroFilter
@@ -79,7 +80,7 @@ class GestureEngine:
 
         # Tighten SharedMemory permissions on Unix (S3-14)
         if platform.system() != "Windows":
-            shm_file = Path("/dev/shm") / f"psm_{self._shm_name}"  # nosec B108
+            shm_file = Path("/dev/shm") / self._shm_name  # nosec B108
             if shm_file.exists():
                 try:
                     shm_file.chmod(0o600)
@@ -121,7 +122,10 @@ class GestureEngine:
         merged_config = self._config._config.copy()
         merged_config.update(gestures_config)
 
-        self._filters: dict[str, OneEuroFilter] = {}
+        self._filters: dict[int, OneEuroFilter] = {}
+        self._custom_matchers: dict[int, CustomGestureMatcher] = {}
+        self._active_track_ids: set[int] = set()
+        self._hand_tracker = HandTracker()
         self._fsm_manager = GestureFSMManager(merged_config, self._event_bus)
         self._event_bus.subscribe("plugin_reloaded", self._on_plugin_reloaded)
 
@@ -131,6 +135,15 @@ class GestureEngine:
 
     def _init_custom_gesture_matcher(self) -> None:
         self._custom_matcher = CustomGestureMatcher(self._config._config)
+        # Wrap load_templates to also clear active per-hand matchers
+        original_load = self._custom_matcher.load_templates
+
+        def wrapped_load(*args: Any, **kwargs: Any) -> Any:
+            res = original_load(*args, **kwargs)
+            self._custom_matchers.clear()
+            return res
+
+        self._custom_matcher.load_templates = wrapped_load  # type: ignore[method-assign]
 
     def _init_signals(self) -> None:
         import signal
@@ -273,6 +286,7 @@ class GestureEngine:
         merged_config = self._config._config.copy()
         merged_config.update(gestures_config)
         self._fsm_manager.reload_gestures(merged_config)
+        self._custom_matchers.clear()
 
     def set_paused(self, paused: bool) -> None:
         """Pause or resume the gesture recognition loop."""
@@ -338,18 +352,20 @@ class GestureEngine:
                     # Publish raw landmarks (useful for debug overlays/visualizers)
                     self._event_bus.publish("raw_landmarks", hands)
 
+                    tracked_assignments = self._hand_tracker.update(hands)
                     smoothed_hands = []
-                    for hand in hands:
+
+                    for hand, track_id in tracked_assignments:
                         # Convert hand landmarks to numpy coordinates
                         lm_array = np.array(
                             [[l.x, l.y, l.z] for l in hand.landmarks], dtype=np.float64
                         )
 
-                        # Get or create One-Euro filter per hand/handedness
-                        filt = self._filters.get(hand.handedness)
+                        # Get or create One-Euro filter per hand track ID
+                        filt = self._filters.get(track_id)
                         if filt is None:
                             filt = OneEuroFilter(self._config._config)
-                            self._filters[hand.handedness] = filt
+                            self._filters[track_id] = filt
 
                         # Depth metric: Wrist to Index MCP length
                         mcp5 = lm_array[5]
@@ -377,13 +393,21 @@ class GestureEngine:
                             smoothed_hand, velocity, acceleration, timestamp, self._frame_count
                         )
 
+                        # Get or create CustomGestureMatcher per hand track ID
+                        matcher = self._custom_matchers.get(track_id)
+                        if matcher is None:
+                            matcher = CustomGestureMatcher(self._config._config)
+                            self._custom_matchers[track_id] = matcher
+
                         # Update CustomGestureMatcher rolling buffer
-                        self._custom_matcher.update_buffer(smoothed_hand)
+                        matcher.update_buffer(smoothed_hand)
 
                         # 4. Evaluate FSM transitions
-                        event = self._fsm_manager.evaluate(features, correlation_id)
+                        event = self._fsm_manager.evaluate(
+                            features, correlation_id, track_id=track_id
+                        )
                         if not event:
-                            event = self._custom_matcher.match(timestamp, correlation_id)
+                            event = matcher.match(timestamp, correlation_id)
 
                         if event:
                             # Propagate trigger to subscribers (dispatcher is subscribed to this)
@@ -395,6 +419,16 @@ class GestureEngine:
                                 action=event.action,
                                 correlation_id=correlation_id,
                             )
+
+                    # Identify and clean up retired track IDs
+                    current_track_ids = {track_id for _, track_id in tracked_assignments}
+                    retired_track_ids = self._active_track_ids - current_track_ids
+                    for retired_id in retired_track_ids:
+                        self._filters.pop(retired_id, None)
+                        self._custom_matchers.pop(retired_id, None)
+                        self._fsm_manager.remove_hand(retired_id)
+                    self._active_track_ids = current_track_ids
+
                     self._current_hands = smoothed_hands
                 else:
                     self._current_hands = []
@@ -402,7 +436,12 @@ class GestureEngine:
                     for f in self._filters.values():
                         f.reset()
                     self._fsm_manager.reset_all()
-                    self._custom_matcher.reset()
+                    for m in self._custom_matchers.values():
+                        m.reset()
+                    self._filters.clear()
+                    self._custom_matchers.clear()
+                    self._active_track_ids.clear()
+                    self._hand_tracker.reset()
 
                 self._frame_count += 1
                 self._metrics.observe(

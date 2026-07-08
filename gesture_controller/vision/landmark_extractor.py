@@ -53,12 +53,22 @@ class LandmarkExtractor:
                     raise
                 raise RuntimeError(f"Failed to calculate model file hash: {e}") from e
 
+        # Clamp max_hands strictly between 1 and 2 (inclusive) to prevent collisions (SC-01)
+        raw_max_hands = config.get("engine", {}).get("max_hands", 2)
+        max_hands = max(1, min(2, raw_max_hands))
+        if raw_max_hands != max_hands:
+            logger.warning(
+                "max_hands config capped to prevent FSM/filter collisions",
+                original=raw_max_hands,
+                capped=max_hands,
+            )
+
         # Configure Tasks HandLandmarker options
         base_options = python.BaseOptions(model_asset_path=model_path_str)
         self._options = vision.HandLandmarkerOptions(
             base_options=base_options,
             running_mode=vision.RunningMode.VIDEO,
-            num_hands=config.get("engine", {}).get("max_hands", 2),
+            num_hands=max_hands,
             min_hand_detection_confidence=config.get("engine", {}).get(
                 "min_detection_confidence", 0.7
             ),

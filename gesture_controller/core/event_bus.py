@@ -11,11 +11,11 @@ class EventBus:
     Supports synchronous dispatch for latency-critical events (like gesture simulation)
     and asynchronous worker queue dispatch for telemetry or UI events."""
 
-    SYNC_EVENTS = {"gesture_triggered"}
+    SYNC_EVENTS: set[str] = set()
 
     def __init__(self, max_queue_size: int = 5000) -> None:
         self._subscribers: dict[str, list[Callable[[Any], None]]] = {}
-        self._failures: dict[Callable[[Any], None], int] = {}
+        self._failures: dict[tuple[str, Callable[[Any], None]], int] = {}
         self._lock = threading.Lock()
 
         # Async Queue & Worker Thread (S3-9)
@@ -31,7 +31,7 @@ class EventBus:
             if event_type not in self._subscribers:
                 self._subscribers[event_type] = []
             self._subscribers[event_type].append(handler)
-            self._failures[handler] = 0
+            self._failures[(event_type, handler)] = 0
 
     def unsubscribe(self, event_type: str, handler: Callable[[Any], None]) -> None:
         """Unregister a handler for an event type."""
@@ -40,7 +40,7 @@ class EventBus:
                 self._subscribers[event_type] = [
                     h for h in self._subscribers[event_type] if h != handler
                 ]
-            self._failures.pop(handler, None)
+            self._failures.pop((event_type, handler), None)
 
     def publish(self, event_type: str, event: Any) -> None:
         """Publish an event to all registered subscribers."""
@@ -65,16 +65,18 @@ class EventBus:
                 handler(event)
                 # Successful execution, reset failure count (S3-2)
                 with self._lock:
-                    if handler in self._failures:
-                        self._failures[handler] = 0
+                    key = (event_type, handler)
+                    if key in self._failures:
+                        self._failures[key] = 0
             except Exception as e:
                 logger.exception("Event handler failed", event_type=event_type, error=str(e))
 
                 # Increment failure count and unsubscribe if threshold met (S3-2)
                 with self._lock:
-                    if handler in self._failures:
-                        self._failures[handler] += 1
-                        fails = self._failures[handler]
+                    key = (event_type, handler)
+                    if key in self._failures:
+                        self._failures[key] += 1
+                        fails = self._failures[key]
                         if fails >= 3:
                             logger.critical(
                                 "Event handler exceeded consecutive failures threshold. Auto-unsubscribing.",

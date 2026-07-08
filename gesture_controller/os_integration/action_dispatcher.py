@@ -55,11 +55,12 @@ class ActionDispatcher:
         self._execute(action_str)
         latency_ms = (time.perf_counter() - start_time) * 1000.0
 
+        app_class = self._classify_app(event.app_profile or "")
         logger.info(
             "metric_dispatcher_latency_ms",
             gesture=event.gesture_name,
             action=action_str,
-            app=event.app_profile,
+            app_class=app_class,
             latency_ms=latency_ms,
             correlation_id=correlation_id,
         )
@@ -67,7 +68,7 @@ class ActionDispatcher:
             "Action executed",
             gesture=event.gesture_name,
             action=action_str,
-            app=event.app_profile,
+            app_class=app_class,
             correlation_id=correlation_id,
         )
 
@@ -171,3 +172,28 @@ class ActionDispatcher:
             fn()
         else:
             logger.error("Unknown Media action", action=action)
+
+    def _classify_app(self, app_name: str) -> str:
+        """Classify a raw app name into coarse categories for privacy protection."""
+        if not app_name:
+            return "unknown"
+        app_lower = app_name.lower()
+        if any(b in app_lower for b in ["chrome", "firefox", "safari", "edge", "opera", "browser"]):
+            return "browser"
+        if any(e in app_lower for e in ["code", "sublime", "notepad", "vim", "emacs", "editor"]):
+            return "editor"
+        if any(m in app_lower for m in ["vlc", "spotify", "itunes", "media", "player", "mpv"]):
+            return "media"
+        if any(
+            c in app_lower
+            for c in ["slack", "discord", "teams", "zoom", "skype", "whatsapp", "telegram"]
+        ):
+            return "communication"
+        if any(g in app_lower for g in ["steam", "game", "minecraft"]):
+            return "game"
+        if any(
+            s in app_lower
+            for s in ["explorer", "finder", "system", "terminal", "bash", "cmd", "powershell"]
+        ):
+            return "system"
+        return "unknown"

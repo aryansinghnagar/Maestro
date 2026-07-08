@@ -227,26 +227,85 @@ class PluginLoader:
         # 1.5 Scan AST for unsafe imports / calls (S3-12)
         self._scan_ast_for_unsafe_code(path, meta.get("permissions", []))
 
-        # 1.7 Verify compilation using RestrictedPython sandbox compiler
-        try:
-            from RestrictedPython import compile_restricted
-
-            compile_restricted(path.read_text(encoding="utf-8"), filename=str(path), mode="exec")
-        except Exception as e:
-            raise PluginLoadError(str(path), f"RestrictedPython compile validation failed: {e}")
-
-        # 2. Only execute after manifest is validated
+        # 1.7 Execute in RestrictedPython sandboxed execution environment
         module_name = f"gesture_controller.plugins.{path.stem}"
-        spec = importlib.util.spec_from_file_location(module_name, str(path))
-        if spec is None or spec.loader is None:
-            raise PluginLoadError(str(path), "Cannot create module spec")
-
-        module = importlib.util.module_from_spec(spec)
         try:
-            spec.loader.exec_module(module)
+            from RestrictedPython import compile_restricted, safe_builtins
+            from RestrictedPython.Eval import default_guarded_getattr
+            from RestrictedPython.Guards import full_write_guard
+            import types
+
+            # Compile code under RestrictedPython rules
+            source = path.read_text(encoding="utf-8")
+            code = compile_restricted(source, filename=str(path), mode="exec")
+
+            permissions = meta.get("permissions", [])
+
+            ALLOWED_IMPORTS = {
+                "time",
+                "math",
+                "json",
+                "structlog",
+                "numpy",
+                "mediapipe",
+                "typing",
+            }
+
+            PERMISSION_GATED_IMPORTS = {
+                "pyautogui": "os:input",
+                "ctypes": "os:input",
+                "evdev": "os:input",
+                "Quartz": "os:input",
+                "AppKit": "os:input",
+                "win32api": "os:input",
+                "win32con": "os:input",
+            }
+
+            def guarded_import(
+                name: str,
+                globals: dict[str, Any] | None = None,
+                locals: dict[str, Any] | None = None,
+                fromlist: Any = (),
+                level: int = 0,
+            ) -> Any:
+                base_mod = name.split(".")[0]
+                if base_mod in ALLOWED_IMPORTS:
+                    return __import__(name, globals, locals, fromlist, level)
+                if base_mod in PERMISSION_GATED_IMPORTS:
+                    required_permission = PERMISSION_GATED_IMPORTS[base_mod]
+                    if required_permission in permissions:
+                        return __import__(name, globals, locals, fromlist, level)
+                    raise ImportError(
+                        f"Unauthorized import of '{name}'. Declared permissions do not allow it."
+                    )
+                raise ImportError(
+                    f"Import of module '{name}' is blocked by sandbox security policy."
+                )
+
+            # Create module namespace
+            module = types.ModuleType(module_name)
+            module.__file__ = str(path)
+
+            builtins_dict = safe_builtins.copy()
+            builtins_dict["__import__"] = guarded_import
+
+            module_globals = module.__dict__
+            module_globals.update(
+                {
+                    "__builtins__": builtins_dict,
+                    "_getattr_": default_guarded_getattr,
+                    "_write_": full_write_guard,
+                    "_getiter_": lambda x: iter(x),
+                    "_inplacevar_": lambda op, x, y: x,
+                    "__name__": module_name,
+                    "__file__": str(path),
+                }
+            )
+
+            exec(code, module_globals)
+            sys.modules[module_name] = module
         except Exception as e:
-            raise PluginLoadError(str(path), f"Import error: {e}")
-        sys.modules[module_name] = module
+            raise PluginLoadError(str(path), f"RestrictedPython sandbox execution failed: {e}")
 
         # Re-read meta from the executed module (in case it was computed or customized)
         meta = getattr(module, "PLUGIN_META", meta)
