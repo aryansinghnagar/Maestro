@@ -69,14 +69,18 @@ class GestureEngine:
 
     def _init_shared_memory(self) -> None:
         import multiprocessing as mp
+        import uuid
+        from gesture_controller.vision.double_buffer import DoubleFrameBuffer, TOTAL_SIZE
 
         evt = mp.Event()
         self._frame_ready_event = evt
 
-        self._frame_size = 640 * 480 * 3
-        shm = shared_memory.SharedMemory(create=True, size=self._frame_size)
-        self._shm_name = shm.name
-        self._frame_shm = shm
+        self._frame_size = TOTAL_SIZE
+        self._shm_name = f"maestro_shm_{uuid.uuid4().hex}"
+
+        self._db_buffer = DoubleFrameBuffer(self._shm_name, create=True, size=self._frame_size)
+        self._frame_shm = self._db_buffer.shm
+        self._shm_name = self._frame_shm.name
 
         # Tighten SharedMemory permissions on Unix (S3-14)
         if platform.system() != "Windows":

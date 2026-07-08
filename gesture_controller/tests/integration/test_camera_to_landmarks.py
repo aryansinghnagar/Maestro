@@ -77,9 +77,16 @@ def test_camera_to_landmarks_integration(
 
         # Verify SharedMemory was populated (the frame should be BGR->RGB mirror-flipped)
         # BGR [100, 150, 200] at (10, 20) becomes RGB [200, 150, 100] at (10, 640 - 1 - 20) = (10, 619)
-        assert frame_np[10, 619, 0] == 200
-        assert frame_np[10, 619, 1] == 150
-        assert frame_np[10, 619, 2] == 100
+        from gesture_controller.vision.double_buffer import DoubleFrameBuffer
+
+        db_reader = DoubleFrameBuffer(shm.name, create=False)
+        read_bytes = db_reader.read()
+        assert read_bytes is not None
+        read_frame = np.frombuffer(read_bytes, dtype=np.uint8).reshape((480, 640, 3))
+
+        assert read_frame[10, 619, 0] == 200
+        assert read_frame[10, 619, 1] == 150
+        assert read_frame[10, 619, 2] == 100
 
         # Extract landmarks from SharedMemory using the extractor
         hands = extractor.extract(shm.name)

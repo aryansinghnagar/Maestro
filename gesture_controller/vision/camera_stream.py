@@ -88,10 +88,9 @@ class CameraStream:
         raise RuntimeError(f"Cannot open camera device {device_id} with any backend")
 
     def _capture_loop(self) -> None:
-        shm = shared_memory.SharedMemory(name=self.shm_name)
-        frame_buf = np.ndarray(
-            (FRAME_HEIGHT, FRAME_WIDTH, FRAME_CHANNELS), dtype=np.uint8, buffer=shm.buf
-        )
+        from gesture_controller.vision.double_buffer import DoubleFrameBuffer
+
+        db = DoubleFrameBuffer(name=self.shm_name, create=False)
         watchdog_timeout = self.config.get("camera", {}).get("watchdog_timeout_ms", 2000) / 1000.0
         last_frame_time = time.monotonic()
 
@@ -112,11 +111,11 @@ class CameraStream:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = cv2.flip(frame, 1)  # Mirror
 
-            # Write to SharedMemory (newest overwrites)
-            np.copyto(frame_buf, frame)
+            # Write to DoubleFrameBuffer
+            db.write(frame.tobytes())
             self.frame_ready_event.set()
 
-        shm.close()
+        db.close()
 
     def _disconnect(self) -> None:
         if self._cap is not None:

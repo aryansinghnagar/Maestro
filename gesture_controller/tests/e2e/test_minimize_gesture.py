@@ -138,6 +138,7 @@ def test_minimize_gesture_e2e() -> None:
 
         shm_instance = MagicMock()
         shm_instance.name = "mock_shm"
+        shm_instance.buf = bytearray(1843208)
         MockSHM.return_value = shm_instance
 
         # Instantiate the engine
