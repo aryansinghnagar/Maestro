@@ -187,14 +187,18 @@ def send_key_event(vk_code: int, is_up: bool = False) -> None:
     ki = KEYBDINPUT(wVk=vk_code, wScan=0, dwFlags=flags, time=0, dwExtraInfo=0)
     union = INPUT_UNION(ki=ki)
     input_struct = INPUT(type=1, u=union)  # INPUT_KEYBOARD = 1
-    ctypes.windll.user32.SendInput(1, ctypes.byref(input_struct), ctypes.sizeof(input_struct))
+    ctypes.windll.user32.SendInput(  # type: ignore[attr-defined]
+        1, ctypes.byref(input_struct), ctypes.sizeof(input_struct)
+    )
 
 
 def send_mouse_event(flags: int, dx: int = 0, dy: int = 0, data: int = 0) -> None:
     mi = MOUSEINPUT(dx=dx, dy=dy, mouseData=data, dwFlags=flags, time=0, dwExtraInfo=0)
     union = INPUT_UNION(mi=mi)
     input_struct = INPUT(type=0, u=union)  # INPUT_MOUSE = 0
-    ctypes.windll.user32.SendInput(1, ctypes.byref(input_struct), ctypes.sizeof(input_struct))
+    ctypes.windll.user32.SendInput(  # type: ignore[attr-defined]
+        1, ctypes.byref(input_struct), ctypes.sizeof(input_struct)
+    )
 
 
 class WindowsController(BaseController):
@@ -265,7 +269,7 @@ class WindowsController(BaseController):
 
     def mouse_move(self, x: int, y: int, absolute: bool = True) -> None:
         if absolute:
-            ctypes.windll.user32.SetCursorPos(x, y)
+            ctypes.windll.user32.SetCursorPos(x, y)  # type: ignore[attr-defined]
         else:
             send_mouse_event(0x0001, x, y)  # MOUSEEVENTF_MOVE
 
@@ -277,19 +281,19 @@ class WindowsController(BaseController):
 
     def get_foreground_app(self) -> str:
         """Query foreground window and return its process executable name."""
-        hwnd = ctypes.windll.user32.GetForegroundWindow()
+        hwnd = ctypes.windll.user32.GetForegroundWindow()  # type: ignore[attr-defined]
         if not hwnd:
             return ""
 
-        length = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
+        length = ctypes.windll.user32.GetWindowTextLengthW(hwnd)  # type: ignore[attr-defined]
         title = ""
         if length > 0:
             buf = ctypes.create_unicode_buffer(length + 1)
-            ctypes.windll.user32.GetWindowTextW(hwnd, buf, length + 1)
+            ctypes.windll.user32.GetWindowTextW(hwnd, buf, length + 1)  # type: ignore[attr-defined]
             title = buf.value
 
         pid = ctypes.c_ulong()
-        ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))  # type: ignore[attr-defined]
 
         import psutil
 
@@ -299,9 +303,9 @@ class WindowsController(BaseController):
             return str(title.lower())
 
     def minimize_active_window(self) -> None:
-        hwnd = ctypes.windll.user32.GetForegroundWindow()
+        hwnd = ctypes.windll.user32.GetForegroundWindow()  # type: ignore[attr-defined]
         if hwnd:
-            ctypes.windll.user32.ShowWindow(hwnd, 6)  # SW_MINIMIZE = 6
+            ctypes.windll.user32.ShowWindow(hwnd, 6)  # type: ignore[attr-defined]  # SW_MINIMIZE = 6
 
     def switch_window(self) -> None:
         self.key_combo(["alt", "tab"])
