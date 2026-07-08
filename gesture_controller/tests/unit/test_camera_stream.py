@@ -69,10 +69,17 @@ def test_capture_loop_writes_to_shared_memory(
     # 1. Resized to 640x480 (already 640x480)
     # 2. Converted to RGB (BGR blue [255, 0, 0] becomes RGB blue [0, 0, 255])
     # 3. Flipped horizontally (uniform, so doesn't change layout)
+    from gesture_controller.vision.double_buffer import DoubleFrameBuffer
+
+    db_reader = DoubleFrameBuffer(shm.name, create=False)
+    read_bytes = db_reader.read()
+    assert read_bytes is not None
+    read_frame = np.frombuffer(read_bytes, dtype=np.uint8).reshape((480, 640, 3))
+
     expected_frame = np.zeros((480, 640, 3), dtype=np.uint8)
     expected_frame[:, :, 2] = 255  # Red channel in RGB (due to conversion)
 
-    np.testing.assert_array_equal(frame_np, expected_frame)
+    np.testing.assert_array_equal(read_frame, expected_frame)
 
 
 def test_camera_watchdog_timeout(

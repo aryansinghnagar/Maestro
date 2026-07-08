@@ -76,29 +76,63 @@ class LandmarkExtractor:
                 "min_tracking_confidence", 0.5
             ),
         )
-        self._landmarker = vision.HandLandmarker.create_from_options(self._options)
+
+        self._is_onnx = False
+        if config.get("engine", {}).get("use_onnx", False):
+            try:
+                from gesture_controller.vision.onnx_backend import ONNXHandLandmarker
+
+                self._landmarker = ONNXHandLandmarker(config)
+                self._is_onnx = True
+                logger.info("ONNX Runtime backend loaded successfully")
+            except Exception as e:
+                logger.warning(
+                    "ONNX Runtime initialization failed, falling back to MediaPipe Tasks API",
+                    error=str(e),
+                )
+                self._landmarker = vision.HandLandmarker.create_from_options(self._options)
+        else:
+            self._landmarker = vision.HandLandmarker.create_from_options(self._options)
+
+        from gesture_controller.vision.double_buffer import DoubleFrameBuffer
+        self._db: DoubleFrameBuffer | None = None
         logger.info("MediaPipe HandLandmarker Tasks API initialized in VIDEO mode")
 
     def extract(self, shm_name: str, timestamp_ms: int | None = None) -> list[Hand] | None:
-        """Read frame from SharedMemory, extract landmarks, return list[Hand].
+        """Read frame from DoubleFrameBuffer, extract landmarks, return list[Hand].
         Returns None if no hands detected."""
         if timestamp_ms is None:
             timestamp_ms = int(time.monotonic() * 1000)
 
+        # Lazy attachment and caching of DoubleFrameBuffer
+        from gesture_controller.vision.double_buffer import DoubleFrameBuffer
+
+        if self._db is None or self._db.name != shm_name:
+            if self._db:
+                self._db.close()
+            try:
+                self._db = DoubleFrameBuffer(name=shm_name, create=False)
+            except Exception as e:
+                logger.error(
+                    "Failed to attach to DoubleFrameBuffer during extraction",
+                    name=shm_name,
+                    error=str(e),
+                )
+                return None
+
         try:
-            shm = shared_memory.SharedMemory(name=shm_name)
-            frame = np.ndarray(
-                (FRAME_HEIGHT, FRAME_WIDTH, FRAME_CHANNELS),
-                dtype=np.uint8,
-                buffer=shm.buf,
+            frame_bytes = self._db.read()
+            if frame_bytes is None:
+                logger.warning("Failed to read frame atomically from DoubleFrameBuffer")
+                return None
+
+            rgb_frame = (
+                np.frombuffer(frame_bytes, dtype=np.uint8)
+                .reshape((FRAME_HEIGHT, FRAME_WIDTH, FRAME_CHANNELS))
+                .copy()
             )
-            rgb_frame = frame.copy()  # MediaPipe needs contiguous array
-            shm.close()
-        except FileNotFoundError:
-            logger.warning("SharedMemory not found during landmark extraction")
-            return None
         except Exception as e:
-            logger.error("Error reading frame from SharedMemory", error=str(e))
+            logger.error("Error reading frame from DoubleFrameBuffer", error=str(e))
             return None
 
         # Wrap NumPy array into MediaPipe Image object
@@ -142,7 +176,12 @@ class LandmarkExtractor:
         return hands
 
     def close(self) -> None:
-        """Close HandLandmarker resource."""
+        """Close HandLandmarker and DoubleFrameBuffer resources."""
+        if self._db:
+            try:
+                self._db.close()
+            except Exception as e:
+                logger.debug("Error closing DoubleFrameBuffer handle", error=str(e))
         try:
             self._landmarker.close()
             logger.info("MediaPipe HandLandmarker closed")

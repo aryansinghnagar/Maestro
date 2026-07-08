@@ -11,6 +11,7 @@ def test_engine_initialization_and_shutdown() -> None:
     mock_process = MagicMock()
     mock_shm = MagicMock()
     mock_shm.name = "mock_shm_segment"
+    mock_shm.buf = bytearray(1843208)
 
     # Patch all the system-dependent resources
     with (
@@ -47,6 +48,7 @@ def test_engine_main_loop_publishing() -> None:
     mock_process = MagicMock()
     mock_shm = MagicMock()
     mock_shm.name = "mock_shm_segment"
+    mock_shm.buf = bytearray(1843208)
 
     dummy_hands = [MagicMock()]
     mock_extractor.extract.return_value = dummy_hands
@@ -83,6 +85,7 @@ def test_engine_main_loop_publishing() -> None:
 def test_engine_initialization_rollback() -> None:
     mock_shm = MagicMock()
     mock_shm.name = "mock_shm_segment"
+    mock_shm.buf = bytearray(1843208)
     mock_process = MagicMock()
 
     with (

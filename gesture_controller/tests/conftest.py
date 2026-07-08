@@ -277,8 +277,13 @@ def thumbs_up_hand() -> Hand:
 @pytest.fixture
 def shared_memory_frame() -> tuple[shared_memory.SharedMemory, np.ndarray]:
     """Provides a shared memory segment populated with a dummy frame."""
-    shm = shared_memory.SharedMemory(create=True, size=640 * 480 * 3)
-    frame = np.ndarray((480, 640, 3), dtype=np.uint8, buffer=shm.buf)
+    import struct
+    from gesture_controller.vision.double_buffer import TOTAL_SIZE, HEADER_SIZE
+
+    shm = shared_memory.SharedMemory(create=True, size=TOTAL_SIZE)
+    # Initialize sequence counter to 2 (slot 0 complete)
+    struct.pack_into("<Q", shm.buf, 0, 2)
+    frame = np.ndarray((480, 640, 3), dtype=np.uint8, buffer=shm.buf, offset=HEADER_SIZE)
     frame.fill(0)
     yield shm, frame
     shm.close()
