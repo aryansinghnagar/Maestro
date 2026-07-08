@@ -119,6 +119,11 @@ module = [
 ]
 ignore_errors = true
 
+[[tool.mypy.overrides]]
+module = "gesture_controller.os_integration.windows_controller"
+warn_unused_ignores = false
+
+
 [tool.pytest.ini_options]
 testpaths = ["gesture_controller/tests"]
 markers = [

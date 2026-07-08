@@ -16,7 +16,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python_version: '3.11'
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |
@@ -27,4 +27,4 @@ jobs:
       - name: Run Fuzz Target
         run: |
           # Run the fuzz target for 10 minutes (600 seconds)
-          python gesture_controller/tests/fuzz/fuzz_compile_condition.py -max_total_time=600 || echo "Fuzzing run completed or encountered expected fuzzing stops."
+          python tests/fuzz/fuzz_compile_condition.py -max_total_time=600 || echo "Fuzzing run completed or encountered expected fuzzing stops."

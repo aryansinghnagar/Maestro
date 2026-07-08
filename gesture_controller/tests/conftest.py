@@ -1,3 +1,22 @@
+import os
+import sys
+
+# --- Environment setup (must happen before any PyQt6 import) ---
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+# --- Cross-platform ctypes.windll injection ---
+# On non-Windows platforms, `ctypes.windll` does not exist. Many tests use
+# `patch("ctypes.windll.shell32.IsUserAnAdmin", ..., create=True)` which
+# traverses the path `ctypes.windll.shell32`. Even with `create=True`, the
+# intermediate `ctypes.windll` must exist for patch to resolve the path.
+# Inject a MagicMock here so those patches work on Linux/macOS CI.
+if sys.platform != "win32":
+    import ctypes
+    from unittest.mock import MagicMock
+
+    if not hasattr(ctypes, "windll"):
+        ctypes.windll = MagicMock()  # type: ignore[attr-defined]
+
 import pytest
 import numpy as np
 from multiprocessing import shared_memory
