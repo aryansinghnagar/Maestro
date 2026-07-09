@@ -87,7 +87,7 @@ class AuditLogger:
             except Exception:
                 pass
 
-    def log(self, event_type: str, details: dict) -> None:
+    def log(self, event_type: str, details: dict[str, Any]) -> None:
         with self._lock:
             now_str = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
             entry = {
@@ -188,9 +188,13 @@ class InjectionBrokerServer:
         finally:
             conn.close()
 
-    def handle_request(self, req: dict) -> dict:
+    def handle_request(self, req: dict[str, Any]) -> dict[str, Any]:
         action = req.get("action")
         gesture_id = req.get("gesture_id")
+        if isinstance(gesture_id, str):
+            gesture_str: Optional[str] = gesture_id
+        else:
+            gesture_str = None
         
         if action == "set_kill_switch":
             active = bool(req.get("active", False))
@@ -202,17 +206,20 @@ class InjectionBrokerServer:
             return {"status": "ok", "active": self.kill_switch_active}
 
         if self.kill_switch_active:
-            self.audit_logger.log("blocked_by_kill_switch", {"method": action})
+            self.audit_logger.log("blocked_by_kill_switch", {"method": str(action)})
             return {"status": "kill_switch_active"}
 
         method_name = req.get("method")
         args = req.get("args", {})
         
+        if not isinstance(method_name, str):
+            return {"status": "error", "message": "Method name must be a string"}
+            
         if not hasattr(self.controller, method_name):
             return {"status": "error", "message": f"Method {method_name} not supported"}
             
-        if not self.rate_limiter.check_and_record(gesture_id):
-            self.audit_logger.log("rate_limited", {"method": method_name, "gesture_id": gesture_id})
+        if not self.rate_limiter.check_and_record(gesture_str):
+            self.audit_logger.log("rate_limited", {"method": method_name, "gesture_id": gesture_str})
             return {"status": "rate_limited"}
 
         # Esc x 3 detection
@@ -224,7 +231,7 @@ class InjectionBrokerServer:
         self.audit_logger.log("action_executed", {
             "method": method_name,
             "args": args,
-            "gesture_id": gesture_id
+            "gesture_id": gesture_str
         })
 
         try:
@@ -323,7 +330,7 @@ class BrokerClientController(BaseController):
                 
         return False
 
-    def _send_request(self, method_name: str, args: dict) -> dict:
+    def _send_request(self, method_name: str, args: dict[str, Any]) -> dict[str, Any]:
         if not self._ensure_connected():
             return {"status": "error", "message": "Failed to connect to broker"}
             
@@ -338,7 +345,9 @@ class BrokerClientController(BaseController):
             try:
                 self._conn.send_bytes(json.dumps(req).encode("utf-8"))
                 res_bytes = self._conn.recv_bytes()
-                return json.loads(res_bytes.decode("utf-8"))
+                res = json.loads(res_bytes.decode("utf-8"))
+                if isinstance(res, dict):
+                    return res
             except Exception as e:
                 logger.error("Broker connection error, retrying...", error=str(e))
                 self._conn = None
@@ -349,7 +358,9 @@ class BrokerClientController(BaseController):
                 try:
                     self._conn.send_bytes(json.dumps(req).encode("utf-8"))
                     res_bytes = self._conn.recv_bytes()
-                    return json.loads(res_bytes.decode("utf-8"))
+                    res = json.loads(res_bytes.decode("utf-8"))
+                    if isinstance(res, dict):
+                        return res
                 except Exception:
                     self._conn = None
                     
@@ -383,7 +394,8 @@ class BrokerClientController(BaseController):
 
     def get_foreground_app(self) -> str:
         res = self._send_request("get_foreground_app", {})
-        return res.get("result", "unknown")
+        result = res.get("result", "unknown")
+        return str(result)
 
     def minimize_active_window(self) -> None:
         self._send_request("minimize_active_window", {})

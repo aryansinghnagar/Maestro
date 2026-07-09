@@ -5,7 +5,7 @@ from pathlib import Path
 from PyQt6.QtCore import QThread, pyqtSignal
 from typing import Any
 
-from tuf.ngclient import Updater, FetcherInterface
+from tuf.ngclient import Updater, FetcherInterface  # type: ignore[attr-defined]
 from tuf.api import exceptions as tuf_exceptions
 from urllib.parse import urlparse
 from urllib.request import url2pathname
@@ -24,7 +24,7 @@ def _secure_symlink(src: str, dst: str, **kwargs: Any) -> None:
         if os.path.exists(dst):
             os.remove(dst)
         shutil.copy(abs_src, dst)
-os.symlink = _secure_symlink
+os.symlink = _secure_symlink  # type: ignore[assignment]
 
 # Default bootstrap root.json content for client trust initialization
 BOOTSTRAP_ROOT = {
