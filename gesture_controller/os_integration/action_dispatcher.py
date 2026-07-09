@@ -51,8 +51,16 @@ class ActionDispatcher:
         if not action_str:
             return
 
+        # Set active gesture context on controller if supported (e.g. BrokerClientController)
+        if hasattr(self._controller, "set_active_gesture"):
+            self._controller.set_active_gesture(event.gesture_name)
+
         start_time = time.perf_counter()
-        self._execute(action_str)
+        try:
+            self._execute(action_str)
+        finally:
+            if hasattr(self._controller, "set_active_gesture"):
+                self._controller.set_active_gesture(None)
         latency_ms = (time.perf_counter() - start_time) * 1000.0
 
         app_class = self._classify_app(event.app_profile or "")

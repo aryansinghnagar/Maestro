@@ -18,6 +18,12 @@ from gesture_controller.os_integration import create_controller
 from gesture_controller.os_integration.windows_controller import WindowsController
 from gesture_controller.os_integration.macos_controller import MacOSController
 from gesture_controller.os_integration.linux_wayland_controller import LinuxWaylandController
+from gesture_controller.os_integration.broker import BrokerClientController
+
+
+def test_factory_returns_broker_controller_by_default() -> None:
+    ctrl = create_controller()
+    assert isinstance(ctrl, BrokerClientController)
 
 
 @patch("platform.system", return_value="Windows")
@@ -28,7 +34,7 @@ from gesture_controller.os_integration.linux_wayland_controller import LinuxWayl
 def test_factory_returns_windows_controller(
     mock_supported: MagicMock, mock_system: MagicMock
 ) -> None:
-    ctrl = create_controller()
+    ctrl = create_controller(use_broker=False)
     assert isinstance(ctrl, WindowsController)
 
 
@@ -40,7 +46,7 @@ def test_factory_returns_windows_controller(
 def test_factory_returns_macos_controller(
     mock_supported: MagicMock, mock_system: MagicMock
 ) -> None:
-    ctrl = create_controller()
+    ctrl = create_controller(use_broker=False)
     assert isinstance(ctrl, MacOSController)
 
 
@@ -52,12 +58,12 @@ def test_factory_returns_macos_controller(
 def test_factory_returns_linux_controller(
     mock_supported: MagicMock, mock_system: MagicMock
 ) -> None:
-    ctrl = create_controller()
+    ctrl = create_controller(use_broker=False)
     assert isinstance(ctrl, LinuxWaylandController)
 
 
 @patch("platform.system", return_value="FreeBSD")
 def test_factory_raises_runtime_error_on_unsupported_os(mock_system: MagicMock) -> None:
     with pytest.raises(RuntimeError) as excinfo:
-        create_controller()
+        create_controller(use_broker=False)
     assert "No supported OS controller found for platform: FreeBSD" in str(excinfo.value)

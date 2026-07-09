@@ -6,8 +6,13 @@ from gesture_controller.os_integration.base_controller import BaseController
 logger = structlog.get_logger(__name__)
 
 
-def create_controller() -> BaseController:
+def create_controller(use_broker: bool = True) -> BaseController:
     """Factory function that returns the correct platform controller."""
+    if use_broker:
+        from gesture_controller.os_integration.broker import BrokerClientController
+        logger.info("Created BrokerClientController OS adapter")
+        return BrokerClientController()
+
     system = platform.system()
 
     if system == "Windows":

@@ -10,6 +10,18 @@ import jsonschema
 from pathlib import Path
 from typing import Any, Callable
 
+# Try importing tomllib (Python 3.11+)
+try:
+    import tomllib
+except ImportError:
+    tomllib = None
+
+# Try importing wasmtime
+try:
+    import wasmtime
+except ImportError:
+    wasmtime = None
+
 # Try importing watchdog (only used for hot reloading)
 try:
     from watchdog.observers import Observer
@@ -85,7 +97,10 @@ class PluginLoader:
                 "author": {"type": "string"},
                 "permissions": {
                     "type": "array",
-                    "items": {"type": "string", "enum": ["os:input", "ui:hud", "camera:read"]},
+                    "items": {
+                        "type": "string",
+                        "enum": ["os:input", "ui:hud", "camera:read", "config:read"],
+                    },
                 },
             },
         }
@@ -118,6 +133,26 @@ class PluginLoader:
                     plugins.append(plugin)
                 except PluginLoadError as e:
                     logger.warning("Plugin load failed", path=str(py_file), reason=e.reason)
+
+            # Discover WASM plugins in subdirectories if tomllib and wasmtime are available
+            if tomllib is not None and wasmtime is not None:
+                for sub_dir in sorted(plugin_dir.iterdir()):
+                    if sub_dir.is_dir() and (sub_dir / "maestro.toml").exists():
+                        try:
+                            plugin = self._load_wasm_plugin(sub_dir)
+                            if plugin.meta["name"] in seen_names:
+                                logger.warning(
+                                    "Duplicate plugin name, skipping",
+                                    name=plugin.meta["name"],
+                                    path=str(sub_dir),
+                                )
+                                continue
+                            seen_names.add(plugin.meta["name"])
+                            plugins.append(plugin)
+                        except PluginLoadError as e:
+                            logger.warning(
+                                "WASM plugin load failed", path=str(sub_dir), reason=e.reason
+                            )
 
         self._plugins = {p.meta["name"]: p for p in plugins}
         logger.info("Plugins loaded", count=len(plugins), names=[p.meta["name"] for p in plugins])
@@ -390,3 +425,178 @@ class PluginLoader:
             if action_name in plugin.actions:
                 return plugin.actions[action_name]
         return None
+
+    def _load_wasm_plugin(self, path: Path) -> Plugin:
+        """Load and validate a directory-based WASM plugin with sandboxed wasmtime runtime."""
+        if tomllib is None or wasmtime is None:
+            raise PluginLoadError(str(path), "WASM runtime dependencies not installed")
+
+        manifest_path = path / "maestro.toml"
+        try:
+            with open(manifest_path, "rb") as f:
+                config = tomllib.load(f)
+        except Exception as e:
+            raise PluginLoadError(str(path), f"Failed to parse maestro.toml: {e}")
+
+        # Construct meta and validate against schema
+        try:
+            meta = {
+                "name": config["plugin"]["name"],
+                "version": config["plugin"]["version"],
+                "description": config["plugin"].get("description", ""),
+                "author": config["plugin"].get("author", ""),
+                "permissions": [k for k, v in config.get("capabilities", {}).items() if v],
+            }
+            jsonschema.validate(meta, self._schema)
+        except KeyError as e:
+            raise PluginLoadError(str(path), f"Missing key in maestro.toml: {e}")
+        except jsonschema.ValidationError as e:
+            raise PluginLoadError(str(path), f"Invalid metadata: {e.message}")
+
+        wasm_path = path / "plugin.wasm"
+        if not wasm_path.exists():
+            wasm_path = path / "plugin.wat"
+        if not wasm_path.exists():
+            raise PluginLoadError(str(path), "Missing plugin.wasm or plugin.wat")
+
+        # Compile WASM module
+        try:
+            engine = wasmtime.Engine()
+            store = wasmtime.Store(engine)
+            linker = wasmtime.Linker(engine)
+
+            if wasm_path.suffix == ".wat":
+                module = wasmtime.Module(engine, wasm_path.read_text(encoding="utf-8"))
+            else:
+                module = wasmtime.Module(engine, wasm_path.read_bytes())
+        except Exception as e:
+            raise PluginLoadError(str(wasm_path), f"WASM compilation failed: {e}")
+
+        gestures: list[dict] = []
+
+        # Helper to read strings from WASM memory
+        def get_wasm_string(caller: Any, ptr: int, length: int) -> str:
+            memory = caller.get("memory")
+            if not memory:
+                raise RuntimeError("WASM module does not export 'memory'")
+            data = memory.read(caller, ptr, ptr + length)
+            return data.decode("utf-8")
+
+        # Define host imports
+        def trigger_action(caller: Any, ptr: int, length: int) -> None:
+            if "os:input" not in meta["permissions"]:
+                raise PermissionError("Permission Denied: Plugin lacks 'os:input' capability")
+            action = get_wasm_string(caller, ptr, length)
+            logger.info("WASM plugin triggered action", plugin=meta["name"], action=action)
+            self._event_bus.publish("action_triggered", action)
+
+        def get_config(
+            caller: Any, key_ptr: int, key_len: int, val_buf_ptr: int, val_buf_len: int
+        ) -> int:
+            if "config:read" not in meta["permissions"]:
+                raise PermissionError("Permission Denied: Plugin lacks 'config:read' capability")
+            key = get_wasm_string(caller, key_ptr, key_len)
+            val = ""
+            memory = caller.get("memory")
+            if not memory:
+                raise RuntimeError("WASM module does not export 'memory'")
+
+            val_bytes = val.encode("utf-8")
+            write_len = min(len(val_bytes), val_buf_len)
+            memory.write(caller, val_bytes[:write_len], val_buf_ptr)
+            return write_len
+
+        def register_gesture(caller: Any, ptr: int, length: int) -> None:
+            gesture_json = get_wasm_string(caller, ptr, length)
+            try:
+                gesture = json.loads(gesture_json)
+                gesture_schema_path = (
+                    Path(__file__).parent.parent / "data" / "gesture_schema.json"
+                )
+                if gesture_schema_path.exists():
+                    with open(gesture_schema_path, "r") as f:
+                        g_schema = json.load(f)
+                    jsonschema.validate(gesture, g_schema)
+                gestures.append(gesture)
+            except Exception as e:
+                logger.error("WASM plugin failed to register gesture", error=str(e))
+
+        # Register functions in linker
+        try:
+            linker.define_func(
+                "maestro",
+                "trigger_action",
+                wasmtime.FuncType([wasmtime.ValType.i32(), wasmtime.ValType.i32()], []),
+                trigger_action,
+                access_caller=True,
+            )
+            linker.define_func(
+                "maestro",
+                "get_config",
+                wasmtime.FuncType(
+                    [
+                        wasmtime.ValType.i32(),
+                        wasmtime.ValType.i32(),
+                        wasmtime.ValType.i32(),
+                        wasmtime.ValType.i32(),
+                    ],
+                    [wasmtime.ValType.i32()],
+                ),
+                get_config,
+                access_caller=True,
+            )
+            linker.define_func(
+                "maestro",
+                "register_gesture",
+                wasmtime.FuncType([wasmtime.ValType.i32(), wasmtime.ValType.i32()], []),
+                register_gesture,
+                access_caller=True,
+            )
+        except Exception as e:
+            raise PluginLoadError(str(path), f"Failed to define host imports: {e}")
+
+        # Instantiate module
+        try:
+            instance = linker.instantiate(store, module)
+        except Exception as e:
+            raise PluginLoadError(str(path), f"WASM instantiation failed: {e}")
+
+        class WASMPluginWrapper:
+            def __init__(self, store: Any, instance: Any) -> None:
+                self.store = store
+                self.instance = instance
+
+            def init(self) -> None:
+                exports = self.instance.exports(self.store)
+                if "init" in exports:
+                    exports["init"](self.store)
+
+            def on_gesture(
+                self, event_name: str, hand: str, confidence: float, timestamp: int
+            ) -> None:
+                exports = self.instance.exports(self.store)
+                if "on_gesture" in exports:
+                    memory = exports.get("memory")
+                    if memory:
+                        event_bytes = event_name.encode("utf-8")
+                        memory.write(self.store, event_bytes, 1024)
+                        hand_code = 1 if hand == "Right" else 0
+                        exports["on_gesture"](
+                            self.store,
+                            1024,
+                            len(event_bytes),
+                            hand_code,
+                            confidence,
+                            timestamp,
+                        )
+
+        wrapper = WASMPluginWrapper(store, instance)
+
+        # Call init to allow gesture registration
+        try:
+            wrapper.init()
+        except Exception as e:
+            raise PluginLoadError(str(path), f"Plugin init call failed: {e}")
+
+        # Return custom Plugin wrapper
+        return Plugin(path=path, module=wrapper, meta=meta, gestures=gestures, actions={})
