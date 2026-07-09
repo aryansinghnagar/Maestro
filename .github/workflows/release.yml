@@ -13,6 +13,8 @@ jobs:
   build:
     name: Build and Package Release
     runs-on: windows-latest
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -50,12 +52,31 @@ jobs:
             echo "Skipping Windows signing: Secrets not configured."
           }
 
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.5.0
+
+      - name: Sign Executable with Cosign (Keyless)
+        run: |
+          cosign sign-blob --yes --output-signature dist/Maestro.exe.sig --output-certificate dist/Maestro.exe.pem dist/Maestro.exe
+
+      - name: Generate Hashes for SLSA Generic Generator
+        id: hash
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash dist/Maestro.exe -Algorithm SHA256).Hash.ToLower()
+          $filename = "Maestro.exe"
+          $subject = "$hash  $filename"
+          $base64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($subject))
+          echo "hashes=$base64" >> $env:GITHUB_OUTPUT
+
       - name: Upload SBOM and Binaries
         uses: actions/upload-artifact@v4
         with:
           name: Maestro-Windows-Artifacts
           path: |
             dist/Maestro.exe
+            dist/Maestro.exe.sig
+            dist/Maestro.exe.pem
             sbom.json
 
   provenance:
