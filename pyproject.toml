@@ -67,6 +67,7 @@ dev = [
 ]
 
 [project.scripts]
+maestro = "gesture_controller.cli.maestro_cli:main"
 gesture-controller = "gesture_controller.main:main"
 gesture-controller-verify = "gesture_controller.cli.verify_install:main"
 

@@ -211,9 +211,8 @@ class GestureControllerApp:
     def _export_diagnostics(self) -> None:
         """Export system logs, user configurations, custom gesture templates, and plugins to a ZIP archive."""
         from PyQt6.QtWidgets import QFileDialog, QMessageBox
-        import zipfile
-        from gesture_controller.core.config_manager import USER_CONFIG_DIRS
-        import platform
+        from pathlib import Path
+        from gesture_controller.core.compliance import export_data
 
         save_path, _ = QFileDialog.getSaveFileName(
             None,
@@ -225,37 +224,7 @@ class GestureControllerApp:
             return
 
         try:
-            user_dir = USER_CONFIG_DIRS.get(platform.system())
-            if not user_dir:
-                raise RuntimeError("Could not determine user config directory path")
-
-            with zipfile.ZipFile(save_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-                # 1. Export user config.yaml if it exists
-                config_file = user_dir / "config.yaml"
-                if config_file.exists():
-                    zipf.write(config_file, arcname="config.yaml")
-
-                # 2. Export logs directory if it exists
-                log_dir = user_dir / "logs"
-                if log_dir.exists():
-                    for f in log_dir.glob("*"):
-                        if f.is_file():
-                            zipf.write(f, arcname=f"logs/{f.name}")
-
-                # 3. Export custom gesture templates directory if it exists
-                template_dir = user_dir / "templates"
-                if template_dir.exists():
-                    for f in template_dir.glob("**/*"):
-                        if f.is_file():
-                            zipf.write(f, arcname=f"templates/{f.relative_to(template_dir)}")
-
-                # 4. Export plugins directory if it exists
-                plugins_dir = user_dir / "plugins"
-                if plugins_dir.exists():
-                    for f in plugins_dir.glob("**/*"):
-                        if f.is_file():
-                            zipf.write(f, arcname=f"plugins/{f.relative_to(plugins_dir)}")
-
+            export_data(Path(save_path))
             QMessageBox.information(
                 None, "Diagnostics Exported", f"Successfully exported diagnostics to:\n{save_path}"
             )
