@@ -124,7 +124,7 @@ def redact_logs_text(content: str) -> str:
 def get_plugins_metadata(plugins_dir: Path) -> List[Dict[str, Any]]:
     """Scan the plugins directory and return list of metadata instead of source code."""
     from gesture_controller.plugins.plugin_loader import PluginLoader
-    loader = PluginLoader(MagicMock() if "MagicMock" in globals() else None)
+    loader = PluginLoader(None)
     
     plugins_meta = []
     if not plugins_dir.exists():
@@ -152,14 +152,16 @@ def get_plugins_metadata(plugins_dir: Path) -> List[Dict[str, Any]]:
         if sub_dir.is_dir() and manifest_path.exists():
             try:
                 # Try tomllib
+                tomllib_mod = None
                 try:
                     import tomllib
+                    tomllib_mod = tomllib
                 except ImportError:
-                    tomllib = None
+                    pass
                     
-                if tomllib:
+                if tomllib_mod:
                     with open(manifest_path, "rb") as f:
-                        config = tomllib.load(f)
+                        config = tomllib_mod.load(f)
                     plugins_meta.append({
                         "name": config["plugin"]["name"],
                         "version": config["plugin"]["version"],
