@@ -5,8 +5,8 @@ import numpy as np
 import cv2
 import structlog
 
-from gesture_controller.vision.mp_palmdet import MPPalmDet
-from gesture_controller.vision.mp_handpose import MPHandPose
+from gesture_controller.vision.palm_detector import PalmDetector
+from gesture_controller.vision.hand_pose_estimator import HandPoseEstimator
 
 logger = structlog.get_logger(__name__)
 
@@ -50,11 +50,11 @@ class ONNXHandLandmarker:
             )
 
         conf_threshold = config.get("engine", {}).get("min_detection_confidence", 0.7)
-        self.palm_det = MPPalmDet(str(palm_model_path), scoreThreshold=conf_threshold)  # type: ignore[no-untyped-call]
-        self.hand_pose = MPHandPose(str(landmark_model_path), confThreshold=conf_threshold)  # type: ignore[no-untyped-call]
+        self.palm_det = PalmDetector(str(palm_model_path), scoreThreshold=conf_threshold)  # type: ignore[no-untyped-call]
+        self.hand_pose = HandPoseEstimator(str(landmark_model_path), confThreshold=conf_threshold)  # type: ignore[no-untyped-call]
         logger.info("ONNX Runtime Hand Landmarker backend initialized successfully")
 
-    def detect_for_video(self, mp_image: Any, timestamp_ms: int) -> ONNXHandLandmarkerResult:
+    def detect_hands(self, mp_image: Any, timestamp_ms: int) -> ONNXHandLandmarkerResult:
         """Run two-stage inference on input image and return landmark results."""
         # Extract raw numpy image from MediaPipe Image wrapper or numpy array
         if isinstance(mp_image, np.ndarray):
@@ -66,7 +66,7 @@ class ONNXHandLandmarker:
         else:
             image = getattr(mp_image, "data", mp_image)
 
-        # Convert RGB to BGR for OpenCV DNN preprocessing inside MPPalmDet/MPHandPose
+        # Convert RGB to BGR for OpenCV DNN preprocessing inside PalmDetector/HandPoseEstimator
         image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
         # 1. Palm Detection

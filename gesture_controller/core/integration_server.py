@@ -84,8 +84,11 @@ class IntegrationServer:
     def _listen_loop(self) -> None:
         while self.running:
             try:
-                conn, addr = self._server_socket.accept()
-                threading.Thread(target=self._handle_connection, args=(conn,), daemon=True).start()
+                if self._server_socket:
+                    conn, addr = self._server_socket.accept()
+                    threading.Thread(target=self._handle_connection, args=(conn,), daemon=True).start()
+                else:
+                    break
             except Exception:
                 break
 
@@ -193,7 +196,7 @@ class IntegrationServer:
             except Exception:
                 pass
 
-    def _send_http_response(self, conn: socket.socket, status_code: int, payload: dict) -> None:
+    def _send_http_response(self, conn: socket.socket, status_code: int, payload: dict[str, Any]) -> None:
         status_map = {200: "OK", 400: "Bad Request", 401: "Unauthorized", 404: "Not Found"}
         status_text = status_map.get(status_code, "Internal Server Error")
         

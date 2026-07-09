@@ -140,7 +140,7 @@ Windows-specific controller implementing a simpler user-space input emulation fr
 #### [NEW] [macos_controller.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/os_integration/macos_controller.py)
 macOS-specific controller implementing `Quartz.CoreGraphics` event posting for input simulation and `AXUIElement` Accessibility API calls for non-focused window management.
 
-#### [NEW] [linux_wayland_controller.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/os_integration/linux_wayland_controller.py)
+#### [NEW] [linux_controller.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/os_integration/linux_controller.py)
 Linux-specific controller using `/dev/uinput` via the `evdev` library to simulate a hardware mouse and keyboard, bypassing Wayland input isolation blocks.
 
 #### [NEW] [action_dispatcher.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/os_integration/action_dispatcher.py)

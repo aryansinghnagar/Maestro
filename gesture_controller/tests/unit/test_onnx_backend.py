@@ -62,14 +62,14 @@ def test_onnx_backend_detect_success() -> None:
 
     with (
         patch("pathlib.Path.exists", return_value=True),
-        patch("gesture_controller.vision.onnx_backend.MPPalmDet", return_value=mock_palm_det),
-        patch("gesture_controller.vision.onnx_backend.MPHandPose", return_value=mock_hand_pose),
+        patch("gesture_controller.vision.onnx_backend.PalmDetector", return_value=mock_palm_det),
+        patch("gesture_controller.vision.onnx_backend.HandPoseEstimator", return_value=mock_hand_pose),
     ):
         landmarker = ONNXHandLandmarker(config)
 
         # Create a dummy image
         dummy_image = np.zeros((480, 640, 3), dtype=np.uint8)
-        result = landmarker.detect_for_video(dummy_image, timestamp_ms=100)
+        result = landmarker.detect_hands(dummy_image, timestamp_ms=100)
 
         assert len(result.hand_landmarks) == 1
         assert len(result.handedness) == 1

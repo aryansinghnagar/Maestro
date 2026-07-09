@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 import pytest
 
-from gesture_controller.cli.maestro_cli import main
+from gesture_controller.cli.cli import main
 
 
 @patch("urllib.request.urlopen")

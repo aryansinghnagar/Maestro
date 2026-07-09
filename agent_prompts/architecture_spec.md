@@ -35,7 +35,7 @@ main.py
             -> os_integration/base_controller.py (BaseController ABC)
             -> os_integration/windows_controller.py (WindowsController)
             -> os_integration/macos_controller.py (MacOSController)
-            -> os_integration/linux_wayland_controller.py (LinuxWaylandController)
+            -> os_integration/linux_controller.py (LinuxController)
        -> os_integration/action_dispatcher.py (ActionDispatcher)
        -> plugins/plugin_loader.py (PluginLoader)
        -> gui/tray_icon.py (TrayController)
@@ -371,8 +371,8 @@ def create_controller() -> BaseController:
         from .macos_controller import MacOSController
         return MacOSController()
     elif system == "Linux":
-        from .linux_wayland_controller import LinuxWaylandController
-        return LinuxWaylandController()
+        from .linux_controller import LinuxController
+        return LinuxController()
     raise RuntimeError(f"Unsupported platform: {system}")
 ```
 

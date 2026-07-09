@@ -103,11 +103,11 @@ def test_camera_watchdog_timeout(
     assert elapsed >= 0.2  # Watchdog should wait at least 200ms
 
 
-def test_start_camera_process(dummy_config: dict) -> None:
+def test_create_camera_process(dummy_config: dict) -> None:
     with patch("multiprocessing.Process") as mock_process_class:
-        from gesture_controller.vision.camera_stream import start_camera_process
+        from gesture_controller.vision.camera_stream import create_camera_process
 
-        proc = start_camera_process(dummy_config, "shm_name", MagicMock())
+        proc = create_camera_process(dummy_config, "shm_name", MagicMock())
         mock_process_class.assert_called_once()
 
 

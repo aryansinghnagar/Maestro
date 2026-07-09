@@ -17,7 +17,7 @@ sys.modules["fcntl"] = mock_fcntl
 from gesture_controller.os_integration import create_controller
 from gesture_controller.os_integration.windows_controller import WindowsController
 from gesture_controller.os_integration.macos_controller import MacOSController
-from gesture_controller.os_integration.linux_wayland_controller import LinuxWaylandController
+from gesture_controller.os_integration.linux_controller import LinuxController
 from gesture_controller.os_integration.broker import BrokerClientController
 
 
@@ -52,14 +52,14 @@ def test_factory_returns_macos_controller(
 
 @patch("platform.system", return_value="Linux")
 @patch(
-    "gesture_controller.os_integration.linux_wayland_controller.LinuxWaylandController.is_supported",
+    "gesture_controller.os_integration.linux_controller.LinuxController.is_supported",
     return_value=True,
 )
 def test_factory_returns_linux_controller(
     mock_supported: MagicMock, mock_system: MagicMock
 ) -> None:
     ctrl = create_controller(use_broker=False)
-    assert isinstance(ctrl, LinuxWaylandController)
+    assert isinstance(ctrl, LinuxController)
 
 
 @patch("platform.system", return_value="FreeBSD")

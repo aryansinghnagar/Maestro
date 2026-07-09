@@ -38,7 +38,7 @@ def test_landmark_extractor_extracts_hands(
 
     mock_landmarker = MagicMock()
     mock_results = MagicMock()
-    mock_landmarker.detect_for_video.return_value = mock_results
+    mock_landmarker.detect_hands.return_value = mock_results
 
     # Mock output landmarks (21 points)
     mock_lm = MagicMock(x=0.1, y=0.2, z=0.3, visibility=0.95)
@@ -68,9 +68,9 @@ def test_landmark_extractor_extracts_hands(
         assert hand.landmarks[0].y == 0.2
         assert hand.landmarks[0].z == 0.3
         assert hand.landmarks[0].visibility == 0.95
-        # Verify that detect_for_video was called with the right timestamp
-        mock_landmarker.detect_for_video.assert_called_once()
-        assert mock_landmarker.detect_for_video.call_args[0][1] == 42
+        # Verify that detect_hands was called with the right timestamp
+        mock_landmarker.detect_hands.assert_called_once()
+        assert mock_landmarker.detect_hands.call_args[0][1] == 42
 
 
 def test_landmark_extractor_returns_none_if_no_hands(
@@ -81,7 +81,7 @@ def test_landmark_extractor_returns_none_if_no_hands(
     mock_landmarker = MagicMock()
     mock_results = MagicMock()
     mock_results.hand_landmarks = []
-    mock_landmarker.detect_for_video.return_value = mock_results
+    mock_landmarker.detect_hands.return_value = mock_results
 
     with (
         patch(

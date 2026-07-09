@@ -139,7 +139,7 @@ class CameraStream:
         self._disconnect()
 
 
-def start_camera_process(
+def create_camera_process(
     config: dict[str, Any], shm_name: str, frame_ready_event: Any
 ) -> mp.Process:
     """Spawn camera capture as a separate process."""

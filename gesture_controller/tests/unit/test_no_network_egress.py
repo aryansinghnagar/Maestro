@@ -65,7 +65,7 @@ def test_engine_init_no_network(block_network) -> None:
 
     with (
         patch("gesture_controller.core.engine.LandmarkExtractor", return_value=mock_extractor),
-        patch("gesture_controller.core.engine.start_camera_process", return_value=mock_process),
+        patch("gesture_controller.core.engine.create_camera_process", return_value=mock_process),
         patch("multiprocessing.shared_memory.SharedMemory", return_value=mock_shm),
         patch("gesture_controller.core.engine.PluginLoader"),
         patch("gesture_controller.core.engine.CustomGestureMatcher"),

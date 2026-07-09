@@ -17,8 +17,8 @@ mock_evdev.ecodes.REL_HWHEEL = 6
 mock_evdev.ecodes.BTN_LEFT = 272
 mock_evdev.ecodes.BTN_RIGHT = 273
 
-import gesture_controller.os_integration.linux_wayland_controller as linux_controller
-from gesture_controller.os_integration.linux_wayland_controller import LinuxWaylandController
+import gesture_controller.os_integration.linux_controller as linux_controller
+from gesture_controller.os_integration.linux_controller import LinuxController
 
 # Direct injection into module globals
 linux_controller.evdev = mock_evdev
@@ -39,13 +39,13 @@ def reset_mocks() -> None:
 def test_linux_is_supported_on_linux(
     mock_write: MagicMock, mock_open: MagicMock, mock_system: MagicMock
 ) -> None:
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     assert ctrl.is_supported() is True
 
 
 @patch("platform.system", return_value="Windows")
 def test_linux_not_supported_on_windows(mock_system: MagicMock) -> None:
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     assert ctrl.is_supported() is False
 
 
@@ -55,7 +55,7 @@ def test_linux_not_supported_on_windows(mock_system: MagicMock) -> None:
 def test_linux_key_press_uinput(
     mock_write: MagicMock, mock_open: MagicMock, mock_system: MagicMock
 ) -> None:
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     assert ctrl._use_uinput is True
 
     ctrl.key_press("a", modifiers=["ctrl"])
@@ -70,7 +70,7 @@ def test_linux_key_press_uinput(
 def test_linux_mouse_scroll_uinput(
     mock_write: MagicMock, mock_open: MagicMock, mock_system: MagicMock
 ) -> None:
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     ctrl.mouse_scroll(delta_y=-2)
 
     # Verify vertical scroll REL_WHEEL (8) event emitted
@@ -92,7 +92,7 @@ def test_linux_key_press_xdotool_fallback(
     # Force uinput creation failure to test xdotool fallback
     mock_open.side_effect = PermissionError()
 
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     assert ctrl._use_uinput is False
 
     ctrl.key_press("a", modifiers=["ctrl"])
@@ -111,7 +111,7 @@ def test_linux_key_press_xdotool_fallback(
 def test_linux_get_foreground_app_sway(
     mock_run: MagicMock, mock_write: MagicMock, mock_open: MagicMock, mock_system: MagicMock
 ) -> None:
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     ctrl._window_manager = "sway"
 
     # Mock swaymsg get_tree response
@@ -133,7 +133,7 @@ def test_linux_get_foreground_app_sway(
 def test_linux_get_foreground_app_hyprland(
     mock_run: MagicMock, mock_write: MagicMock, mock_open: MagicMock, mock_system: MagicMock
 ) -> None:
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     ctrl._window_manager = "hyprland"
 
     # Mock hyprctl activewindow response
@@ -152,7 +152,7 @@ def test_linux_get_foreground_app_hyprland(
 def test_linux_minimize_active_window(
     mock_run: MagicMock, mock_write: MagicMock, mock_open: MagicMock, mock_system: MagicMock
 ) -> None:
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     ctrl._window_manager = "sway"
 
     ctrl.minimize_active_window()
@@ -172,7 +172,7 @@ def test_linux_media_keys_playerctl(
     # Force uinput failure
     mock_open.side_effect = PermissionError()
 
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     ctrl.media_play_pause()
 
     # Verify playerctl subprocess
@@ -192,13 +192,13 @@ def test_linux_key_release_uinput_and_xdotool(
     mock_system: MagicMock,
 ) -> None:
     # 1. uinput path
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     ctrl.key_release("a")
     assert mock_write.call_count >= 1
 
     # 2. xdotool fallback path
     mock_open.side_effect = PermissionError()
-    ctrl_x = LinuxWaylandController()
+    ctrl_x = LinuxController()
     ctrl_x.key_release("a")
     mock_run.assert_called_with(["xdotool", "keyup", "a"], capture_output=True)
 
@@ -216,13 +216,13 @@ def test_linux_key_combo(
     mock_system: MagicMock,
 ) -> None:
     # 1. uinput path
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     ctrl.key_combo(["ctrl", "alt", "c"])
     assert mock_write.call_count >= 1
 
     # 2. xdotool path
     mock_open.side_effect = PermissionError()
-    ctrl_x = LinuxWaylandController()
+    ctrl_x = LinuxController()
     ctrl_x.key_combo(["ctrl", "alt", "c"])
     mock_run.assert_called_with(["xdotool", "key", "ctrl+alt+c"], capture_output=True)
 
@@ -240,13 +240,13 @@ def test_linux_mouse_double_click(
     mock_system: MagicMock,
 ) -> None:
     # 1. uinput path
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     ctrl.mouse_double_click("left")
     assert mock_write.call_count >= 1
 
     # 2. xdotool path
     mock_open.side_effect = PermissionError()
-    ctrl_x = LinuxWaylandController()
+    ctrl_x = LinuxController()
     ctrl_x.mouse_double_click("left", 100, 200)
     mock_run.assert_called_with(["xdotool", "click", "--repeat", "2", "1"], capture_output=True)
 
@@ -264,13 +264,13 @@ def test_linux_mouse_move(
     mock_system: MagicMock,
 ) -> None:
     # 1. uinput relative move
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     ctrl.mouse_move(10, -20, absolute=False)
     assert mock_write.call_count >= 2
 
     # 2. xdotool absolute move
     mock_open.side_effect = PermissionError()
-    ctrl_x = LinuxWaylandController()
+    ctrl_x = LinuxController()
     ctrl_x.mouse_move(100, 200, absolute=True)
     mock_run.assert_called_with(["xdotool", "mousemove", "100", "200"], capture_output=True)
 
@@ -288,7 +288,7 @@ def test_linux_mouse_scroll_xdotool(
     mock_system: MagicMock,
 ) -> None:
     mock_open.side_effect = PermissionError()
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     ctrl.mouse_scroll(delta_y=2)
     # verify vertical scroll up button 4 clicked twice
     assert mock_run.call_count == 2
@@ -302,7 +302,7 @@ def test_linux_mouse_scroll_xdotool(
 def test_linux_window_manager_actions(
     mock_run: MagicMock, mock_write: MagicMock, mock_open: MagicMock, mock_system: MagicMock
 ) -> None:
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     ctrl._window_manager = "xdotool"
 
     ctrl.switch_window()
@@ -322,7 +322,7 @@ def test_linux_window_manager_actions(
 def test_linux_media_keys_uinput(
     mock_run: MagicMock, mock_write: MagicMock, mock_open: MagicMock, mock_system: MagicMock
 ) -> None:
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     ctrl.media_next()
     ctrl.media_previous()
     ctrl.media_volume_up()
@@ -343,7 +343,7 @@ def test_linux_get_foreground_app_xdotool(
     mock_system: MagicMock,
 ) -> None:
     mock_open.side_effect = PermissionError()
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
 
     mock_res_id = MagicMock()
     mock_res_id.returncode = 0
@@ -365,5 +365,5 @@ def test_linux_get_foreground_app_xdotool(
 def test_linux_detect_window_manager_kde(
     mock_write: MagicMock, mock_open: MagicMock, mock_system: MagicMock
 ) -> None:
-    ctrl = LinuxWaylandController()
+    ctrl = LinuxController()
     assert ctrl._window_manager == "kwin"

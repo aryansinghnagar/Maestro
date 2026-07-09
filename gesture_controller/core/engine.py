@@ -11,7 +11,7 @@ from multiprocessing import shared_memory
 from gesture_controller.core.config_manager import ConfigManager
 from gesture_controller.core.event_bus import EventBus
 from gesture_controller.core.hand_tracker import HandTracker
-from gesture_controller.vision.camera_stream import start_camera_process
+from gesture_controller.vision.camera_stream import create_camera_process
 from gesture_controller.vision.landmark_extractor import LandmarkExtractor
 from gesture_controller.vision.one_euro_filter import OneEuroFilter
 from gesture_controller.models.feature_engineering import compute_features
@@ -98,7 +98,7 @@ class GestureEngine:
         logger.info("Shared memory buffer created", name=self._shm_name, size=self._frame_size)
 
     def _init_camera_process(self) -> None:
-        self._camera_process = start_camera_process(
+        self._camera_process = create_camera_process(
             self._config._config, self._shm_name, self._frame_ready_event
         )
         logger.info("Camera Stream process spawned")
