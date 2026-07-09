@@ -155,6 +155,19 @@ class GestureControllerApp:
         self._updater_thread.update_available.connect(self._on_update_available)
         self._updater_thread.start()
 
+        # ── Initialize Integration API Server & Voice Command Listener ──────
+        from gesture_controller.core.integration_server import IntegrationServer
+        from gesture_controller.core.voice_listener import VoiceCommandListener
+
+        self._integration_server = IntegrationServer(self._event_bus)
+        try:
+            self._integration_server.start()
+        except Exception as e:
+            logger.error("Failed to start Integration API Server", error=str(e))
+
+        self._voice_listener = VoiceCommandListener(self._event_bus)
+        self._voice_listener.start()
+
         self._tray.message_clicked.connect(self._on_tray_message_clicked)
 
         # ── Polling timer: Engine -> GUI bridge ────────────────────────────
@@ -254,10 +267,16 @@ class GestureControllerApp:
     # ── Lifecycle ──────────────────────────────────────────────────────────
 
     def _shutdown(self) -> None:
-        """Gracefully shut down engine and Qt event loop."""
+        """Gracefully shut down engine, API services, and Qt event loop."""
         logger.info("Shutting down Gesture Controller App")
         self._poll_timer.stop()
         self._status_timer.stop()
+
+        # Stop API Services (Phases 15 & 17)
+        if hasattr(self, "_integration_server"):
+            self._integration_server.stop()
+        if hasattr(self, "_voice_listener"):
+            self._voice_listener.stop()
 
         # Stop and join update checker thread if running (S4-8)
         if hasattr(self, "_updater_thread"):

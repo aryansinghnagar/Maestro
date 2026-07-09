@@ -1,8 +1,9 @@
 import numpy as np
 import structlog
+from collections import deque
+from typing import Any
 
 logger = structlog.get_logger(__name__)
-from typing import Any
 
 
 class OneEuroFilter:
@@ -31,6 +32,11 @@ class OneEuroFilter:
         self._acceleration = np.zeros((21, 3), dtype=np.float64)
         self._prev_velocity = np.zeros((21, 3), dtype=np.float64)
         self._prev_timestamp = 0.0
+
+        # Tremor auto-tuning history
+        self._tremor_history_len = 30
+        self._tremor_history_x: deque[float] = deque(maxlen=self._tremor_history_len)
+        self._tremor_history_t: deque[float] = deque(maxlen=self._tremor_history_len)
 
     def filter(
         self,
@@ -62,6 +68,23 @@ class OneEuroFilter:
         # Dynamic parameter adaptation
         min_cutoff = self._min_cutoff
         beta = self._beta
+
+        # Record x coordinate of wrist (index 0) and timestamp for tremor analysis
+        self._tremor_history_x.append(float(landmarks[0, 0]))
+        self._tremor_history_t.append(timestamp)
+
+        # Detect Tremor: Check cycle zero crossings if history is full
+        if len(self._tremor_history_x) == self._tremor_history_len:
+            t_span = self._tremor_history_t[-1] - self._tremor_history_t[0]
+            if t_span > 0.1:
+                x_arr = np.array(self._tremor_history_x)
+                x_mean = x_arr - np.mean(x_arr)
+                zero_crossings = np.sum(np.diff(np.sign(x_mean)) != 0)
+                freq = zero_crossings / (2.0 * t_span)
+                
+                if 4.0 <= freq <= 12.0:
+                    min_cutoff = 0.1
+                    beta = 0.001
 
         if self._dynamic.get("lighting_enabled", False) and lighting_metric is not None:
             # Low light (smaller metric) -> more smoothing (lower min_cutoff)
