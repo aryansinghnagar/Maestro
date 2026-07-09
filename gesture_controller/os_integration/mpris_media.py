@@ -9,7 +9,7 @@ def _send_mpris_cmd(member: str) -> None:
     """Send MPRIS member command via D-Bus session bus."""
     # Method 1: Try importing dbus-next or dbus
     try:
-        import dbus  # type: ignore[import-untyped]
+        import dbus  # type: ignore[import-not-found]
         bus = dbus.SessionBus()
         # Find player service
         for service in bus.list_names():

@@ -497,7 +497,7 @@ ignore_missing_imports = true
 module = [
     "gesture_controller.gui.*",
     "gesture_controller.os_integration.macos_controller",
-    "gesture_controller.os_integration.linux_wayland_controller",
+    "gesture_controller.os_integration.linux_controller",
     "gesture_controller.plugins.*",
 ]
 ignore_errors = true

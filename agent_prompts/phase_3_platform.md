@@ -14,7 +14,7 @@
 - `core/event_bus.py` — Pub/sub for events
 - All tests in `tests/unit/` and `tests/integration/` passing for Windows
 
-Your job: create `macos_controller.py` and `linux_wayland_controller.py` that pass the same integration tests.
+Your job: create `macos_controller.py` and `linux_controller.py` that pass the same integration tests.
 
 ---
 
@@ -214,9 +214,9 @@ tests/unit/test_macos_controller.py:
 
 ---
 
-## 4. LinuxWaylandController Implementation
+## 4. LinuxController Implementation
 
-### 4.1 File: `os_integration/linux_wayland_controller.py`
+### 4.1 File: `os_integration/linux_controller.py`
 
 This is the most complex adapter because Wayland deliberately restricts input injection. You need two paths:
 
@@ -507,8 +507,8 @@ def create_controller() -> BaseController:
         if ctrl.is_supported():
             return ctrl
     elif system == "Linux":
-        from os_integration.linux_wayland_controller import LinuxWaylandController
-        ctrl = LinuxWaylandController()
+        from os_integration.linux_controller import LinuxController
+        ctrl = LinuxController()
         if ctrl.is_supported():
             return ctrl
 
@@ -554,8 +554,8 @@ os_integration:
 ## 7. Acceptance Criteria for M4
 
 - [ ] MacOSController passes all unit tests on macOS
-- [ ] LinuxWaylandController passes all unit tests on Linux
-- [ ] LinuxWaylandController falls back to X11 when /dev/uinput unavailable
+- [ ] LinuxController passes all unit tests on Linux
+- [ ] LinuxController falls back to X11 when /dev/uinput unavailable
 - [ ] LinuxWindowManager tries wlr -> kwin -> gnome -> xdotool -> null
 - [ ] `create_controller()` factory returns correct controller for current OS
 - [ ] Minimize, switch window, scroll, and media keys work on all 3 platforms

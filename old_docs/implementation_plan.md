@@ -95,7 +95,7 @@ Injects keys/clicks on Windows and tracks the foreground active process.
 #### [NEW] [macos_controller.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/os_integration/macos_controller.py)
 Uses PyObjC / Quartz CoreGraphics APIs for OS inputs and Accessibility interfaces for window tracking.
 
-#### [NEW] [linux_wayland_controller.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/os_integration/linux_wayland_controller.py)
+#### [NEW] [linux_controller.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/os_integration/linux_controller.py)
 Uses `/dev/uinput` via `evdev` to bypass Wayland application isolation.
 
 #### [NEW] [action_dispatcher.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/os_integration/action_dispatcher.py)
@@ -348,7 +348,7 @@ gesture_controller/
 │   ├── base_controller.py        # ABC: key_press, mouse_click, scroll, etc.
 │   ├── windows_controller.py     # Windows: pyautogui/ctypes, foreground tracking
 │   ├── macos_controller.py       # macOS: Quartz.CoreGraphics, AXUIElement
-│   ├── linux_wayland_controller.py # Linux: /dev/uinput via evdev, udev setup
+│   ├── linux_controller.py # Linux: /dev/uinput via evdev, udev setup
 │   └── action_dispatcher.py      # Routes GestureEvent -> controller method
 │
 ├── plugins/
@@ -446,7 +446,7 @@ gesture_controller/
 ### Stage 8: OS Backend
 - Windows: WindowsController (pyautogui -> SendInput upgrade path). Foreground tracking via win32gui.
 - macOS: MacOSController (CGEventPost, AXUIElement).
-- Linux: LinuxWaylandController (/dev/uinput via evdev, udev rules for non-root).
+- Linux: LinuxController (/dev/uinput via evdev, udev rules for non-root).
 
 ---
 

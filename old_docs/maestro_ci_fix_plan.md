@@ -172,7 +172,7 @@ All fixes below are **implemented and verified** in the working copy at `/home/z
 1. It's a one-line change per call site (9 sites)
 2. It doesn't create a new module dependency
 3. It's the standard Python pattern for platform-specific `ctypes` code
-4. The existing `pyproject.toml` already has `ignore_errors = true` for `macos_controller` and `linux_wayland_controller` — `windows_controller` was the only platform controller not excluded
+4. The existing `pyproject.toml` already has `ignore_errors = true` for `macos_controller` and `linux_controller` — `windows_controller` was the only platform controller not excluded
 
 **Diff (representative — applied to all 9 lines):**
 

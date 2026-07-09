@@ -3,11 +3,12 @@ import json
 import urllib.request
 import argparse
 from pathlib import Path
+from typing import Any
 
 from gesture_controller.core.compliance import erase_data, export_data
 
 
-def _make_api_request(method: str, path: str, payload: dict = None) -> dict:
+def _make_api_request(method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
     """Send authenticated HTTP request to the running Maestro daemon."""
     url = f"http://127.0.0.1:8765{path}?token=maestro_secret_token"
     headers = {"Content-Type": "application/json"}
@@ -15,7 +16,10 @@ def _make_api_request(method: str, path: str, payload: dict = None) -> dict:
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req, timeout=1.0) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+            res_data = json.loads(resp.read().decode("utf-8"))
+            if isinstance(res_data, dict):
+                return res_data
+            return {}
     except Exception as e:
         raise RuntimeError(f"Could not connect to running Maestro daemon (port 8765): {e}")
 

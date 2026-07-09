@@ -63,7 +63,7 @@ The maintainer has worked through the previous v1 plan aggressively. Comparing t
 | v1 ID | Issue | Status | Evidence |
 |---|---|---|---|
 | P0-1 | Windows import `NameError` (`Any` before import) | ✅ Fixed | `gesture_controller/__init__.py` now has `from __future__ import annotations` and imports `Any` at top |
-| P0-2 | MediaPipe IMAGE mode | ✅ Fixed | `landmark_extractor.py:56` uses `RunningMode.VIDEO` and `detect_for_video()` |
+| P0-2 | MediaPipe IMAGE mode | ✅ Fixed | `landmark_extractor.py:56` uses `RunningMode.VIDEO` and `detect_hands()` |
 | P0-3 | One-Euro filter params 250× too small | ✅ Fixed | `one_euro_filter.py` now defaults to `min_cutoff=1.0, beta=0.007` |
 | P0-4 | DTW match fires every frame | ✅ Fixed | `dtw_matcher.py` has cooldown + refractory logic |
 | P0-6 | Shared `OneEuroFilter` across hands | ✅ Fixed | Engine maintains per-hand filters |
@@ -72,7 +72,7 @@ The maintainer has worked through the previous v1 plan aggressively. Comparing t
 | P0-9 | Chained-comparison semantics wrong | ✅ Fixed | `compile_condition` now folds `a < b < c` into `a<b and b<c` |
 | P0-11 | Cross-platform key-name vocabulary broken | ⚠️ Partially fixed | `action_dispatcher.py` has `_normalize_key` and `KEY_ALIASES`, but `MAC_KEYCODES`/`LINUX_KEYCODES` were not extended (see §4) |
 | P0-12 | macOS `cmd+m` → `cmd+a` | ⚠️ Partially fixed | `MAC_KEYCODES` may still be missing `m`; needs verification |
-| P0-13, P0-14 | Linux minimize bugs | ✅ Fixed | `linux_wayland_controller.py` now has GNOME (`Super+H`) and KDE (`Meta+Down`) branches, and xdotool path uses two-step subprocess |
+| P0-13, P0-14 | Linux minimize bugs | ✅ Fixed | `linux_controller.py` now has GNOME (`Super+H`) and KDE (`Meta+Down`) branches, and xdotool path uses two-step subprocess |
 | P0-15 | `_create_uinput_device` struct pack malformed | ✅ Fixed | Format string corrected |
 | P0-16 | `pyautogui.FAILSAFE = True` | ✅ Fixed | Set to `False` |
 | P0-17 | Plugin code executes before manifest validation | ✅ Fixed | `plugin_loader.py` now AST-parses `PLUGIN_META` before `exec_module` |
@@ -89,7 +89,7 @@ The maintainer has worked through the previous v1 plan aggressively. Comparing t
 | P0-28 | README claims `!!!UNTESTED!!!` and "production-grade" | ✅ Fixed | README title updated |
 
 > **[Comment — added 2026-07-05]** I checked the four rows above marked "⚠️ Partially fixed" / "needs verification" against the actual files in the cloned repo:
-> - **P0-11 / P0-12 (key vocabularies):** Both are actually **fully fixed**, not partial. `gesture_controller/os_integration/macos_controller.py:32` has `"m": 0x2E` in `MAC_KEYCODES` — the `cmd+m`→`cmd+a` collision from v1 is gone. `gesture_controller/os_integration/linux_wayland_controller.py:33-34` has all ten digits (`"0": 11` … `"9": 10`) and `"backspace": 14` in `LINUX_KEYCODES`. I'd upgrade both rows to ✅.
+> - **P0-11 / P0-12 (key vocabularies):** Both are actually **fully fixed**, not partial. `gesture_controller/os_integration/macos_controller.py:32` has `"m": 0x2E` in `MAC_KEYCODES` — the `cmd+m`→`cmd+a` collision from v1 is gone. `gesture_controller/os_integration/linux_controller.py:33-34` has all ten digits (`"0": 11` … `"9": 10`) and `"backspace": 14` in `LINUX_KEYCODES`. I'd upgrade both rows to ✅.
 > - **P0-27 (udev group):** Also fully fixed, not partial. The committed udev rule reads `KERNEL=="uinput", MODE="0660", GROUP="gesture-controller", OPTIONS+="static_node=uinput"` — a dedicated `gesture-controller` group, not the broad `input` group the v1 audit flagged.
 > - **P0-26 (pinned hashes):** Confirmed still open — `pyproject.toml` dependencies are all bare `>=` version specifiers with no `--require-hashes`/`pip-compile` lockfile. This one is correctly marked ⚠️.
 >
@@ -248,7 +248,7 @@ This section covers issues **beyond** CI that should be addressed in v1.1. They 
 | P0-B | `libGLESv2.so.2` not installed in CI | `.github/workflows/ci.yml:88` | CI blocker — see Fix #2 |
 | P0-C | `QSystemTrayIcon.ActivationReason` annotation breaks test mocking | `gui/tray_icon.py:114` | CI blocker — see Fix #3 |
 | P0-D | `MAC_KEYCODES` may still be missing `m` (v1 P0-12 only partially fixed) | `os_integration/macos_controller.py` | Needs verification |
-| P0-E | `LINUX_KEYCODES` may still be missing digits, Backspace, etc. | `os_integration/linux_wayland_controller.py` | Needs verification |
+| P0-E | `LINUX_KEYCODES` may still be missing digits, Backspace, etc. | `os_integration/linux_controller.py` | Needs verification |
 | P0-F | `requirements.txt` and `requirements-dev.txt` still duplicate `pyproject.toml` | repo root | Will drift; should be deleted |
 
 ### 4.2 P1 issues still open
@@ -794,7 +794,7 @@ This causes 2 test failures:
 
      mock_landmarker = MagicMock()
      mock_results = MagicMock()
-     mock_landmarker.detect_for_video.return_value = mock_results
+     mock_landmarker.detect_hands.return_value = mock_results
 
      # Mock output landmarks (21 points)
      mock_lm = MagicMock(x=0.1, y=0.2, z=0.3, visibility=0.95)
@@ -813,7 +813,7 @@ This causes 2 test failures:
          hands = extractor.extract(shm.name, timestamp_ms=42)
 @@ -68,7 +78,9 @@ def test_landmark_extractor_returns_none_if_no_hands(
      mock_results.hand_landmarks = []
-     mock_landmarker.detect_for_video.return_value = mock_results
+     mock_landmarker.detect_hands.return_value = mock_results
 
 -    with patch("mediapipe.tasks.python.vision.HandLandmarker.create_from_options", return_value=mock_landmarker):
 +    mock_mp_image = MagicMock()
@@ -826,7 +826,7 @@ This causes 2 test failures:
 
 **Why both patches:** `LandmarkExtractor.extract()` does two things that touch MediaPipe native code:
 1. `mp.Image(...)` — constructs an image wrapper, which dlopens `libGLESv2.so.2`.
-2. `self._landmarker.detect_for_video(...)` — runs inference (mocked via `create_from_options`).
+2. `self._landmarker.detect_hands(...)` — runs inference (mocked via `create_from_options`).
 
 Patching only `create_from_options` leaves step 1 unmocked. Patching both ensures the test never touches MediaPipe native code.
 
@@ -905,7 +905,7 @@ python -m pytest gesture_controller/tests/unit/test_landmark_extractor.py --no-c
 # In test_minimize_gesture.py
 def test_minimize_gesture_e2e():
     with patch("gesture_controller.core.engine.LandmarkExtractor") as mock_extractor, \
-         patch("gesture_controller.core.engine.start_camera_process"), \
+         patch("gesture_controller.core.engine.create_camera_process"), \
          patch("gesture_controller.core.engine.SharedMemory"):
         mock_extractor.return_value.extract.return_value = [mock_hand]
         engine = GestureEngine()

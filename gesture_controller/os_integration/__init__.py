@@ -32,13 +32,13 @@ def create_controller(use_broker: bool = True) -> BaseController:
             return ctrl
 
     elif system == "Linux":
-        from gesture_controller.os_integration.linux_wayland_controller import (
-            LinuxWaylandController,
+        from gesture_controller.os_integration.linux_controller import (
+            LinuxController,
         )
 
-        ctrl = LinuxWaylandController()
+        ctrl = LinuxController()
         if ctrl.is_supported():
-            logger.info("Created LinuxWaylandController OS adapter")
+            logger.info("Created LinuxController OS adapter")
             return ctrl
 
     # Fallback to raising RuntimeError if no supported controller

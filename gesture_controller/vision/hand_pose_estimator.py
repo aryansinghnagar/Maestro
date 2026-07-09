@@ -4,7 +4,7 @@ import cv2 as cv
 import onnxruntime as ort
 
 
-class MPHandPose:
+class HandPoseEstimator:
     def __init__(self, modelPath, confThreshold=0.8, backendId=0, targetId=0):
         self.model_path = modelPath
         self.conf_threshold = confThreshold
@@ -36,11 +36,11 @@ class MPHandPose:
     def name(self):
         return self.__class__.__name__
 
-    def setBackendAndTarget(self, backendId, targetId):
+    def set_backend_and_target(self, backendId, targetId):
         self.backend_id = backendId
         self.target_id = targetId
 
-    def _cropAndPadFromPalm(self, image, palm_bbox, for_rotation=False):
+    def _crop_and_pad_from_palm(self, image, palm_bbox, for_rotation=False):
         # shift bounding box
         wh_palm_bbox = palm_bbox[1] - palm_bbox[0]
         if for_rotation:
@@ -99,7 +99,7 @@ class MPHandPose:
         # crop and pad image to interest range
         pad_bias = np.array([0, 0], dtype=np.int32)  # left, top
         palm_bbox = palm[0:4].reshape(2, 2)
-        image, palm_bbox, bias = self._cropAndPadFromPalm(image, palm_bbox, True)
+        image, palm_bbox, bias = self._crop_and_pad_from_palm(image, palm_bbox, True)
         image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
         pad_bias += bias
 
@@ -131,7 +131,7 @@ class MPHandPose:
             [np.amin(rotated_palm_landmarks, axis=1), np.amax(rotated_palm_landmarks, axis=1)]
         )  # [top-left, bottom-right]
 
-        crop, rotated_palm_bbox, _ = self._cropAndPadFromPalm(rotated_image, rotated_palm_bbox)
+        crop, rotated_palm_bbox, _ = self._crop_and_pad_from_palm(rotated_image, rotated_palm_bbox)
         blob = cv.resize(crop, dsize=self.input_size, interpolation=cv.INTER_AREA).astype(
             np.float32
         )

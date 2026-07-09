@@ -139,7 +139,7 @@ class LandmarkExtractor:
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
 
         try:
-            results = self._landmarker.detect_for_video(mp_image, timestamp_ms)
+            results = self._landmarker.detect_hands(mp_image, timestamp_ms)
         except Exception as e:
             logger.error("MediaPipe HandLandmarker inference failed", error=str(e))
             return None

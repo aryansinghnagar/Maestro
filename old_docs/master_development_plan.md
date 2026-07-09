@@ -196,7 +196,7 @@ gesture_controller/
 │   ├── base_controller.py        # ABC: key_press, mouse_click, scroll, etc.
 │   ├── windows_controller.py     # Windows: pyautogui/ctypes, foreground tracking
 │   ├── macos_controller.py       # macOS: Quartz.CoreGraphics, AXUIElement
-│   ├── linux_wayland_controller.py # Linux: /dev/uinput via evdev, udev setup
+│   ├── linux_controller.py # Linux: /dev/uinput via evdev, udev setup
 │   └── action_dispatcher.py      # Routes GestureEvent -> controller method
 │
 ├── plugins/
@@ -294,7 +294,7 @@ gesture_controller/
 ### Stage 8: OS Backend
 - **Windows:** WindowsController (pyautogui -> SendInput upgrade path). Foreground tracking via win32gui.
 - **macOS:** MacOSController (CGEventPost, AXUIElement).
-- **Linux:** LinuxWaylandController (/dev/uinput via evdev, udev rules for non-root).
+- **Linux:** LinuxController (/dev/uinput via evdev, udev rules for non-root).
 
 ---
 

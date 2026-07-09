@@ -67,8 +67,8 @@ dev = [
 ]
 
 [project.scripts]
-maestro = "gesture_controller.cli.maestro_cli:main"
-gesture-controller = "gesture_controller.main:main"
+maestro = "gesture_controller.cli.cli:main"
+gesture-controller = "gesture_controller.__main__:main"
 gesture-controller-verify = "gesture_controller.cli.verify_install:main"
 
 [tool.setuptools.packages.find]
@@ -115,7 +115,7 @@ ignore_missing_imports = true
 module = [
     "gesture_controller.gui.*",
     "gesture_controller.os_integration.macos_controller",
-    "gesture_controller.os_integration.linux_wayland_controller",
+    "gesture_controller.os_integration.linux_controller",
     "gesture_controller.plugins.*",
 ]
 ignore_errors = true
@@ -147,7 +147,7 @@ omit = [
     "gesture_controller/plugins/**",
     "gesture_controller/main.py",
     "gesture_controller/core/engine.py",
-    "gesture_controller/os_integration/linux_wayland_controller.py",
+    "gesture_controller/os_integration/linux_controller.py",
     "gesture_controller/os_integration/macos_controller.py",
     "gesture_controller/models/dtw_matcher.py",
 ]

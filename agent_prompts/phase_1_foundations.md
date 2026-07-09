@@ -112,7 +112,7 @@ requires-python = ">=3.11"
 license = {text = "MIT"}
 
 [project.scripts]
-gesture-controller = "gesture_controller.main:main"
+gesture-controller = "gesture_controller.__main__:main"
 
 [tool.black]
 line-length = 100
@@ -534,7 +534,7 @@ class CameraStream:
         self._disconnect()
 
 
-def start_camera_process(config: dict, shm_name: str) -> mp.Process:
+def create_camera_process(config: dict, shm_name: str) -> mp.Process:
     """Spawn camera capture as a separate process."""
     stream = CameraStream(config, shm_name)
     process = mp.Process(target=stream.run, daemon=True, name="camera_capture")
@@ -637,8 +637,8 @@ class GestureEngine:
         self._shm_name = self._frame_shm.name
 
         # Start camera process
-        from vision.camera_stream import start_camera_process
-        self._camera_process = start_camera_process(self._config._config, self._shm_name)
+        from vision.camera_stream import create_camera_process
+        self._camera_process = create_camera_process(self._config._config, self._shm_name)
 
         # Initialize landmark extractor (runs in this process)
         from vision.landmark_extractor import LandmarkExtractor

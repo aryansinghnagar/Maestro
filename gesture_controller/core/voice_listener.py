@@ -36,7 +36,7 @@ class VoiceCommandListener:
         recognizer = None
         microphone = None
         try:
-            import speech_recognition as sr  # type: ignore[import-untyped]
+            import speech_recognition as sr  # type: ignore[import-not-found]
             recognizer = sr.Recognizer()
             microphone = sr.Microphone()
             # Calibrate recognizer for ambient noise

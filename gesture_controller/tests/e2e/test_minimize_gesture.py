@@ -132,7 +132,7 @@ def test_minimize_gesture_e2e() -> None:
 
     # 2. Mock camera process startup & landmark extraction inside engine
     with (
-        patch("gesture_controller.core.engine.start_camera_process"),
+        patch("gesture_controller.core.engine.create_camera_process"),
         patch("gesture_controller.core.engine.shared_memory.SharedMemory") as MockSHM,
     ):
 

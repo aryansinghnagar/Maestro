@@ -4,7 +4,7 @@ import cv2 as cv
 import onnxruntime as ort
 
 
-class MPPalmDet:
+class PalmDetector:
     def __init__(
         self, modelPath, nmsThreshold=0.3, scoreThreshold=0.5, topK=5000, backendId=0, targetId=0
     ):
@@ -33,7 +33,7 @@ class MPPalmDet:
     def name(self):
         return self.__class__.__name__
 
-    def setBackendAndTarget(self, backendId, targetId):
+    def set_backend_and_target(self, backendId, targetId):
         self.backend_id = backendId
         self.target_id = targetId
 

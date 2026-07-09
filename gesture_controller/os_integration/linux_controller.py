@@ -100,7 +100,7 @@ LINUX_MODIFIER_MAP = {
 }
 
 
-class LinuxWaylandController(BaseController):
+class LinuxController(BaseController):
     """Linux-native input simulator supporting Wayland via /dev/uinput and X11 fallbacks."""
 
     def __init__(self) -> None:
