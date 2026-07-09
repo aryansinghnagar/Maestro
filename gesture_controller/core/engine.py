@@ -132,6 +132,7 @@ class GestureEngine:
         self._hand_tracker = HandTracker()
         self._fsm_manager = GestureFSMManager(merged_config, self._event_bus)
         self._event_bus.subscribe("plugin_reloaded", self._on_plugin_reloaded)
+        self._event_bus.subscribe("engine_pause_requested", self.set_paused)
 
     def _init_platform_controller(self) -> None:
         self._controller = self._create_os_controller()

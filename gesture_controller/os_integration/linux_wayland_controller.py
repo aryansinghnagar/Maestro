@@ -435,21 +435,24 @@ class LinuxWaylandController(BaseController):
             self._emit_event(evdev.ecodes.EV_KEY, 164, 1)  # KEY_PLAYPAUSE
             self._emit_event(evdev.ecodes.EV_KEY, 164, 0)
         else:
-            subprocess.run(["playerctl", "play-pause"], capture_output=True)
+            from gesture_controller.os_integration.mpris_media import mpris_play_pause
+            mpris_play_pause()
 
     def media_next(self) -> None:
         if self._use_uinput and evdev is not None:
             self._emit_event(evdev.ecodes.EV_KEY, 163, 1)  # KEY_NEXTSONG
             self._emit_event(evdev.ecodes.EV_KEY, 163, 0)
         else:
-            subprocess.run(["playerctl", "next"], capture_output=True)
+            from gesture_controller.os_integration.mpris_media import mpris_next
+            mpris_next()
 
     def media_previous(self) -> None:
         if self._use_uinput and evdev is not None:
             self._emit_event(evdev.ecodes.EV_KEY, 165, 1)  # KEY_PREVIOUSSONG
             self._emit_event(evdev.ecodes.EV_KEY, 165, 0)
         else:
-            subprocess.run(["playerctl", "previous"], capture_output=True)
+            from gesture_controller.os_integration.mpris_media import mpris_previous
+            mpris_previous()
 
     def media_volume_up(self) -> None:
         if self._use_uinput and evdev is not None:
