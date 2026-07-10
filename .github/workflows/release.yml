@@ -70,7 +70,7 @@ jobs:
           echo "hashes=$base64" >> $env:GITHUB_OUTPUT
 
       - name: Upload SBOM and Binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Maestro-Windows-Artifacts
           path: |
