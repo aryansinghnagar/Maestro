@@ -7,7 +7,7 @@
 **Scope:** All layers + a dedicated Part C focused exclusively on making GitHub Actions CI green
 **Language:** English
 
-> **Difference from v1 plan:** The v1 plan (also saved in the repo as `maestro_debug_and_improvement_plan.md`) was written against an earlier commit that had no CI, no `.github/`, no installers, and ~28 P0 blockers. The repo has since been sprinted through 4 phases. This v2 plan re-audits the *current* state, acknowledges what's been fixed, and provides a **detailed, code-level remediation guide focused on making GitHub Actions CI pass** — the most pressing practical concern right now.
+> **Difference from v1 plan:** The v1 plan (also saved in the repo as `maestro-debug-and-improvement-plan.md`) was written against an earlier commit that had no CI, no `.github/`, no installers, and ~28 P0 blockers. The repo has since been sprinted through 4 phases. This v2 plan re-audits the *current* state, acknowledges what's been fixed, and provides a **detailed, code-level remediation guide focused on making GitHub Actions CI pass** — the most pressing practical concern right now.
 
 > **[Comment — added 2026-07-05]** Editor's note on this expanded copy: everything above and below this note is the original v2 plan, unchanged. I cloned `github.com/aryansinghnagar/Maestro` and confirmed `HEAD` on `main` is still exactly `ec4ece2` (2026-07-04) — the repo hasn't moved since this plan was written, so I could check its empirical claims against the real source tree instead of just trusting them. Wherever I actually ran a tool (`black`, `bandit`, `mypy`, `pytest`, `pip-audit`) or read a real file, I've dropped a clearly-marked comment block directly under the relevant claim. Most confirm the plan is exactly right down to the file:line; a handful correct small factual errors (e.g. a config file the plan says is missing is actually already in the repo). A consolidated summary of every check is in the new **Part E** appended at the very end. None of the original analysis, diffs, or fixes have been altered.
 
@@ -289,15 +289,15 @@ This section covers issues **beyond** CI that should be addressed in v1.1. They 
 | P2-F | `pre-commit` config does not exist — `.pre-commit-config.yaml` is missing |
 | — | **[Comment — added 2026-07-05]** This one is incorrect as written — `.pre-commit-config.yaml` already exists at the repo root, and has since commit `5fbee4c` ("Sprint 1 (CI & Test Foundation)"), well before the audited `ec4ece2`. Its actual contents: `pre-commit-hooks` (check-yaml, check-added-large-files, end-of-file-fixer, trailing-whitespace), `black` (rev `23.11.0`), and `ruff` (rev `v0.1.6`, `--fix --exit-non-zero-on-fix`). So the file isn't missing, but it *is* missing `mypy` and `bandit` hooks compared to the version this plan proposes in the "Pre-commit config" appendix later on — the real gap is narrower than "add a new file," it's "extend the existing one with the two hooks it lacks." |
 | P2-G | `setuptools-scm` is in build-requires but `[tool.setuptools_scm]` is missing — version is hardcoded `0.1.0` in two places |
-| P2-H | `master_development_plan.md` is still future-dated 2026-06-29 |
+| P2-H | `master-development-plan.md` is still future-dated 2026-06-29 |
 | P2-I | Internal markdown links still point to `file:///c:/Users/Aryan/...` |
 | P2-J | `gesture_controller/adr/README.md` is still a stub — ADRs live in `docs/adr/` |
 | P2-K | `gesture_controller/docs/README.md` still promises 3 missing docs |
-| P2-L | `sys_prompt_1.txt`, `sys_prompt_2.txt`, `sys_prompt_3.txt`, `plan.md`, `implementation_plan.md`, `implementation_guide.md` still in repo root (5,000+ lines of stale planning) |
+| P2-L | `sys-prompt-1.txt`, `sys-prompt-2.txt`, `sys-prompt-3.txt`, `plan.md`, `implementation-plan.md`, `implementation-guide.md` still in repo root (5,000+ lines of stale planning) |
 
 > **[Comment — added 2026-07-05]** Verified P2-I, P2-J, P2-K, P2-L against the real repo — all four are accurate, plus two things worth adding:
 > - **P2-I is broader than stated:** the `file:///c:/Users/Aryan/...` links aren't confined to the three planning docs named in the surrounding text — `README.md:137` itself has one, in the license section: `See the [LICENSE](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/LICENSE) file...`. That's a broken link in the file a new visitor to the repo actually reads.
-> - **P2-L's file list is incomplete.** Three more stale root-level files exist that aren't named: `research.md`, `vision.txt`, and `maestro_git_log.md`, plus the v1 audit itself, `maestro_debug_and_improvement_plan.md` (which the intro of this v2 plan explicitly says is "also saved in the repo," so that one's presence is intentional — but the other three look like the same kind of planning-doc clutter as the ones already listed).
+> - **P2-L's file list is incomplete.** Three more stale root-level files exist that aren't named: `research.md`, `vision.txt`, and `maestro-git-log.md`, plus the v1 audit itself, `maestro-debug-and-improvement-plan.md` (which the intro of this v2 plan explicitly says is "also saved in the repo," so that one's presence is intentional — but the other three look like the same kind of planning-doc clutter as the ones already listed).
 > - `gesture_controller/adr/README.md` and `gesture_controller/docs/README.md` are confirmed exactly as described — both are one-paragraph stubs, and the latter lists `architecture.md`, `performance.md`, `gesture-reference.md` as bullet points with no corresponding files anywhere in `docs/`.
 
 ---

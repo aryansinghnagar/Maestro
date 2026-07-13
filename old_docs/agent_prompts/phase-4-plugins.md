@@ -369,7 +369,7 @@ For now, the backend logic is what matters. The UI is a later concern.
 
 ### 3.1 DTW Matcher (`models/dtw_matcher.py`)
 
-Full Numba-compiled implementation — see `gesture_spec.md` Section 7.3 for the exact code. Key points the agent must implement:
+Full Numba-compiled implementation — see `gesture-spec.md` Section 7.3 for the exact code. Key points the agent must implement:
 
 - `dtw_distance(a, b)` — Numba @njit, fastmath=True, 2-row cost matrix for memory efficiency
 - `dtw_distance_batch(query, templates, thresholds)` — Compare one buffer against all templates

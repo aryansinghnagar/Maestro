@@ -7,7 +7,7 @@
 **Scope:** All layers + a dedicated Part C focused exclusively on making GitHub Actions CI green
 **Language:** English
 
-> **Difference from v1 plan:** The v1 plan (also saved in the repo as `maestro_debug_and_improvement_plan.md`) was written against an earlier commit that had no CI, no `.github/`, no installers, and ~28 P0 blockers. The repo has since been sprinted through 4 phases. This v2 plan re-audits the *current* state, acknowledges what's been fixed, and provides a **detailed, code-level remediation guide focused on making GitHub Actions CI pass** — the most pressing practical concern right now.
+> **Difference from v1 plan:** The v1 plan (also saved in the repo as `maestro-debug-and-improvement-plan.md`) was written against an earlier commit that had no CI, no `.github/`, no installers, and ~28 P0 blockers. The repo has since been sprinted through 4 phases. This v2 plan re-audits the *current* state, acknowledges what's been fixed, and provides a **detailed, code-level remediation guide focused on making GitHub Actions CI pass** — the most pressing practical concern right now.
 
 ---
 
@@ -265,11 +265,11 @@ This section covers issues **beyond** CI that should be addressed in v1.1. They 
 | P2-E | `default_config.yaml` may still have `os_integration.windows.use_sendinput: false` (v1 P1-63) — verify |
 | P2-F | `pre-commit` config does not exist — `.pre-commit-config.yaml` is missing |
 | P2-G | `setuptools-scm` is in build-requires but `[tool.setuptools_scm]` is missing — version is hardcoded `0.1.0` in two places |
-| P2-H | `master_development_plan.md` is still future-dated 2026-06-29 |
+| P2-H | `master-development-plan.md` is still future-dated 2026-06-29 |
 | P2-I | Internal markdown links still point to `file:///c:/Users/Aryan/...` |
 | P2-J | `gesture_controller/adr/README.md` is still a stub — ADRs live in `docs/adr/` |
 | P2-K | `gesture_controller/docs/README.md` still promises 3 missing docs |
-| P2-L | `sys_prompt_1.txt`, `sys_prompt_2.txt`, `sys_prompt_3.txt`, `plan.md`, `implementation_plan.md`, `implementation_guide.md` still in repo root (5,000+ lines of stale planning) |
+| P2-L | `sys-prompt-1.txt`, `sys-prompt-2.txt`, `sys-prompt-3.txt`, `plan.md`, `implementation-plan.md`, `implementation-guide.md` still in repo root (5,000+ lines of stale planning) |
 
 ---
 
