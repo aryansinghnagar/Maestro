@@ -10,7 +10,7 @@
 
 ### 1.1 Project Skeleton
 
-Create the full directory structure exactly as specified in `architecture_spec.md`. Every directory needs an `__init__.py`. Create stub files with docstrings explaining purpose.
+Create the full directory structure exactly as specified in `architecture-spec.md`. Every directory needs an `__init__.py`. Create stub files with docstrings explaining purpose.
 
 **Priority files to create (in order):**
 
@@ -91,7 +91,7 @@ gesture_controller/
 
   .github/
     workflows/
-      ci.yml                     # Full CI pipeline (see test_strategy.md)
+      ci.yml                     # Full CI pipeline (see test-strategy.md)
     PULL_REQUEST_TEMPLATE.md
     CODEOWNERS
     .gitignore
@@ -396,7 +396,7 @@ class ConfigManager:
 
 ### 1.8 CI Setup
 
-Create `.github/workflows/ci.yml` — full spec in `test_strategy.md` Section 4. Must include: lint, unit-tests, integration-tests, benchmarks, replay-tests jobs.
+Create `.github/workflows/ci.yml` — full spec in `test-strategy.md` Section 4. Must include: lint, unit-tests, integration-tests, benchmarks, replay-tests jobs.
 
 Create `.gitignore`:
 ```

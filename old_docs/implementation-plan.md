@@ -1,32 +1,184 @@
-# Unified Development Plan: Cross-Platform Hand-Gesture Desktop Controller
+# Implementation Plan: Cross-Platform Hand-Gesture Desktop Controller
 
-**Version:** 1.0 | **Date:** 2026-06-29 | **Status:** Authoritative Development Guide  
-**Synthesized from:** vision.txt, plan.md, research.md, implementation_plan.md, sys_prompt_1.txt, sys_prompt_2.txt, sys_prompt_3.txt
+This implementation plan details the setup and execution path for building a production-grade, low-latency, cross-platform hand-gesture desktop controller.
+
+## User Review Required
+
+> [!IMPORTANT]
+> The project utilizes a **multiprocessing architecture** separating the video capture process from the gesture recognition and application dispatching engine. A single-slot shared memory buffer (`multiprocessing.shared_memory.SharedMemory`) is used to exchange frame data with zero backlog and minimal latency, bypassing the Python GIL.
+
+> [!IMPORTANT]
+> **PyQt6** is used for UI components (system tray icon, translucent HUD, and settings panel) instead of Electron to ensure native styling, system integration, and low memory overhead (<150MB target).
+
+> [!WARNING]
+> **Platform-Specific OS Permissions:**
+> - Windows: Will use `pyautogui` initially, abstracting calls so we can drop in low-level `SendInput` ctypes later.
+> - macOS: Needs Accessibility API permissions (`AXIsProcessTrusted`) and Camera permissions.
+> - Linux: Requires `/dev/uinput` write access via `evdev`. A setup script will configure the necessary `udev` rules to run the daemon without root.
+
+## Open Questions
+
+- No open questions exist at this stage. The requirements are fully detailed in [master-development-plan.md](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/master-development-plan.md) and associated specifications. We will follow the defined plan strictly.
+
+## Proposed Changes
+
+We will set up the workspace under the `gesture_controller` directory with the following components. All files are listed below as new files.
+
+---
+
+### Repository Infrastructure & Packaging
+
+#### [NEW] [pyproject.toml](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/pyproject.toml)
+Defines project metadata, build configurations, dependencies, and formatting settings.
+
+#### [NEW] [requirements.txt](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/requirements.txt)
+Lists all production requirements (MediaPipe, OpenCV, PyQt6, NumPy, etc.).
+
+#### [NEW] [setup.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/setup.py)
+Minimal project configuration script delegating to `pyproject.toml`.
+
+#### [NEW] [main.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/main.py)
+The daemon process entry point that initializes logging, loads configurations, and spawns the orchestration engine.
+
+---
+
+### Core Daemon & Orchestration
+
+#### [NEW] [engine.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/core/engine.py)
+Coordinates processes, processes hand landmarks from SharedMemory, runs the pipeline, and handles shutdowns.
+
+#### [NEW] [event_bus.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/core/event_bus.py)
+In-process event broker managing system event pub/sub.
+
+#### [NEW] [config_manager.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/core/config_manager.py)
+Loads YAML configurations, validates schemas, and implements safe AST walkers for conditions.
+
+#### [NEW] [state_machine.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/core/state_machine.py)
+FSM parser that tracks gesture progress (Idle -> Candidate -> Validation -> Trigger -> Cooldown).
+
+---
+
+### Vision Pipeline & Input Capture
+
+#### [NEW] [camera_stream.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/vision/camera_stream.py)
+Process A: Opens camera capture using optimized OpenCV backends and writes frame bytes directly to SharedMemory.
+
+#### [NEW] [landmark_extractor.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/vision/landmark_extractor.py)
+Initializes MediaPipe Hands in streaming mode, consuming frames from SharedMemory and mapping output to project datatypes.
+
+#### [NEW] [one_euro_filter.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/vision/one_euro_filter.py)
+Suppresses noise in raw landmarks using a speed-adaptive One-Euro Filter.
+
+---
+
+### Mathematical Data Models
+
+#### [NEW] [data_types.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/models/data_types.py)
+Predefines all structured coordinate types, landmark configurations, and gesture event definitions.
+
+#### [NEW] [feature_engineering.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/models/feature_engineering.py)
+Translates 21 keypoints into translation-, scale-, and rotation-invariant features.
+
+#### [NEW] [dtw_matcher.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/models/dtw_matcher.py)
+Provides sub-millisecond dynamic time warping alignments using Numba compilation for user custom gestures.
+
+---
+
+### OS Integration adapters
+
+#### [NEW] [base_controller.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/os_integration/base_controller.py)
+Abstract base interface class for executing operating system actions.
+
+#### [NEW] [windows_controller.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/os_integration/windows_controller.py)
+Injects keys/clicks on Windows and tracks the foreground active process.
+
+#### [NEW] [macos_controller.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/os_integration/macos_controller.py)
+Uses PyObjC / Quartz CoreGraphics APIs for OS inputs and Accessibility interfaces for window tracking.
+
+#### [NEW] [linux_controller.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/os_integration/linux_controller.py)
+Uses `/dev/uinput` via `evdev` to bypass Wayland application isolation.
+
+#### [NEW] [action_dispatcher.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/os_integration/action_dispatcher.py)
+Dispatches gesture events using active application profiles.
+
+---
+
+### GUI and User Experience
+
+#### [NEW] [tray_icon.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/gui/tray_icon.py)
+PyQt6 implementation of the background daemon tray menu controls.
+
+#### [NEW] [overlay.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/gui/overlay.py)
+Provides on-screen head-up feedback with custom painter loops mapping active index points.
+
+#### [NEW] [gesture_recorder.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/gui/gesture_recorder.py)
+GUI panel helping users record custom dynamic gesture templates.
+
+#### [NEW] [settings_window.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/gui/settings_window.py)
+Panel editor containing config adjustment widgets.
+
+#### [NEW] [app_entry.py](file:///c:/Users/Aryan/OneDrive/Desktop/Coding%20Projects/2-Hand%20Gesture%20Control/gesture_controller/gui/app_entry.py)
+Orchestrates PyQt UI threads and background loops.
+
+---
+
+## Verification Plan
+
+### Automated Tests
+Run unit tests, integration tests, and benchmarks using the following commands:
+```powershell
+# Run the unit tests
+pytest tests/unit/
+
+# Run the integration tests
+pytest tests/integration/
+
+# Run performance benchmarks
+pytest tests/benchmarks/ --benchmark-only
+
+# Run gesture replay tests
+pytest tests/replay/
+```
+
+### Manual Verification
+1. Verify camera watchdog timeout and reconnection sequence by pulling the camera cable.
+2. Toggle global safety shortcuts and ensure no incidental hand motions fire system events.
+3. Validate Chrome and PowerPoint app-specific profiles by confirming gestures fire different shortcut triggers based on the active window.
+4. Verify tracking overlays follow coordinates smoothly with no visual latency.
+
+---
+
+## Master Development Plan (Verbatim)
+
+Unified Development Plan: Cross-Platform Hand-Gesture Desktop Controller
+
+Version: 1.0 | Date: 2026-06-29 | Status: Authoritative Development Guide  
+Synthesized from: vision.txt, plan.md, research.md, implementation-plan.md, sys-prompt-1.txt, sys-prompt-2.txt, sys-prompt-3.txt
 
 ---
 
 ## Table of Contents
 
-1. [Executive Summary](#1-executive-summary)
-2. [Mission and Success Criteria](#2-mission-and-success-criteria)
-3. [System Architecture (Resolved)](#3-system-architecture-resolved)
-4. [Technology Stack](#4-technology-stack)
-5. [Canonical Directory Structure](#5-canonical-directory-structure)
-6. [Data Flow Pipeline](#6-data-flow-pipeline)
-7. [Performance Budgets and KPIs](#7-performance-budgets-and-kpis)
-8. [Gesture Specification](#8-gesture-specification)
-9. [Configuration Reference](#9-configuration-reference)
-10. [Development Timeline](#10-development-timeline)
-11. [Error Handling and Edge Cases](#11-error-handling-and-edge-cases)
-12. [Installation and Onboarding UX](#12-installation-and-onboarding-ux)
-13. [Performance Profiling Strategy](#13-performance-profiling-strategy)
-14. [Accessibility and Internationalization](#14-accessibility-and-internationalization)
-15. [Testing Strategy](#15-testing-strategy)
-16. [CI/CD Pipeline](#16-cicd-pipeline)
-17. [Security and Privacy](#17-security-and-privacy)
-18. [Deployment and Packaging](#18-deployment-and-packaging)
-19. [Architecture Decision Records](#19-architecture-decision-records)
-20. [Risk Register](#20-risk-register)
+1. Executive Summary
+2. Mission and Success Criteria
+3. System Architecture (Resolved)
+4. Technology Stack
+5. Canonical Directory Structure
+6. Data Flow Pipeline
+7. Performance Budgets and KPIs
+8. Gesture Specification
+9. Configuration Reference
+10. Development Timeline
+11. Error Handling and Edge Cases
+12. Installation and Onboarding UX
+13. Performance Profiling Strategy
+14. Accessibility and Internationalization
+15. Testing Strategy
+16. CI/CD Pipeline
+17. Security and Privacy
+18. Deployment and Packaging
+19. Architecture Decision Records
+20. Risk Register
 
 ---
 
@@ -36,26 +188,26 @@ This document is the single, authoritative development guide for building a prod
 
 The application transforms a standard RGB webcam into a real-time operating system input device. It captures hand landmarks via Google MediaPipe, smooths them with a vectorized One-Euro Filter, engineers invariant features from the 21-joint skeleton, and feeds them into deterministic Finite State Machines that recognize gestures and dispatch OS commands. The system runs as a background daemon with a system tray icon, a translucent HUD overlay for visual feedback, and a settings/recorder GUI built with PyQt6.
 
-**What differentiates this from competitors** (MediaPipe Gesture Recognizer, Spatial Touch, Gerik, Gestro, MacGesture, Leap Motion):
+What differentiates this from competitors (MediaPipe Gesture Recognizer, Spatial Touch, Gerik, Gestro, MacGesture, Leap Motion):
 
-- **Deterministic FSM-based recognition** with structural Midas-Touch resistance, not frame-by-frame classification
-- **Shared-memory multiprocessing** architecture that bypasses both the Python GIL and network-stack IPC (Gerik's critical design flaw)
-- **Plugin ecosystem** for gestures and actions with hot-reload capability
-- **App-specific gesture profiles** so the same gesture maps to different actions per application
-- **Cross-platform OS abstraction** over Windows, macOS, and Linux (Wayland/X11) behind a clean ABC
-- **Sub-20ms end-to-end latency** target on a quad-core CPU without any GPU requirement
-- **Privacy-first design**: zero cloud inference, zero raw frame persistence, zero telemetry by default
-- **Comprehensive testing** with landmark replay fixtures, performance gating in CI, and 1000-hour stability target
+- Deterministic FSM-based recognition with structural Midas-Touch resistance, not frame-by-frame classification
+- Shared-memory multiprocessing architecture that bypasses both the Python GIL and network-stack IPC (Gerik's critical design flaw)
+- Plugin ecosystem for gestures and actions with hot-reload capability
+- App-specific gesture profiles so the same gesture maps to different actions per application
+- Cross-platform OS abstraction over Windows, macOS, and Linux (Wayland/X11) behind a clean ABC
+- Sub-20ms end-to-end latency target on a quad-core CPU without any GPU requirement
+- Privacy-first design: zero cloud inference, zero raw frame persistence, zero telemetry by default
+- Comprehensive testing with landmark replay fixtures, performance gating in CI, and 1000-hour stability target
 
-**Key additions beyond prior documents:** This plan expands into areas the source files glossed over or missed entirely: comprehensive error handling and edge cases for camera permissions, multi-monitor setups, high-DPI scaling, and OS permission dialogs; first-run installation and onboarding UX flows with permission wizards; a performance profiling strategy with specific tools (py-spy, cProfile, tracemalloc) and checkpoints at each milestone; and accessibility/internationalization requirements covering screen readers, keyboard navigation, left/right hand modes, and multi-language UI strings.
+Key additions beyond prior documents: This plan expands into areas the source files glossed over or missed entirely: comprehensive error handling and edge cases for camera permissions, multi-monitor setups, high-DPI scaling, and OS permission dialogs; first-run installation and onboarding UX flows with permission wizards; a performance profiling strategy with specific tools (py-spy, cProfile, tracemalloc) and checkpoints at each milestone; and accessibility/internationalization requirements covering screen readers, keyboard navigation, left/right hand modes, and multi-language UI strings.
 
 ---
 
 ## 2. Mission and Success Criteria
 
-**Mission:** Let a user control their desktop (window management, scrolling, media, and custom actions) using only a standard RGB webcam and bare hands, with sub-30ms reaction time, near-zero accidental triggers, and zero impact on privacy.
+Mission: Let a user control their desktop (window management, scrolling, media, and custom actions) using only a standard RGB webcam and bare hands, with sub-30ms reaction time, near-zero accidental triggers, and zero impact on privacy.
 
-**Priority ordering (order matters):**
+Priority ordering (order matters):
 1. Correctness
 2. Reliability
 3. Determinism
@@ -69,7 +221,7 @@ The application transforms a standard RGB webcam into a real-time operating syst
 
 Never sacrifice correctness for speed. Never sacrifice architecture for short-term convenience. Never introduce technical debt when an extensible solution is practical.
 
-**The project is successful only if it becomes:**
+The project is successful only if it becomes:
 - A reference-quality implementation of webcam-based gesture control
 - Extensible enough that new gestures, actions, or vision backends can be added without modifying the core engine
 - Deterministic, low-latency, and robust enough for daily use by non-technical users
@@ -86,14 +238,14 @@ The source documents contained conflicting guidance. The following resolutions a
 
 | Decision Area | Conflicting Sources | Resolved Approach |
 |---|---|---|
-| **Concurrency** | sys_prompt_1: 6 threads; sys_prompt_2: 3 threads; vision.txt: 3 threads | **Multiprocessing**: Process A (camera) isolated from Process B (inference+logic) via `multiprocessing.shared_memory.SharedMemory` single-slot buffer. Bypasses GIL entirely. |
-| **Frame exchange** | vision.txt: queue-based; sys_prompt_2: queue size 1 | **Single-slot SharedMemory**. Newest frame overwrites stale data. Zero backlog, lowest latency. |
-| **UI framework** | vision.txt: Electron/React or PyQt | **PyQt6**. Native tray, no Chromium overhead. Electron explicitly rejected. |
-| **Directory structure** | vision.txt: flat core/ui/utils | **implementation_plan.md** modular structure (core/, vision/, models/, plugins/, os_integration/, actions/, gui/) |
-| **Windows input** | sys_prompt_2: SendInput via ctypes; impl_plan: simpler first | **Start with pyautogui.** BaseController ABC allows drop-in upgrade to SendInput later. |
-| **Event system** | Not in vision.txt; partial in sys_prompt_1 | **In-process pub/sub via queue.Queue.** NEVER WebSocket/network (Gerik's bug). |
-| **Condition parsing** | Not addressed in vision.txt | **AST allow-list walker.** eval()/exec() on condition strings absolutely prohibited. |
-| **ML pipeline** | vision.txt: Azure MLOps | **Build-time only.** ml_pipeline/ never imported at runtime. 100% on-device inference. |
+| Concurrency | sys_prompt_1: 6 threads; sys_prompt_2: 3 threads; vision.txt: 3 threads | Multiprocessing: Process A (camera) isolated from Process B (inference+logic) via `multiprocessing.shared_memory.SharedMemory` single-slot buffer. Bypasses GIL entirely. |
+| Frame exchange | vision.txt: queue-based; sys_prompt_2: queue size 1 | Single-slot SharedMemory. Newest frame overwrites stale data. Zero backlog, lowest latency. |
+| UI framework | vision.txt: Electron/React or PyQt | PyQt6. Native tray, no Chromium overhead. Electron explicitly rejected. |
+| Directory structure | vision.txt: flat core/ui/utils | implementation-plan.md modular structure (core/, vision/, models/, plugins/, os_integration/, actions/, gui/) |
+| Windows input | sys_prompt_2: SendInput via ctypes; impl_plan: simpler first | Start with pyautogui. BaseController ABC allows drop-in upgrade to SendInput later. |
+| Event system | Not in vision.txt; partial in sys_prompt_1 | In-process pub/sub via queue.Queue. NEVER WebSocket/network (Gerik's bug). |
+| Condition parsing | Not addressed in vision.txt | AST allow-list walker. eval()/exec() on condition strings absolutely prohibited. |
+| ML pipeline | vision.txt: Azure MLOps | Build-time only. ml_pipeline/ never imported at runtime. 100% on-device inference. |
 
 ### 3.2 Process Architecture
 
@@ -131,19 +283,19 @@ Process B: Inference & Logic (engine.py)                    |
 | Windows: pyautogui |  | (hot-reload,      |  | - System tray      |
 | MacOS: Quartz/AX   |  |  schema validation)|  | - Overlay HUD      |
 | Linux: /dev/uinput |  +------------------+  | - Settings window   |
-+--------------------+                         | - Gesture recorder  |
+|--------------------+                         | - Gesture recorder  |
                                                +--------------------+
 ```
 
 ### 3.3 Core Architectural Principles
 
-1. **Modularity:** No module depends on implementation details of another. Dependencies flow toward abstractions (ABCs/interfaces).
-2. **Dependency Inversion:** Business logic never knows Windows APIs, macOS APIs, Linux APIs, MediaPipe internals, or GUI framework internals.
-3. **Freshness over completeness:** Drop frames rather than increase latency. Process newest data only.
-4. **Landmark-first reasoning:** Raw RGB images disappear immediately after landmark extraction.
-5. **Configurability over hardcoding:** Every threshold, filter parameter, cooldown, and sensitivity is in YAML. No magic numbers.
-6. **Privacy by design:** On-device inference only. No cloud calls at runtime. No raw frame storage. Telemetry opt-in, anonymized only.
-7. **Determinism:** The gesture engine is fully deterministic. No random decisions. No single-frame triggers.
+1. Modularity: No module depends on implementation details of another. Dependencies flow toward abstractions (ABCs/interfaces).
+2. Dependency Inversion: Business logic never knows Windows APIs, macOS APIs, Linux APIs, MediaPipe internals, or GUI framework internals.
+3. Freshness over completeness: Drop frames rather than increase latency. Process newest data only.
+4. Landmark-first reasoning: Raw RGB images disappear immediately after landmark extraction.
+5. Configurability over hardcoding: Every threshold, filter parameter, cooldown, and sensitivity is in YAML. No magic numbers.
+6. Privacy by design: On-device inference only. No cloud calls at runtime. No raw frame storage. Telemetry opt-in, anonymized only.
+7. Determinism: The gesture engine is fully deterministic. No random decisions. No single-frame triggers.
 
 ---
 
@@ -250,51 +402,51 @@ gesture_controller/
 ## 6. Data Flow Pipeline
 
 ### Stage 1: Camera Capture (Process A)
-- **Input:** USB webcam device index
-- **Processing:** cv2.VideoCapture with hw accel. Resize 640x480, BGR to RGB, horizontal mirror.
-- **Output:** Raw frame in SharedMemory (single slot, overwrites stale).
-- **Watchdog:** No frame for 2s -> reconnect. Backend fallback. Log CameraDisconnected/CameraRecovered.
-- **Error handling:** SharedMemory write failure -> skip frame. Device disappears -> reconnect with exponential backoff (100ms to 1.6s).
+- Input: USB webcam device index
+- Processing: cv2.VideoCapture with hw accel. Resize 640x480, BGR to RGB, horizontal mirror.
+- Output: Raw frame in SharedMemory (single slot, overwrites stale).
+- Watchdog: No frame for 2s -> reconnect. Backend fallback. Log CameraDisconnected/CameraRecovered.
+- Error handling: SharedMemory write failure -> skip frame. Device disappears -> reconnect with exponential backoff (100ms to 1.6s).
 
 ### Stage 2: Landmark Extraction
-- **Input:** Raw RGB from SharedMemory
-- **Processing:** MediaPipe Hands LIVE_STREAM. Up to 2 hands, 21 Landmark3D each.
-- **Output:** list[Hand] with landmarks, handedness, confidence.
-- **Conversion:** MediaPipe objects -> project Hand/Landmark3D dataclasses IMMEDIATELY. MediaPipe never leaves this module.
-- **Memory:** Raw frame buffer released after extraction. No image data persists.
+- Input: Raw RGB from SharedMemory
+- Processing: MediaPipe Hands LIVE_STREAM. Up to 2 hands, 21 Landmark3D each.
+- Output: list[Hand] with landmarks, handedness, confidence.
+- Conversion: MediaPipe objects -> project Hand/Landmark3D dataclasses IMMEDIATELY. MediaPipe never leaves this module.
+- Memory: Raw frame buffer released after extraction. No image data persists.
 
 ### Stage 3: One-Euro Filtering
-- **Input:** list[Landmark3D] (raw)
-- **Processing:** Vectorized One-Euro filter on all (x,y,z) via NumPy. Dynamic cutoff: low speed -> aggressive smoothing; high speed -> minimal lag.
-- **Environmental adaptation:** Beta and min_cutoff scaled by lighting metric (avg pixel intensity of bounding box) and depth metric (wrist-to-MCP distance).
-- **Output:** list[Landmark3D] (smoothed) with velocity and acceleration attached.
+- Input: list[Landmark3D] (raw)
+- Processing: Vectorized One-Euro filter on all (x,y,z) via NumPy. Dynamic cutoff: low speed -> aggressive smoothing; high speed -> minimal lag.
+- Environmental adaptation: Beta and min_cutoff scaled by lighting metric (avg pixel intensity of bounding box) and depth metric (wrist-to-MCP distance).
+- Output: list[Landmark3D] (smoothed) with velocity and acceleration attached.
 
 ### Stage 4: Feature Engineering
-- **Input:** Smoothed landmarks with velocity/acceleration
-- **Processing:** Origin alignment (wrist), depth scaling (MCP bone length), joint angles (bone vector dot products), finger curl, finger spread, palm normal, palm orientation (quaternion), hand openness, pinch distance, velocities, accelerations, handedness mirroring.
-- **Output:** FeatureVector dataclass.
+- Input: Smoothed landmarks with velocity/acceleration
+- Processing: Origin alignment (wrist), depth scaling (MCP bone length), joint angles (bone vector dot products), finger curl, finger spread, palm normal, palm orientation (quaternion), hand openness, pinch distance, velocities, accelerations, handedness mirroring.
+- Output: FeatureVector dataclass.
 
 ### Stage 5: FSM Gesture Engine
-- **Input:** FeatureVector per frame per hand
-- **Processing:** All gesture FSMs evaluate in parallel. States: Idle -> Candidate -> Validation -> Confirmed -> Triggered -> Cooldown -> Idle.
-- **Transitions require:** min confidence, min duration, timeout, velocity constraints, orientation constraints, hysteresis, rejection conditions, cooldown.
-- **Priority:** Highest confidence, then predefined order, then most recently armed.
-- **Output:** GestureEvent or None.
+- Input: FeatureVector per frame per hand
+- Processing: All gesture FSMs evaluate in parallel. States: Idle -> Candidate -> Validation -> Confirmed -> Triggered -> Cooldown -> Idle.
+- Transitions require: min confidence, min duration, timeout, velocity constraints, orientation constraints, hysteresis, rejection conditions, cooldown.
+- Priority: Highest confidence, then predefined order, then most recently armed.
+- Output: GestureEvent or None.
 
 ### Stage 6: Event Bus
-- **Input:** GestureEvent, CameraDisconnected, ConfigurationChanged, etc.
-- **Processing:** In-process pub/sub. Subscribers: ActionDispatcher, OverlayHUD, TrayIcon, logger.
-- **No module directly calls another.** All inter-module communication through event bus.
+- Input: GestureEvent, CameraDisconnected, ConfigurationChanged, etc.
+- Processing: In-process pub/sub. Subscribers: ActionDispatcher, OverlayHUD, TrayIcon, logger.
+- No module directly calls another. All inter-module communication through event bus.
 
 ### Stage 7: Action Dispatcher
-- **Input:** GestureEvent + active window process name
-- **Processing:** Query foreground app -> check app-specific profile -> parse action string -> call BaseController method.
-- **Output:** OS command executed.
+- Input: GestureEvent + active window process name
+- Processing: Query foreground app -> check app-specific profile -> parse action string -> call BaseController method.
+- Output: OS command executed.
 
 ### Stage 8: OS Backend
-- **Windows:** WindowsController (pyautogui -> SendInput upgrade path). Foreground tracking via win32gui.
-- **macOS:** MacOSController (CGEventPost, AXUIElement).
-- **Linux:** LinuxController (/dev/uinput via evdev, udev rules for non-root).
+- Windows: WindowsController (pyautogui -> SendInput upgrade path). Foreground tracking via win32gui.
+- macOS: MacOSController (CGEventPost, AXUIElement).
+- Linux: LinuxController (/dev/uinput via evdev, udev rules for non-root).
 
 ---
 
@@ -311,7 +463,7 @@ gesture_controller/
 | Filtering + features | < 1 ms | One-Euro + geometry math |
 | FSM evaluation | < 1 ms | Dozens of comparisons |
 | Action dispatch | < 2 ms | Key/mouse event injection |
-| **Total** | **< 20 ms** | Target >= 50 FPS sustained |
+| Total | < 20 ms | Target >= 50 FPS sustained |
 
 ### 7.2 Top-Level KPIs (Acceptance Gates)
 
@@ -340,19 +492,19 @@ gesture_controller/
 
 ### 8.1 MVP Gesture Vocabulary (ship in priority order)
 
-**Priority 1: Minimize Active Window (Dynamic)**
+Priority 1: Minimize Active Window (Dynamic)
 - Trigger: Index finger pointing up, then rapidly flicked down
 - FSM: Idle -> PointingUp (index extended, others curled, >=200ms) -> RapidDownFlick (index tip Y delta > threshold within 300ms, palm stable) -> Trigger -> Cooldown (1000ms)
 - Default action: OS:MinimizeActiveWindow
 - Abort: Palm moves > threshold (arm moving, not finger), other fingers extend
 
-**Priority 2: Switch Active Window (Dynamic)**
+Priority 2: Switch Active Window (Dynamic)
 - Trigger: Open hand swipes horizontally
 - FSM: Idle -> HandOpen (all fingers extended, >=150ms) -> HorizontalSwipe (palm X delta > threshold within 400ms, Z stable) -> Trigger -> Cooldown (800ms)
 - Default action: OS:SwitchWindow
 - Abort: Hand closes during swipe, vertical exceeds horizontal
 
-**Priority 3: Scroll Up/Down (Continuous)**
+Priority 3: Scroll Up/Down (Continuous)
 - Trigger: Index pointing at screen, hand moves vertically
 - FSM: Idle -> PointingForward (index extended, Z decreases, >=200ms) -> ScrollingActive (palm Y delta -> scroll delta continuously) -> Release (hand retracts or 5s timeout) -> Cooldown (200ms)
 - Default action: MouseScroll:delta (proportional)
@@ -360,7 +512,7 @@ gesture_controller/
 
 ### 8.2 Secondary Gestures (post-MVP)
 
-**Static:**
+Static:
 | Gesture | Condition | Action | Cooldown |
 |---|---|---|---|
 | Thumbs Up | Thumb extended, others curled, >=200ms | Media:PlayPause | 1000ms |
@@ -368,13 +520,13 @@ gesture_controller/
 | Pinch | Thumb-index dist < threshold, >=150ms | MouseClick:Left | 500ms |
 | Peace Sign | Index+middle extended, others curled, >=200ms | Configurable | 800ms |
 
-**Dynamic:**
+Dynamic:
 | Gesture | Pattern | Action | Cooldown |
 |---|---|---|---|
 | Swipe Left | Open hand moves left | KeyPress:ArrowLeft (profile-dependent) | 300ms |
 | Swipe Right | Open hand moves right | KeyPress:ArrowRight (profile-dependent) | 300ms |
 
-**Multi-Hand (stretch):** Volume Slider (left anchor, right drag), Zoom (two hands apart/together).
+Multi-Hand (stretch): Volume Slider (left anchor, right drag), Zoom (two hands apart/together).
 
 ### 8.3 Gesture Definition Schema (YAML)
 
@@ -524,7 +676,6 @@ All YAML validated against JSON Schema at startup. Invalid configs produce clear
 | 8-9 | Phase 8 | M7 UI & Testing | Tray, overlay, full test suite, CI perf gating |
 | 9-10 | Phase 9 | M8 Release Prep | Packaging, docs, ADRs, beta build |
 
-
 ---
 
 ## 11. Error Handling and Edge Cases
@@ -560,7 +711,7 @@ All YAML validated against JSON Schema at startup. Invalid configs produce clear
 
 ### 11.2 Recovery Strategies
 
-**Camera Recovery:**
+Camera Recovery:
 1. Watchdog timer: if no frame received for `watchdog_timeout_ms` (default 2000ms), mark as disconnected.
 2. Publish `camera_disconnected` event (tray icon updates, overlay shows warning).
 3. Attempt reconnect with exponential backoff: [100, 200, 400, 800, 1600] ms.
@@ -568,66 +719,66 @@ All YAML validated against JSON Schema at startup. Invalid configs produce clear
 5. After 5 failed attempts, hold for 5 seconds, then reset backoff to index 0.
 6. On successful reconnect: publish `camera_recovered`, reset One-Euro filter state.
 
-**Config Recovery:**
+Config Recovery:
 1. If user config is invalid YAML: log error, show notification, continue with defaults.
 2. If user config fails schema validation: log each violation, use defaults for invalid keys, keep valid keys.
 3. If default config is corrupted (should never happen in version-controlled code): fatal error.
 4. ConfigManager never crashes the app. Worst case: all defaults, no user customizations.
 
-**MediaPipe Recovery:**
+MediaPipe Recovery:
 1. If MediaPipe returns empty results for 100 consecutive frames: log warning (may be lighting issue).
 2. If MediaPipe throws exception: catch, log, skip frame, continue. MediaPipe is generally robust.
 3. If MediaPipe model fails to load at startup: fatal. Show dialog, suggest checking installation.
 
-**Plugin Recovery:**
+Plugin Recovery:
 1. If a plugin fails to load: skip it, log warning, continue loading other plugins.
 2. If a plugin crashes at runtime (handler throws): catch, log, unsubscribe that plugin.
 3. If hot-reload fails: keep previous version of plugin active, log error.
 
 ### 11.3 Edge Cases
 
-**Multi-monitor setups:**
+Multi-monitor setups:
 - Overlay HUD covers the primary monitor by default. Configurable to cover all virtual desktop.
 - Mouse actions (click, scroll) target the monitor where the cursor is, which is correct by default.
 - Window management actions (minimize, switch) work on the active window regardless of monitor.
 
-**High-DPI / display scaling:**
+High-DPI / display scaling:
 - PyQt6 handles DPI scaling via `AA_EnableHighDpiScaling`.
 - Overlay coordinates are in logical pixels (Qt handles physical-to-logical mapping).
 - MediaPipe coordinates are normalized [0,1], independent of display resolution.
 - PyAutoGUI on Windows may need DPI awareness: `ctypes.windll.shcore.SetProcessDpiAwareness(1)`.
 
-**Multiple cameras:**
+Multiple cameras:
 - Config `camera.device_id` selects which camera (0, 1, 2...).
 - Settings UI provides dropdown of available cameras (via `cv2.VideoCapture(i).isOpen()` probing).
 - Only one camera active at a time. Switching requires restart of camera process.
 
-**No camera detected:**
+No camera detected:
 - On first launch with no camera: show setup wizard explaining camera requirement.
 - List detected cameras. If none: show link to troubleshooting guide.
 - App remains in system tray but gesture recognition is disabled.
 
-**Rapid lighting changes:**
+Rapid lighting changes:
 - One-Euro dynamic adaptation adjusts smoothing based on lighting metric.
 - MediaPipe handles moderate lighting variation internally.
 - Extreme changes (light on/off) cause brief tracking loss, then recovery.
 
-**Face detected instead of hand:**
+Face detected instead of hand:
 - MediaPipe Hands only detects hands. Face detection is a separate model not loaded.
 - No false triggers from face gestures.
 
-**Two hands simultaneously:**
+Two hands simultaneously:
 - MediaPipe returns up to 2 Hand objects.
 - Each hand is processed independently through the full pipeline.
 - Global cooldown prevents both hands from triggering simultaneously (configurable: `max_simultaneous_gestures`).
 - Multi-hand gestures (volume slider, zoom) are a stretch goal, not in MVP.
 
-**Hand enters/leaves frame:**
+Hand enters/leaves frame:
 - Hand enters: One-Euro filter initializes on first frame (no smoothing until 2nd frame).
 - Hand leaves: FSMs reset to Idle. No stale state carried over.
 - Hand re-enters: fresh initialization. No "ghost" gestures from previous appearance.
 
-**OS sleep/wake:**
+OS sleep/wake:
 - On sleep: camera process may fail. On wake: watchdog triggers reconnect.
 - macOS: NSWorkspace notifications for sleep/wake to proactively pause/resume.
 - Windows: WM_POWERBROADCAST message handling.
@@ -641,22 +792,22 @@ All YAML validated against JSON Schema at startup. Invalid configs produce clear
 
 When the app launches for the first time (no user config directory exists):
 
-**Step 1: Welcome Screen**
+Step 1: Welcome Screen
 - "Welcome to Gesture Controller" with brief description (2-3 sentences).
 - "Next" button.
 
-**Step 2: Camera Setup**
+Step 2: Camera Setup
 - Dropdown showing detected cameras with preview thumbnail (1 frame).
 - If no camera detected: show troubleshooting steps.
 - "Test Camera" button: shows live preview for 3 seconds.
 - "Next" button (disabled until camera works).
 
-**Step 3: Permission Setup (platform-specific)**
+Step 3: Permission Setup (platform-specific)
 - Windows: No special permissions needed. Just inform: "Gesture Controller will send keyboard and mouse input on your behalf."
 - macOS: Check `AXIsProcessTrusted()`. If False: "Gesture Controller needs Accessibility permission to control windows. Click below to open System Preferences." Button opens System Preferences > Privacy > Accessibility.
 - Linux: Check `/dev/uinput` write access and group membership. If no access: "Install udev rules for non-root input injection" with copy-paste terminal commands.
 
-**Step 4: Gesture Tutorial**
+Step 4: Gesture Tutorial
 - Show animated GIF or short video of each MVP gesture.
 - User tries each gesture with real-time feedback (landmarks shown in HUD).
 - "Minimize Window: Point index finger up, then flick down quickly."
@@ -664,13 +815,13 @@ When the app launches for the first time (no user config directory exists):
 - "Scroll: Point index finger at screen, move hand up/down."
 - Checkbox: "Skip tutorial" (can be re-opened from Settings > Help).
 
-**Step 5: Sensitivity Calibration (optional)**
+Step 5: Sensitivity Calibration (optional)
 - User performs each gesture 3 times.
 - App measures timing and motion magnitude.
 - Suggests sensitivity multiplier adjustment if gestures are consistently too fast/slow.
 - "Use recommended settings" / "Customize" buttons.
 
-**Step 6: Ready**
+Step 6: Ready
 - "You're all set! Gesture Controller is running in your system tray."
 - "The overlay shows hand tracking. Try minimizing this window with a gesture!"
 - Close button (app minimizes to tray).
@@ -690,7 +841,7 @@ version: "1.0"  # If version changes, re-run onboarding
 ### 12.3 Settings > Help Menu
 
 - "Run Setup Wizard Again" — deletes onboarding_state.yaml, relaunches wizard.
-- "Gesture Reference" — opens gesture_spec.html (generated from gesture_spec.md).
+- "Gesture Reference" — opens gesture_spec.html (generated from gesture-spec.md).
 - "Troubleshooting Guide" — opens docs/troubleshooting.md.
 - "Open Log Directory" — opens platform log folder.
 - "About" — version, license, links.
@@ -715,29 +866,29 @@ version: "1.0"  # If version changes, re-run onboarding
 
 At the end of each milestone, run the full profiling suite:
 
-**M0 (Foundations):**
+M0 (Foundations):
 - Baseline memory: app startup with no camera, no MediaPipe. Target: < 30 MB RSS.
 - Import time: `python -c "import time; t=time.perf_counter(); import gesture_controller; print(time.perf_counter()-t)"`. Target: < 1 second.
 
-**M1 (Camera + MediaPipe):**
+M1 (Camera + MediaPipe):
 - Camera capture latency: 1000 frames, measure per-frame time. Target: < 5ms mean.
 - SharedMemory write: measure time for np.copyto. Target: < 0.1ms.
 - MediaPipe extraction: 1000 frames, measure per-frame time. Target: < 10ms mean.
 - Memory after 1000 frames: check for leaks. Target: 0 net growth.
 
-**M2 (Filtering + Features):**
+M2 (Filtering + Features):
 - One-Euro filter: 1000 frames of random landmarks. Target: < 0.5ms.
 - Feature engineering: 1000 frames. Target: < 0.5ms.
 - Combined filter+features: target < 1ms.
 - tracemalloc: 0 allocations in hot path (all pre-allocated).
 
-**M3 (FSM + OS):**
+M3 (FSM + OS):
 - FSM evaluation: 1000 frames with 10 active FSMs. Target: < 0.5ms.
 - Action dispatch: 100 calls to each OS action type. Target: < 2ms each.
 - Full pipeline: SharedMemory read to GestureEvent. Target: < 20ms.
 - 30-minute soak test: monitor CPU and memory. Target: < 10% CPU, < 200 MB, 0 crashes.
 
-**M4-M8:**
+M4-M8:
 - Repeat M3 profiling on each platform.
 - Plugin loading time: < 100ms for 10 plugins.
 - DTW matching: < 5ms per template.
@@ -769,26 +920,26 @@ At the end of each milestone, run the full profiling suite:
 
 ### 14.1 Accessibility (a11y)
 
-**Keyboard Navigation:**
+Keyboard Navigation:
 - All GUI elements (settings window, tray menu) must be keyboard-navigable.
 - Tab order follows visual layout (left-to-right, top-to-bottom).
 - Focus indicators visible on all interactive elements.
 - Pause hotkey (Win+Shift+G) works without any GUI interaction.
 
-**Screen Reader Support:**
+Screen Reader Support:
 - All Qt widgets have accessible names set via `setAccessibleName()`.
 - Tray icon tooltip describes current state ("Gesture Controller: Active, 30 FPS").
 - Overlay HUD is purely visual and informational; screen reader users use the tray tooltip for status.
 - Settings window labels use `setBuddy()` to associate with their input widgets.
 
-**Visual Accessibility:**
+Visual Accessibility:
 - Minimum contrast ratio: 4.5:1 for text (WCAG AA).
 - Overlay skeleton lines: minimum 2px width, high contrast against dark background.
 - Action confirmation text: white on semi-transparent dark background.
 - Settings window: respects OS high-contrast mode.
 - Minimum font size: 12px in settings, 10px in overlay.
 
-**Motor Accessibility:**
+Motor Accessibility:
 - All gestures can be performed with one hand.
 - Sensitivity multiplier allows users with limited hand mobility to reduce required motion.
 - Gesture cooldown and minimum duration are configurable.
@@ -804,18 +955,18 @@ At the end of each milestone, run the full profiling suite:
 
 ### 14.3 Internationalization (i18n)
 
-**String Externalization:**
+String Externalization:
 - All user-facing strings stored in `data/strings/` as JSON files.
 - `data/strings/en.json` is the source of truth.
 - Format: `"settings.window.title": "Gesture Controller Settings"`
 
-**Supported Languages (MVP):**
+Supported Languages (MVP):
 - English (en) — complete
 - Hindi (hi) — complete
 - Spanish (es) — community-contributed
 - Additional languages via community PRs
 
-**String Loading:**
+String Loading:
 ```python
 # core/i18n.py
 class I18n:
@@ -834,7 +985,7 @@ class I18n:
         return self._load("en")  # Fallback to English
 ```
 
-**Config:**
+Config:
 ```yaml
 # In default_config.yaml
 ui:
@@ -845,7 +996,7 @@ ui:
 
 ## 15. Testing Strategy
 
-See `agent_prompts/test_strategy.md` for the complete testing specification including:
+See `old_docs/agent_prompts/test-strategy.md` for the complete testing specification including:
 
 - Testing pyramid (60% unit, 15% integration, 20% property/replay, 5% E2E)
 - Full test file list per module with specific test cases
@@ -948,22 +1099,22 @@ Manual trigger on `release/*` branches:
 
 ### 17.2 Privacy Guarantees
 
-1. **No cloud inference.** MediaPipe runs 100% on-device. No frames leave the machine.
-2. **No frame storage.** Raw images exist only in SharedMemory buffer, overwritten every frame.
-3. **No recording.** The app never captures or saves video or images.
-4. **No telemetry by default.** If enabled, sends only: gesture count, FPS, error count, OS version, app version. No landmarks, no frames, no usernames.
-5. **Local config only.** User preferences, custom gestures, app profiles stored in platform user config directory.
-6. **Open source.** Full source code auditable. No obfuscated binaries, no hidden network calls.
-7. **No unique identifiers.** Telemetry does not include machine ID, IP address, or user identity.
+1. No cloud inference. MediaPipe runs 100% on-device. No frames leave the machine.
+2. No frame storage. Raw images exist only in SharedMemory buffer, overwritten every frame.
+3. No recording. The app never captures or saves video or images.
+4. No telemetry by default. If enabled, sends only: gesture count, FPS, error count, OS version, app version. No landmarks, no frames, no usernames.
+5. Local config only. User preferences, custom gestures, app profiles stored in platform user config directory.
+6. Open source. Full source code auditable. No obfuscated binaries, no hidden network calls.
+7. No unique identifiers. Telemetry does not include machine ID, IP address, or user identity.
 
 ### 17.3 Security Practices
 
-- **No eval/exec/compile** on user-provided strings. AST allow-list walker only.
-- **Plugin isolation:** Plugins are loaded via importlib. In MVP, they share the process. Future: consider subprocess isolation for untrusted plugins.
-- **Dependency pinning:** requirements.txt pins exact versions. Dependabot for security updates.
-- **Code signing:** Windows binaries signed with Authenticode (release builds). macOS .app notarized.
-- **No SUID binaries.** Linux udev rules are the only elevated permission mechanism.
-- **Input injection is explicit.** Only BaseController methods can send OS input. No other code path.
+- No eval/exec/compile on user-provided strings. AST allow-list walker only.
+- Plugin isolation: Plugins are loaded via importlib. In MVP, they share the process. Future: consider subprocess isolation for untrusted plugins.
+- Dependency pinning: requirements.txt pins exact versions. Dependabot for security updates.
+- Code signing: Windows binaries signed with Authenticode (release builds). macOS .app notarized.
+- No SUID binaries. Linux udev rules are the only elevated permission mechanism.
+- Input injection is explicit. Only BaseController methods can send OS input. No other code path.
 
 ---
 
@@ -971,7 +1122,7 @@ Manual trigger on `release/*` branches:
 
 ### 18.1 PyInstaller Configuration
 
-See `agent_prompts/phase_5_polish.md` Section 5 for the complete `.spec` file.
+See `old_docs/agent_prompts/phase-5-polish.md` Section 5 for the complete `.spec` file.
 
 Key packaging details:
 - `console=False` — no terminal window on Windows
@@ -982,20 +1133,20 @@ Key packaging details:
 
 ### 18.2 Platform-Specific Installers
 
-**Windows (NSIS):**
+Windows (NSIS):
 - `GestureController-Setup-vX.Y.Z.exe`
 - Installs to `C:/Program Files/GestureController/`
 - Creates desktop shortcut, start menu entry
 - Adds to Windows Startup (optional, user choice)
 - Uninstaller removes all files and registry entries
 
-**macOS (DMG):**
+macOS (DMG):
 - `GestureController-vX.Y.Z.dmg`
 - Drag-and-drop install to /Applications
 - First-run: requests Camera and Accessibility permissions
 - Info.plist includes NSCameraUsageDescription, NSAccessibilityUsageDescription
 
-**Linux (deb via fpm):**
+Linux (deb via fpm):
 - `gesture-controller_X.Y.Z_amd64.deb`
 - Installs to `/opt/gesture-controller/`
 - Includes udev rules in separate package: `gesture-controller-udev`
@@ -1011,8 +1162,8 @@ Key packaging details:
 | NumPy + Numba | ~20 MB |
 | OpenCV | ~15 MB |
 | App code + data | ~2 MB |
-| **Total compressed** | **< 80 MB** |
-| **Total installed** | **< 150 MB** |
+| Total compressed | < 80 MB |
+| Total installed | < 150 MB |
 
 ### 18.4 Post-Install Verification
 
@@ -1025,64 +1176,64 @@ Key packaging details:
 ## 19. Architecture Decision Records
 
 ### ADR-001: Multiprocessing over Threading
-- **Context:** Need concurrent camera capture and inference without GIL contention.
-- **Decision:** Use `multiprocessing` with `shared_memory.SharedMemory` single-slot buffer.
-- **Consequences:** Bypasses GIL entirely. Lowest latency. No backlog. Requires careful SharedMemory lifecycle management.
-- **Alternatives considered:** Threading (GIL bottleneck), Queue (backlog latency), WebSocket IPC (Gerik's bug — network stack overhead).
+- Context: Need concurrent camera capture and inference without GIL contention.
+- Decision: Use `multiprocessing` with `shared_memory.SharedMemory` single-slot buffer.
+- Consequences: Bypasses GIL entirely. Lowest latency. No backlog. Requires careful SharedMemory lifecycle management.
+- Alternatives considered: Threading (GIL bottleneck), Queue (backlog latency), WebSocket IPC (Gerik's bug — network stack overhead).
 
 ### ADR-002: PyQt6 over Electron
-- **Context:** Need system tray, overlay, and settings window.
-- **Decision:** PyQt6 with native widgets.
-- **Consequences:** Smaller binary (~40MB vs ~150MB), native look, system tray support, no Chromium overhead.
-- **Alternatives considered:** Electron/React (rejected: bloated, no native tray), Tkinter (rejected: ugly, limited tray support).
+- Context: Need system tray, overlay, and settings window.
+- Decision: PyQt6 with native widgets.
+- Consequences: Smaller binary (~40MB vs ~150MB), native look, system tray support, no Chromium overhead.
+- Alternatives considered: Electron/React (rejected: bloated, no native tray), Tkinter (rejected: ugly, limited tray support).
 
 ### ADR-003: FSM over ML Classification
-- **Context:** Need gesture recognition with minimal false positives.
-- **Decision:** Deterministic finite state machines with minimum duration, timeout, and abort conditions.
-- **Consequences:** Zero single-frame triggers. Predictable behavior. Requires manual gesture definition. Does not scale to hundreds of gestures.
-- **Alternatives considered:** MediaPipe Gesture Recognizer (rejected: no temporal reasoning), neural network classifier (rejected: non-deterministic, black box).
+- Context: Need gesture recognition with minimal false positives.
+- Decision: Deterministic finite state machines with minimum duration, timeout, and abort conditions.
+- Consequences: Zero single-frame triggers. Predictable behavior. Requires manual gesture definition. Does not scale to hundreds of gestures.
+- Alternatives considered: MediaPipe Gesture Recognizer (rejected: no temporal reasoning), neural network classifier (rejected: non-deterministic, black box).
 
 ### ADR-004: AST Condition Parsing
-- **Context:** Gesture YAML condition strings need safe evaluation.
-- **Decision:** Parse with `ast.parse()`, walk tree with allow-list of operators, compile to callable.
-- **Consequences:** No code execution risk. Limited to boolean expressions and comparisons. Cannot call functions.
-- **Alternatives considered:** eval() (rejected: security), custom DSL parser (rejected: reinventing Python).
+- Context: Gesture YAML condition strings need safe evaluation.
+- Decision: Parse with `ast.parse()`, walk tree with allow-list of operators, compile to callable.
+- Consequences: No code execution risk. Limited to boolean expressions and comparisons. Cannot call functions.
+- Alternatives considered: eval() (rejected: security), custom DSL parser (rejected: reinventing Python).
 
 ### ADR-005: pyautogui with SendInput Upgrade Path
-- **Context:** Need OS input injection on Windows.
-- **Decision:** Start with pyautogui (simple, cross-platform). BaseController ABC allows drop-in upgrade to SendInput via ctypes.
-- **Consequences:** Fast to implement. May have latency issues (pyautogui has internal delays). Upgrade path preserves API.
-- **Alternatives considered:** Direct SendInput from start (rejected: complex, platform-specific), ctypes only (rejected: verbose).
+- Context: Need OS input injection on Windows.
+- Decision: Start with pyautogui (simple, cross-platform). BaseController ABC allows drop-in upgrade to SendInput via ctypes.
+- Consequences: Fast to implement. May have latency issues (pyautogui has internal delays). Upgrade path preserves API.
+- Alternatives considered: Direct SendInput from start (rejected: complex, platform-specific), ctypes only (rejected: verbose).
 
 ### ADR-006: In-Process EventBus over IPC
-- **Context:** Modules need to communicate without tight coupling.
-- **Decision:** `queue.Queue`-based pub/sub within Process B. No network communication.
-- **Consequences:** Zero serialization overhead. Subscribers called in publisher's thread. Gerik's WebSocket approach caused latency — we avoid that entirely.
-- **Alternatives considered:** WebSocket (rejected: Gerik's bug), ZMQ (rejected: overkill for single-process), signals/slots only (rejected: couples to Qt).
+- Context: Modules need to communicate without tight coupling.
+- Decision: `queue.Queue`-based pub/sub within Process B. No network communication.
+- Consequences: Zero serialization overhead. Subscribers called in publisher's thread. Gerik's WebSocket approach caused latency — we avoid that entirely.
+- Alternatives considered: WebSocket (rejected: Gerik's bug), ZMQ (rejected: overkill for single-process), signals/slots only (rejected: couples to Qt).
 
 ### ADR-007: /dev/uinput for Linux Wayland
-- **Context:** Wayland does not allow applications to inject input via X11 APIs.
-- **Decision:** Use `/dev/uinput` via `python-evdev` to create a virtual input device.
-- **Consequences:** Works on Wayland and X11. Requires udev rules for non-root access. Window management still compositor-dependent.
-- **Alternatives considered:** ydotool (rejected: external dependency, dbus), xdotool (rejected: X11 only), GNOME/KDE D-Bus only (rejected: compositor-specific).
+- Context: Wayland does not allow applications to inject input via X11 APIs.
+- Decision: Use `/dev/uinput` via `python-evdev` to create a virtual input device.
+- Consequences: Works on Wayland and X11. Requires udev rules for non-root access. Window management still compositor-dependent.
+- Alternatives considered: ydotool (rejected: external dependency, dbus), xdotool (rejected: X11 only), GNOME/KDE D-Bus only (rejected: compositor-specific).
 
 ### ADR-008: DTW for Custom Gestures
-- **Context:** Users need to define custom gestures without training ML models.
-- **Decision:** Record 3 examples, normalize to 60-frame templates, average into single template, match via Numba-compiled DTW.
-- **Consequences:** No training required. Instant feedback. Template quality depends on recording consistency. Does not scale to thousands of custom gestures.
-- **Alternatives considered:** Neural network fine-tuning (rejected: requires GPU, data, expertise), hidden Markov models (rejected: more complex, marginal improvement).
+- Context: Users need to define custom gestures without training ML models.
+- Decision: Record 3 examples, normalize to 60-frame templates, average into single template, match via Numba-compiled DTW.
+- Consequences: No training required. Instant feedback. Template quality depends on recording consistency. Does not scale to thousands of custom gestures.
+- Alternatives considered: Neural network fine-tuning (rejected: requires GPU, data, expertise), hidden Markov models (rejected: more complex, marginal improvement).
 
 ### ADR-009: Privacy by Design
-- **Context:** Webcam-based app raises privacy concerns.
-- **Decision:** No cloud inference, no frame storage, no recording, telemetry opt-in only with anonymized data.
-- **Consequences:** User trust. No server infrastructure costs. Cannot offer cloud features (multi-device sync, remote config).
-- **Alternatives considered:** Cloud processing (rejected: latency, privacy, cost), local frame recording (rejected: storage, privacy).
+- Context: Webcam-based app raises privacy concerns.
+- Decision: No cloud inference, no frame storage, no recording, telemetry opt-in only with anonymized data.
+- Consequences: User trust. No server infrastructure costs. Cannot offer cloud features (multi-device sync, remote config).
+- Alternatives considered: Cloud processing (rejected: latency, privacy, cost), local frame recording (rejected: storage, privacy).
 
 ### ADR-010: Plugin System with Hot Reload
-- **Context:** Users and developers need to extend gesture/action vocabulary.
-- **Decision:** Python files in plugin directories, discovered via glob, validated via JSON Schema, hot-reloaded via watchdog.
-- **Consequences:** Easy to extend. No build step. Risk: malicious plugin in same process (accepted for MVP).
-- **Alternatives considered:** Lua scripts (rejected: learning curve), YAML-only (rejected: limited expressiveness), subprocess plugins (rejected: IPC complexity).
+- Context: Users and developers need to extend gesture/action vocabulary.
+- Decision: Python files in plugin directories, discovered via glob, validated via JSON Schema, hot-reloaded via watchdog.
+- Consequences: Easy to extend. No build step. Risk: malicious plugin in same process (accepted for MVP).
+- Alternatives considered: Lua scripts (rejected: learning curve), YAML-only (rejected: limited expressiveness), subprocess plugins (rejected: IPC complexity).
 
 ---
 

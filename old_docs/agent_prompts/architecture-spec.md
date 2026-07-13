@@ -418,7 +418,7 @@ ConfigManager uses a filesystem watcher (watchdog) on the user config file. On m
 
 ## 11. Testing Architecture
 
-See `test_strategy.md` for the full testing specification. Key architectural points:
+See `test-strategy.md` for the full testing specification. Key architectural points:
 
 - **Unit tests** mock all external dependencies (camera, MediaPipe, OS controller)
 - **Integration tests** use real SharedMemory but mock MediaPipe

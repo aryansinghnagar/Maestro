@@ -145,7 +145,7 @@ class OneEuroFilter:
 
 ## 2. M2: Feature Engineering (`models/feature_engineering.py`)
 
-Full implementation of all formulas from `gesture_spec.md` Section 2. Key points:
+Full implementation of all formulas from `gesture-spec.md` Section 2. Key points:
 
 ```python
 import numpy as np
@@ -283,12 +283,12 @@ def compute_features(hand: Hand, velocity: np.ndarray, acceleration: np.ndarray,
 
 ## 3. M3: FSM Engine (`core/state_machine.py`)
 
-Full implementation per `gesture_spec.md` Section 3. Key components:
+Full implementation per `gesture-spec.md` Section 3. Key components:
 
 - `FSMState` dataclass with transitions, min/max duration, is_terminal, action, cooldown
 - `FSMTransition` dataclass with target_state, condition string, condition_fn (compiled), is_abort
-- `GestureFSM` class with evaluate() method implementing the algorithm from gesture_spec.md Section 3.2
-- `ASTConditionCompiler` class implementing the safe parser from gesture_spec.md Section 3.3
+- `GestureFSM` class with evaluate() method implementing the algorithm from gesture-spec.md Section 3.2
+- `ASTConditionCompiler` class implementing the safe parser from gesture-spec.md Section 3.3
 - `GestureEngine` class that manages all FSMs, resolves conflicts, and emits GestureEvents
 
 ```python
@@ -672,7 +672,7 @@ class GestureEngine:
   - Hand mirroring: Left hand -> features match Right hand equivalent
 
 ### M3 Tests:
-- `tests/unit/test_state_machine.py` — see test_strategy.md Section 1.1
+- `tests/unit/test_state_machine.py` — see test-strategy.md Section 1.1
 - `tests/unit/test_condition_parser.py`:
   - "index_extended == True" parses and evaluates correctly
   - "index_extended == True and middle_extended == False" works
