@@ -1,0 +1,20 @@
+# .github/workflows/docs.yml
+name: Deploy Docs
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**', 'mkdocs.yml', 'gesture_controller/**']
+permissions:
+  contents: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v3
+        with: { enable-cache: true }
+      - run: uv sync --frozen
+      - run: uv pip install mkdocs-material mkdocstrings[python] mkdocs-git-revision-date-localized-plugin mkdocs-minify-plugin mkdocs-tagging-plugin
+      - run: uv run mkdocs gh-deploy --force

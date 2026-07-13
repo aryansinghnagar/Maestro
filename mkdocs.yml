@@ -1,0 +1,217 @@
+# mkdocs.yml
+site_name: Maestro
+site_description: Cross-platform desktop hand-gesture controller
+site_url: https://aryansinghnagar.github.io/Maestro/
+repo_url: https://github.com/aryansinghnagar/Maestro
+repo_name: aryansinghnagar/Maestro
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+  palette:
+    - scheme: default
+      primary: blue
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/hand-wave
+
+plugins:
+  - search:
+      separator: '[\s\-\.]+'
+      lang: [en]
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: false
+            show_root_heading: true
+            show_signature_annotations: true
+            separate_signature: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            filters:
+              - "!^_"
+              - "^__init__$"
+            heading_level: 2
+            docstring_style: google
+            docstring_section_style: table
+            merge_init_into_class: true
+            show_if_no_docstring: true
+          paths: [gesture_controller]
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: date
+  - minify:
+      minify_html: true
+  - tags
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - User Guide: user-guide.md
+  - Configuration: configuration.md
+  - Architecture: architecture.md
+  - Developer Guide:
+      - Overview: developer-guide.md
+      - Testing: testing.md
+      - Plugin Development: plugin-development.md
+      - Accessibility: accessibility.md
+  - API Reference: api-reference.md
+  - Troubleshooting: troubleshooting.md
+  - FAQ: faq.md
+  - Migration Guides:
+      - v0.1 → v0.2: migration/v0.1-to-v0.2.md
+      - v0.2 → v0.3: migration/v0.2-to-v0.3.md
+      - v0.3 → v1.0: migration/v0.3-to-v1.0.md
+  - Architecture Decision Records:
+      - Index: adr/README.md
+      - "ADR-001: Multiprocessing": adr/adr-001-multiprocessing-architecture.md
+      - "ADR-002: PyQt6": adr/adr-002-gui-framework-pyqt6.md
+      - "ADR-003: FSM": adr/adr-003-fsm-based-gesture-recognition.md
+      - "ADR-004: AST Parsing": adr/adr-004-ast-based-condition-parsing.md
+      - "ADR-005: SendInput": adr/adr-005-native-sendinput-over-pyautogui.md
+      - "ADR-006: EventBus": adr/adr-006-eventbus-design.md
+      - "ADR-007: uinput": adr/adr-007-uinput-linux-input.md
+      - "ADR-008: DTW": adr/adr-008-dtw-custom-gestures.md
+      - "ADR-009: Privacy": adr/adr-009-privacy-by-design.md
+      - "ADR-010: Plugin Hot-Reload": adr/adr-010-plugin-hot-reload.md
+      - "ADR-011: ONNX Runtime": adr/adr-011-onnx-runtime-over-mediapipe.md
+      - "ADR-012: Hand-ID Tracking": adr/adr-012-hand-id-tracking.md
+      - "ADR-013: Privilege-Separated Broker": adr/adr-013-privilege-separated-broker.md
+      - "ADR-014: Double-Buffered SHM": adr/adr-014-double-buffered-shm.md
+      - "ADR-015: Async Dispatch": adr/adr-015-async-event-dispatch.md
+      - "ADR-016: pluggy": adr/adr-016-pluggy-plugin-system.md
+      - "ADR-017: Nuitka": adr/adr-017-nuitka-standalone-builds.md
+      - "ADR-018: uv": adr/adr-018-uv-package-manager.md
+      - "ADR-019: Ruff": adr/adr-019-ruff-over-black-flake8.md
+      - "ADR-020: WCAG 2.2": adr/adr-020-wcag-2-2-accessibility.md
+      - "ADR-021: GPU Compute": adr/adr-021-gpu-compute-abstraction.md
+      - "ADR-022: Marketplace": adr/adr-022-plugin-marketplace-governance.md
+      - "ADR-023: Telemetry": adr/adr-023-telemetry-opt-in.md
+      - "ADR-024: i18n": adr/adr-024-i18n-gettext.md
+      - "ADR-025: Model Versioning": adr/adr-025-model-versioning.md
+      - "ADR-026: Release Cadence": adr/adr-026-release-cadence.md
+      - "ADR-027: Security Disclosure": adr/adr-027-security-disclosure.md
+      - "ADR-028: Accessibility Audit": adr/adr-028-accessibility-audit-process.md
+      - "ADR-029: Observability": adr/adr-029-observability-pillars.md
+      - "ADR-030: On-Device AI": adr/adr-030-on-device-ai.md
+  - Requests for Comments:
+      - Index: rfcs/README.md
+      - "RFC-001: Inference Backend": rfcs/rfc-001-inference-backend-abstraction.md
+      - "RFC-002: Shared Modules": rfcs/rfc-002-shared-module-extraction.md
+      - "RFC-003: Engine Decomposition": rfcs/rfc-003-engine-decomposition.md
+      - "RFC-004: Trigger DSL": rfcs/rfc-004-trigger-conditions-dsl.md
+      - "RFC-005: Plugin Migration": rfcs/rfc-005-plugin-migration-pluggy.md
+      - "RFC-006: Security Audit": rfcs/rfc-006-security-audit-hardening.md
+      - "RFC-007: Performance Budget": rfcs/rfc-007-performance-budget-enforcement.md
+      - "RFC-008: Accessibility": rfcs/rfc-008-accessibility-implementation.md
+      - "RFC-009: GPU Compute": rfcs/rfc-009-gpu-compute-abstraction.md
+      - "RFC-010: Marketplace": rfcs/rfc-010-plugin-marketplace-governance.md
+      - "RFC-011: Telemetry Schema": rfcs/rfc-011-telemetry-schema.md
+      - "RFC-012: i18n": rfcs/rfc-012-i18n-pipeline.md
+      - "RFC-013: Model Versioning": rfcs/rfc-013-model-versioning.md
+      - "RFC-014: Accessibility Audit": rfcs/rfc-014-accessibility-audit-process.md
+      - "RFC-015: On-Device Transformer": rfcs/rfc-015-on-device-transformer.md
+  - Design Specs:
+      - "DS-001: Inference Backend": specs/ds-001-inference-backend.md
+      - "DS-002: Event-Driven GUI": specs/ds-002-event-driven-gui.md
+      - "DS-003: Config Hot-Reload": specs/ds-003-config-hot-reload.md
+      - "DS-004: Plugin SDK": specs/ds-004-plugin-sdk.md
+      - "DS-005: Trigger DSL": specs/ds-005-trigger-conditions-dsl.md
+      - "DS-006: Telemetry Schema": specs/ds-006-telemetry-schema.md
+      - "DS-007: Threat Model": specs/ds-007-threat-model.md
+      - "DS-008: Performance Budget": specs/ds-008-performance-budget.md
+  - Diagrams:
+      - Pipeline: diagrams/pipeline.md
+      - Threading: diagrams/threading.md
+      - Plugin Architecture: diagrams/plugin-architecture.md
+      - Data Flow: diagrams/data-flow.md
+      - Security Boundaries: diagrams/security-boundaries.md
+      - Release Pipeline: diagrams/release-pipeline.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/aryansinghnagar/Maestro
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/gesture-controller/
+  generator: false
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/extra.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
