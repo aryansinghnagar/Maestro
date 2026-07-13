@@ -1,0 +1,39 @@
+# Ruff configuration file
+# https://docs.astral.sh/ruff/configuration/
+
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific
+    "C4",   # flake8-comprehensions
+    "PIE",  # flake8-pie
+    "RET",  # flake8-return
+    "ARG",  # flake8-unused-arguments
+    "PTH",  # flake8-use-pathlib
+    "ERA",  # eradicate (no commented-out code)
+    "PL",   # pylint
+]
+ignore = [
+    "E501",   # Line length (handled by formatter)
+    "PLR0913", # Too many arguments
+    "PLR2004", # Magic value comparison
+    "B008",   # Function call in default argument (PyQt uses this)
+]
+
+[lint.per-file-ignores]
+"tests/**" = ["PLR2004"]  # Magic values OK in tests
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
