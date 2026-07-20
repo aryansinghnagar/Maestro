@@ -121,12 +121,13 @@ jobs:
 
       - name: Run pywin32 post-install (Windows only)
         if: matrix.os == 'windows-latest'
+        shell: powershell
         run: |
-          python -m pywin32_postinstall -install -silent || true
+          python -m pywin32_postinstall -install -silent 2>&1 | Out-Null
           $pyDir = python -c "import sys, pathlib; print(pathlib.Path(sys.executable).parent)"
-          echo "$pyDir\Lib\site-packages\win32" >> $env:GITHUB_PATH
-          echo "$pyDir\Lib\site-packages\win32\lib" >> $env:GITHUB_PATH
-          echo "$pyDir\Lib\site-packages\pywin32_system32" >> $env:GITHUB_PATH
+          Out-File -FilePath $env:GITHUB_PATH -Encoding ascii -Append -InputObject "$pyDir\Lib\site-packages\win32"
+          Out-File -FilePath $env:GITHUB_PATH -Encoding ascii -Append -InputObject "$pyDir\Lib\site-packages\win32\lib"
+          Out-File -FilePath $env:GITHUB_PATH -Encoding ascii -Append -InputObject "$pyDir\Lib\site-packages\pywin32_system32"
 
       - name: Run Test Suite
         # Exclude tests that need real MediaPipe native libs, hardware, or are slow
