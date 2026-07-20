@@ -122,6 +122,9 @@ module = [
     "win32con.*",
     "tuf.*",
     "securesystemslib.*",
+    "dbus.*",
+    "gi.*",
+    "mpris.*",
 ]
 ignore_missing_imports = true
 
@@ -130,6 +133,8 @@ module = [
     "gesture_controller.gui.*",
     "gesture_controller.os_integration.macos_controller",
     "gesture_controller.os_integration.linux_controller",
+    "gesture_controller.os_integration.mpris_media",
+    "gesture_controller.os_integration.applescript_bridge",
     "gesture_controller.plugins.*",
 ]
 ignore_errors = true
