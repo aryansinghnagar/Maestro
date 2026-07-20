@@ -73,14 +73,14 @@ def verify_peer(conn: Any) -> bool:
         getuid_fn = getattr(os, "getuid", lambda: -1)
 
         if platform.system() == "Linux":
-            so_peercred = getattr(socket, "SO_PEERCRED", 17)
+            so_peercred = int(getattr(socket, "SO_PEERCRED", 17))
             cred = s.getsockopt(socket.SOL_SOCKET, so_peercred, struct.calcsize("3i"))
             _, uid, _ = struct.unpack("3i", cred)
             return bool(uid == getuid_fn())
 
         elif platform.system() == "Darwin":
-            sol_local = getattr(socket, "SOL_LOCAL", 0)
-            local_peercred = getattr(socket, "LOCAL_PEERCRED", 1)
+            sol_local = int(getattr(socket, "SOL_LOCAL", 0))
+            local_peercred = int(getattr(socket, "LOCAL_PEERCRED", 1))
             cred = s.getsockopt(sol_local, local_peercred, 128)
             _, uid = struct.unpack("=HI", cred[:6])
             return bool(uid == getuid_fn())
