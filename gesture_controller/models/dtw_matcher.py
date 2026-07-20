@@ -10,7 +10,11 @@ from typing import Any, Sequence
 import structlog
 
 from gesture_controller.models.data_types import Hand, Landmark3D, GestureEvent
-from gesture_controller.vision.constants import DTW_BUFFER_FRAMES, DTW_FEATURE_DIMS, DTW_DEFAULT_THRESHOLD
+from gesture_controller.vision.constants import (
+    DTW_BUFFER_FRAMES,
+    DTW_FEATURE_DIMS,
+    DTW_DEFAULT_THRESHOLD,
+)
 from gesture_controller.models.hand_normalization import normalize_landmarks
 
 logger = structlog.get_logger(__name__)
@@ -90,7 +94,9 @@ def to_hand_frame(landmarks: Sequence[Landmark3D], handedness: str) -> list[Land
     return [Landmark3D(x=float(row[0]), y=float(row[1]), z=float(row[2])) for row in centered]
 
 
-def normalize_sequence(sequence: list[np.ndarray], target_len: int = DTW_BUFFER_FRAMES) -> np.ndarray:
+def normalize_sequence(
+    sequence: list[np.ndarray], target_len: int = DTW_BUFFER_FRAMES
+) -> np.ndarray:
     """Resample landmark sequences to a fixed target length using linear interpolation."""
     seq_arr = np.array(sequence)
     L = len(seq_arr)
@@ -102,7 +108,6 @@ def normalize_sequence(sequence: list[np.ndarray], target_len: int = DTW_BUFFER_
     for col in range(seq_arr.shape[1]):
         resampled[:, col] = np.interp(x_new, x_old, seq_arr[:, col])
     return resampled
-
 
 
 class CustomGestureMatcher:
@@ -125,6 +130,7 @@ class CustomGestureMatcher:
 
         # Determine custom template directories
         from gesture_controller.core.paths import user_template_dir
+
         self._template_dir = user_template_dir()
 
         self.load_templates(self._template_dir)
@@ -263,7 +269,9 @@ class CustomGestureMatcher:
     def _rebuild_precomputed(self) -> None:
         names = list(self._templates.keys())
         if not names:
-            self._precomputed_templates = np.zeros((0, DTW_BUFFER_FRAMES, DTW_FEATURE_DIMS), dtype=np.float64)
+            self._precomputed_templates = np.zeros(
+                (0, DTW_BUFFER_FRAMES, DTW_FEATURE_DIMS), dtype=np.float64
+            )
             self._precomputed_thresholds = np.zeros((0,), dtype=np.float64)
             self._precomputed_names = []
             return

@@ -81,12 +81,16 @@ class LandmarkExtractor:
         if config.get("engine", {}).get("use_onnx", False) and backend_name == "mediapipe":
             backend_name = "auto"
 
-        self._is_onnx = (backend_name != "mediapipe")
+        self._is_onnx = backend_name != "mediapipe"
         if self._is_onnx:
             try:
                 from gesture_controller.vision.backends.factory import create_backend
+
                 self._landmarker = create_backend(config)
-                logger.info("ONNX Runtime backend loaded successfully using factory", backend=self._landmarker.name)
+                logger.info(
+                    "ONNX Runtime backend loaded successfully using factory",
+                    backend=self._landmarker.name,
+                )
             except Exception as e:
                 logger.warning(
                     "ONNX Runtime initialization failed, falling back to MediaPipe Tasks API",
@@ -98,6 +102,7 @@ class LandmarkExtractor:
             self._landmarker = vision.HandLandmarker.create_from_options(self._options)
 
         from gesture_controller.vision.double_buffer import DoubleFrameBuffer
+
         self._db: DoubleFrameBuffer | None = None
         logger.info("Inference backend initialized successfully")
 

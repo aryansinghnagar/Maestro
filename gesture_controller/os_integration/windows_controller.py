@@ -54,6 +54,7 @@ class INPUT(ctypes.Structure):
 
 def get_vk_code(key: str) -> int:
     from gesture_controller.os_integration.keycodes import get_windows_vkcode
+
     return get_windows_vkcode(key)
 
 

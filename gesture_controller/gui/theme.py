@@ -1,4 +1,5 @@
 """Theme detection and QSS application for accessibility support."""
+
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt
@@ -209,7 +210,7 @@ def apply_theme(theme: str) -> None:
         app.setStyleSheet(_LIGHT_QSS)
     elif theme == "high-contrast":
         app.setStyleSheet(_HIGH_CONTRAST_QSS)
-    
+
     # Propagate high contrast property down to children if needed
     for widget in app.allWidgets():
         widget.setProperty("highContrast", "true" if theme == "high-contrast" else "false")
@@ -221,11 +222,13 @@ def apply_theme(theme: str) -> None:
 def detect_reduced_motion() -> bool:
     """Detect if user prefers reduced motion."""
     import platform
+
     system = platform.system()
 
     if system == "Darwin":
         try:
             import Cocoa
+
             return Cocoa.NSWorkspace.sharedWorkspace().accessibilityDisplayShouldReduceMotion()
         except ImportError:
             return False
@@ -233,6 +236,7 @@ def detect_reduced_motion() -> bool:
     elif system == "Windows":
         try:
             import ctypes
+
             # SPI_GETCLIENTAREAANIMATION = 0x1042
             result = ctypes.c_int(0)
             ctypes.windll.user32.SystemParametersInfoW(0x1042, 0, ctypes.byref(result), 0)

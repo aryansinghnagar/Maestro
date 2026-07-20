@@ -10,6 +10,7 @@ Key improvements over the original:
 - All I/O (Vosk, PyAudio) is kept in ``_run_loop``; ``process_command`` is
   pure-function testable.
 """
+
 from __future__ import annotations
 
 import re
@@ -60,6 +61,7 @@ _WAKE_COOLDOWN_SECONDS: float = 5.0
 
 
 # ── Registry ──────────────────────────────────────────────────────────────────
+
 
 class VoiceCommandRegistry:
     """Holds phrase→gesture mappings and resolves spoken text to gesture names.
@@ -133,6 +135,7 @@ class VoiceCommandRegistry:
 
 
 # ── Voice listener ────────────────────────────────────────────────────────────
+
 
 class VoiceCommandListener:
     """Listens for voice commands and maps them to Maestro gesture triggers.
@@ -228,7 +231,7 @@ class VoiceCommandListener:
         event = GestureEvent(
             gesture_name=gesture_name,
             gesture_type="voice",
-            action="",          # resolved by ActionDispatcher
+            action="",  # resolved by ActionDispatcher
             confidence=1.0,
             hand="None",
             timestamp=time.time(),
@@ -250,8 +253,9 @@ class VoiceCommandListener:
         pyaudio_mod = None
 
         try:
-            from vosk import Model as VM, KaldiRecognizer as KR
-            import pyaudio as PA
+            from vosk import Model as VM, KaldiRecognizer as KR  # type: ignore[import-untyped]
+            import pyaudio as PA  # type: ignore[import-untyped]
+
             Model_cls = VM
             KaldiRecognizer_cls = KR
             pyaudio_mod = PA

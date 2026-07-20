@@ -5,6 +5,7 @@ Two responsibilities:
 2. Optional cProfile session that can be started/stopped programmatically
    (wired to the ``--profile`` CLI flag).
 """
+
 from __future__ import annotations
 
 import cProfile
@@ -69,6 +70,7 @@ def is_profiling() -> bool:
 
 
 # ── FrameTimeBudget: per-stage timing ─────────────────────────────────────────
+
 
 class FrameTimeBudget:
     """Track wall-clock timing for named pipeline stages.

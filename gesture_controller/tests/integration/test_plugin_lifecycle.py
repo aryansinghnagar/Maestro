@@ -3,13 +3,13 @@
 Tests the full sequence: install plugin from file → list → enable → disable
 → uninstall, verifying state at each step and event-bus events.
 """
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 import pytest
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -49,6 +49,7 @@ def manager(tmp_path):
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
+
 
 class TestPluginLifecycle:
     def test_install_then_list(self, manager, plugin_src) -> None:

@@ -2,6 +2,7 @@
 
 Allows safe execution of conditions without eval().
 """
+
 from __future__ import annotations
 
 import ast

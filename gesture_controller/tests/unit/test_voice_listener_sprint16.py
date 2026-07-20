@@ -7,6 +7,7 @@ Covers:
   unrecognised command, wake-window expiry, wake-word-free mode, event publication,
   start/stop lifecycle, custom config commands
 """
+
 from __future__ import annotations
 
 import time
@@ -14,8 +15,8 @@ from unittest.mock import MagicMock, patch, call
 
 import pytest
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_config(**overrides) -> MagicMock:
     store = {
@@ -34,24 +35,29 @@ def _make_bus() -> MagicMock:
 
 # ── VoiceCommandRegistry ──────────────────────────────────────────────────────
 
+
 class TestVoiceCommandRegistry:
     def test_defaults_loaded(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         reg = VoiceCommandRegistry()
         assert len(reg) > 0
 
     def test_defaults_include_swipe_left(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         reg = VoiceCommandRegistry()
         assert reg.resolve("swipe left") == "SwipeLeft"
 
     def test_defaults_include_minimize(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         reg = VoiceCommandRegistry()
         assert reg.resolve("minimize") == "MinimizeWindow"
 
     def test_defaults_include_media_commands(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         reg = VoiceCommandRegistry()
         assert reg.resolve("next track") == "MediaNext"
         assert reg.resolve("play pause") == "MediaPlayPause"
@@ -59,22 +65,26 @@ class TestVoiceCommandRegistry:
 
     def test_resolve_case_insensitive(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         reg = VoiceCommandRegistry()
         assert reg.resolve("SWIPE LEFT") == "SwipeLeft"
 
     def test_resolve_strips_punctuation(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         reg = VoiceCommandRegistry()
         assert reg.resolve("swipe left!") == "SwipeLeft"
 
     def test_resolve_unknown_returns_none(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         reg = VoiceCommandRegistry()
         assert reg.resolve("do a barrel roll") is None
 
     def test_resolve_longest_match_wins(self) -> None:
         """'minimize window' should win over 'minimize' when both in phrase."""
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         reg = VoiceCommandRegistry()
         # Both "minimize" and "minimize window" map to MinimizeWindow; just confirm resolve works
         result = reg.resolve("please minimize window now")
@@ -82,18 +92,21 @@ class TestVoiceCommandRegistry:
 
     def test_register_new_phrase(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         reg = VoiceCommandRegistry()
         reg.register("do a spin", "SpinGesture")
         assert reg.resolve("do a spin") == "SpinGesture"
 
     def test_register_overwrites_existing(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         reg = VoiceCommandRegistry()
         reg.register("fist", "CustomFist")
         assert reg.resolve("fist") == "CustomFist"
 
     def test_unregister_existing_phrase(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         reg = VoiceCommandRegistry()
         reg.register("wave hello", "Wave")
         assert reg.unregister("wave hello") is True
@@ -101,72 +114,90 @@ class TestVoiceCommandRegistry:
 
     def test_unregister_nonexistent_returns_false(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         reg = VoiceCommandRegistry()
         assert reg.unregister("nonexistent phrase xyz") is False
 
     def test_all_phrases_sorted(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         reg = VoiceCommandRegistry()
         phrases = reg.all_phrases()
         assert phrases == sorted(phrases)
 
     def test_len_matches_phrase_count(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         reg = VoiceCommandRegistry()
         assert len(reg) == len(reg.all_phrases())
 
     def test_config_commands_merged(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
-        cfg = _make_config(**{
-            "voice.commands": [
-                {"phrase": "do a flip", "gesture": "FlipGesture"},
-            ]
-        })
+
+        cfg = _make_config(
+            **{
+                "voice.commands": [
+                    {"phrase": "do a flip", "gesture": "FlipGesture"},
+                ]
+            }
+        )
         reg = VoiceCommandRegistry(cfg)
         assert reg.resolve("do a flip") == "FlipGesture"
 
     def test_config_commands_override_defaults(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
-        cfg = _make_config(**{
-            "voice.commands": [
-                {"phrase": "fist", "gesture": "SuperFist"},
-            ]
-        })
+
+        cfg = _make_config(
+            **{
+                "voice.commands": [
+                    {"phrase": "fist", "gesture": "SuperFist"},
+                ]
+            }
+        )
         reg = VoiceCommandRegistry(cfg)
         assert reg.resolve("fist") == "SuperFist"
 
     def test_config_bad_entries_ignored(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
-        cfg = _make_config(**{
-            "voice.commands": [
-                "not_a_dict",
-                {"phrase": "", "gesture": "SomeGesture"},
-                {"gesture": "NoPhrase"},
-                {"phrase": "valid", "gesture": "ValidGesture"},
-            ]
-        })
+
+        cfg = _make_config(
+            **{
+                "voice.commands": [
+                    "not_a_dict",
+                    {"phrase": "", "gesture": "SomeGesture"},
+                    {"gesture": "NoPhrase"},
+                    {"phrase": "valid", "gesture": "ValidGesture"},
+                ]
+            }
+        )
         reg = VoiceCommandRegistry(cfg)
         assert reg.resolve("valid") == "ValidGesture"
 
     def test_normalise_removes_punctuation(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         result = VoiceCommandRegistry._normalise("Swipe, Left!")
         assert result == "swipe left"
 
     def test_normalise_collapses_spaces(self) -> None:
         from gesture_controller.core.voice_listener import VoiceCommandRegistry
+
         result = VoiceCommandRegistry._normalise("swipe   left")
         assert result == "swipe left"
 
 
 # ── VoiceCommandListener — wake-word gate ─────────────────────────────────────
 
+
 class TestVoiceCommandListenerWakeWord:
     def _make_listener(self, wake_word="maestro"):
         from gesture_controller.core.voice_listener import VoiceCommandListener
+
         bus = _make_bus()
         cfg = _make_config(**{"voice.wake_word": wake_word, "voice.commands": []})
-        with patch("gesture_controller.core.voice_listener.user_data_dir", return_value=MagicMock()):
+        with patch(
+            "gesture_controller.core.voice_listener.user_data_dir", return_value=MagicMock()
+        ):
             listener = VoiceCommandListener(bus, cfg)
         return listener, bus
 
@@ -184,7 +215,7 @@ class TestVoiceCommandListenerWakeWord:
 
     def test_command_accepted_within_cooldown(self) -> None:
         listener, bus = self._make_listener()
-        listener.process_command("maestro")           # open gate
+        listener.process_command("maestro")  # open gate
         result = listener.process_command("swipe right")  # no wake word, but in window
         assert result is True
 
@@ -202,9 +233,12 @@ class TestVoiceCommandListenerWakeWord:
     def test_no_wake_word_config_disables_gate(self) -> None:
         """Empty wake word = accept all commands without gate."""
         from gesture_controller.core.voice_listener import VoiceCommandListener
+
         bus = _make_bus()
         cfg = _make_config(**{"voice.wake_word": "", "voice.commands": []})
-        with patch("gesture_controller.core.voice_listener.user_data_dir", return_value=MagicMock()):
+        with patch(
+            "gesture_controller.core.voice_listener.user_data_dir", return_value=MagicMock()
+        ):
             listener = VoiceCommandListener(bus, cfg)
         result = listener.process_command("swipe left")
         assert result is True
@@ -222,13 +256,17 @@ class TestVoiceCommandListenerWakeWord:
 
 # ── VoiceCommandListener — process_command ─────────────────────────────────────
 
+
 class TestVoiceCommandListenerProcessCommand:
     def _make_active_listener(self):
         """Returns a listener already in the wake window."""
         from gesture_controller.core.voice_listener import VoiceCommandListener
+
         bus = _make_bus()
         cfg = _make_config(**{"voice.commands": []})
-        with patch("gesture_controller.core.voice_listener.user_data_dir", return_value=MagicMock()):
+        with patch(
+            "gesture_controller.core.voice_listener.user_data_dir", return_value=MagicMock()
+        ):
             listener = VoiceCommandListener(bus, cfg)
         # Open the wake gate
         listener._last_wake_time = time.monotonic()
@@ -280,12 +318,16 @@ class TestVoiceCommandListenerProcessCommand:
 
 # ── VoiceCommandListener — lifecycle ──────────────────────────────────────────
 
+
 class TestVoiceCommandListenerLifecycle:
     def _make_listener(self):
         from gesture_controller.core.voice_listener import VoiceCommandListener
+
         bus = _make_bus()
         cfg = _make_config()
-        with patch("gesture_controller.core.voice_listener.user_data_dir", return_value=MagicMock()):
+        with patch(
+            "gesture_controller.core.voice_listener.user_data_dir", return_value=MagicMock()
+        ):
             return VoiceCommandListener(bus, cfg), bus
 
     def test_not_running_initially(self) -> None:

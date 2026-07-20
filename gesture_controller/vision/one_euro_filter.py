@@ -94,32 +94,42 @@ class OneEuroFilter:
 
         # Detect Tremor via FFT if history is full and enabled
         if tremor_enabled and self._tremor_filled:
-            np.copyto(self._tremor_sorted_x[:self._tremor_history_len - self._tremor_index], self._tremor_history_x_arr[self._tremor_index:])
-            self._tremor_sorted_x[self._tremor_history_len - self._tremor_index:] = self._tremor_history_x_arr[:self._tremor_index]
-            
+            np.copyto(
+                self._tremor_sorted_x[: self._tremor_history_len - self._tremor_index],
+                self._tremor_history_x_arr[self._tremor_index :],
+            )
+            self._tremor_sorted_x[self._tremor_history_len - self._tremor_index :] = (
+                self._tremor_history_x_arr[: self._tremor_index]
+            )
+
             # Times
             sorted_t = np.zeros(self._tremor_history_len, dtype=np.float64)
-            np.copyto(sorted_t[:self._tremor_history_len - self._tremor_index], self._tremor_history_t_arr[self._tremor_index:])
-            sorted_t[self._tremor_history_len - self._tremor_index:] = self._tremor_history_t_arr[:self._tremor_index]
-            
+            np.copyto(
+                sorted_t[: self._tremor_history_len - self._tremor_index],
+                self._tremor_history_t_arr[self._tremor_index :],
+            )
+            sorted_t[self._tremor_history_len - self._tremor_index :] = self._tremor_history_t_arr[
+                : self._tremor_index
+            ]
+
             dt = np.mean(np.diff(sorted_t))
             if dt > 0:
                 x_detrend = self._tremor_sorted_x - np.mean(self._tremor_sorted_x)
                 fft = np.fft.rfft(x_detrend)
                 freqs = np.fft.rfftfreq(len(x_detrend), d=dt)
                 magnitudes = np.abs(fft)
-                
+
                 tremor_cfg = self._config.get("filtering", {}).get("tremor", {})
                 min_f = tremor_cfg.get("min_freq", 4.0)
                 max_f = tremor_cfg.get("max_freq", 12.0)
-                
+
                 tremor_mask = (freqs >= min_f) & (freqs <= max_f)
                 if tremor_mask.any():
                     peak_idx = magnitudes[tremor_mask].argmax()
                     peak_freq = freqs[tremor_mask][peak_idx]
                     peak_mag = magnitudes[tremor_mask][peak_idx]
                     total_energy = magnitudes.sum()
-                    
+
                     if total_energy > 0 and (peak_mag / total_energy) > 0.20:
                         min_cutoff = 0.1
                         beta = 0.001
@@ -141,7 +151,7 @@ class OneEuroFilter:
             self._initialized = True
             return self._x_filt_prev, self._velocity, self._acceleration
 
-        dt = max(timestamp - self._prev_timestamp, 1e-6)
+        dt = float(max(float(timestamp - self._prev_timestamp), 1e-6))  # type: ignore[assignment]
 
         # Vectorized computation for all 63 values simultaneously using in-place operations
         # Step 1: Derivative (velocity) with low-pass filtering
@@ -152,7 +162,7 @@ class OneEuroFilter:
         alpha_d = self._smoothing_factor(dt, self._derivate_cutoff)
         # self._hat_dx = alpha_d * self._dx + (1.0 - alpha_d) * self._dx_prev
         np.multiply(self._dx, alpha_d, out=self._hat_dx)
-        self._dx_prev *= (1.0 - alpha_d)
+        self._dx_prev *= 1.0 - alpha_d
         np.add(self._hat_dx, self._dx_prev, out=self._hat_dx)
 
         # Step 2: Adaptive cutoff based on velocity
@@ -162,13 +172,13 @@ class OneEuroFilter:
         # Step 3: Filtered position
         # self._hat_x = alpha * landmarks + (1.0 - alpha) * self._x_filt_prev
         np.multiply(landmarks, alpha, out=self._hat_x)
-        self._x_filt_prev *= (1.0 - alpha)
+        self._x_filt_prev *= 1.0 - alpha
         np.add(self._hat_x, self._x_filt_prev, out=self._hat_x)
 
         # Update state
         np.copyto(self._prev_velocity, self._velocity)
         np.copyto(self._velocity, self._hat_dx)
-        
+
         # self._acceleration = (self._velocity - self._prev_velocity) / dt
         np.subtract(self._velocity, self._prev_velocity, out=self._acceleration)
         self._acceleration /= dt
@@ -181,7 +191,7 @@ class OneEuroFilter:
         return self._x_filt_prev, self._velocity, self._acceleration
 
     @staticmethod
-    def _smoothing_factor(te: float, cutoff: float | np.ndarray) -> float | np.ndarray:
+    def _smoothing_factor(te: Any, cutoff: Any) -> Any:
         """Compute smoothing factor alpha from sampling period and cutoff frequency.
         alpha = te / (te + (1 / (2 * pi * cutoff)))"""
         tau = 1.0 / (2.0 * np.pi * cutoff)
@@ -206,11 +216,27 @@ class OneEuroFilter:
     @property
     def _tremor_history_x(self) -> list[float]:
         if not self._tremor_filled:
-            return [float(x) for x in self._tremor_history_x_arr[:self._tremor_index]]
-        return [float(x) for x in np.concatenate((self._tremor_history_x_arr[self._tremor_index:], self._tremor_history_x_arr[:self._tremor_index]))]
+            return [float(x) for x in self._tremor_history_x_arr[: self._tremor_index]]
+        return [
+            float(x)
+            for x in np.concatenate(
+                (
+                    self._tremor_history_x_arr[self._tremor_index :],
+                    self._tremor_history_x_arr[: self._tremor_index],
+                )
+            )
+        ]
 
     @property
     def _tremor_history_t(self) -> list[float]:
         if not self._tremor_filled:
-            return [float(t) for t in self._tremor_history_t_arr[:self._tremor_index]]
-        return [float(t) for t in np.concatenate((self._tremor_history_t_arr[self._tremor_index:], self._tremor_history_t_arr[:self._tremor_index]))]
+            return [float(t) for t in self._tremor_history_t_arr[: self._tremor_index]]
+        return [
+            float(t)
+            for t in np.concatenate(
+                (
+                    self._tremor_history_t_arr[self._tremor_index :],
+                    self._tremor_history_t_arr[: self._tremor_index],
+                )
+            )
+        ]

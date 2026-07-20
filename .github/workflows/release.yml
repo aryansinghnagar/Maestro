@@ -22,7 +22,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python_version: '3.11'
+          python-version: '3.11'
           cache: 'pip'
 
       - name: Install dependencies
@@ -38,7 +38,7 @@ jobs:
       - name: Build Executable via PyInstaller
         run: |
           pip install pyinstaller
-          pyinstaller --onefile --noconsole --name Maestro gesture_controller/main.py
+          pyinstaller gesture_controller.spec
 
       - name: Code Sign (Windows)
         shell: powershell

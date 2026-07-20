@@ -5,7 +5,15 @@ import onnxruntime as ort
 
 
 class HandPoseEstimator:
-    def __init__(self, modelPath, confThreshold=0.8, backendId=0, targetId=0, providers=None, sess_options=None):
+    def __init__(
+        self,
+        modelPath,
+        confThreshold=0.8,
+        backendId=0,
+        targetId=0,
+        providers=None,
+        sess_options=None,
+    ):
         self.model_path = modelPath
         self.conf_threshold = confThreshold
         self.backend_id = backendId
@@ -31,7 +39,9 @@ class HandPoseEstimator:
                 providers.insert(0, "DirectMLExecutionProvider")
             if "CoreMLExecutionProvider" in ort.get_available_providers():
                 providers.insert(0, "CoreMLExecutionProvider")
-        self.session = ort.InferenceSession(self.model_path, sess_options=sess_options, providers=providers)
+        self.session = ort.InferenceSession(
+            self.model_path, sess_options=sess_options, providers=providers
+        )
 
     @property
     def name(self):

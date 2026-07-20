@@ -41,15 +41,25 @@ def sanitize_config_text(content: str) -> str:
         data = yaml.safe_load(content)
         if not isinstance(data, dict):
             return content
-            
+
         def redact_rec(obj: Any) -> Any:
             if isinstance(obj, dict):
                 new_dict = {}
                 for k, v in obj.items():
                     # Redact hotkeys or action values
-                    if k in ("actions", "hotkey", "key", "keys") or (isinstance(v, str) and any(
-                        v.startswith(prefix) for prefix in ("KeyPress:", "OS:", "MouseClick:", "MouseScroll:", "Media:")
-                    )):
+                    if k in ("actions", "hotkey", "key", "keys") or (
+                        isinstance(v, str)
+                        and any(
+                            v.startswith(prefix)
+                            for prefix in (
+                                "KeyPress:",
+                                "OS:",
+                                "MouseClick:",
+                                "MouseScroll:",
+                                "Media:",
+                            )
+                        )
+                    ):
                         new_dict[k] = "[REDACTED]"
                     else:
                         new_dict[k] = redact_rec(v)
@@ -57,24 +67,34 @@ def sanitize_config_text(content: str) -> str:
             elif isinstance(obj, list):
                 return [redact_rec(item) for item in obj]
             return obj
-            
+
         redacted_data = redact_rec(data)
         return yaml.dump(redacted_data, default_flow_style=False)
     except Exception:
         # Fallback to regex replacement if YAML parsing fails
         lines = []
         for line in content.splitlines():
-            if re.search(r'(KeyPress:|OS:|MouseClick:|MouseScroll:|Media:)', line):
-                line = re.sub(r'(:["\']?)(KeyPress:|OS:|MouseClick:|MouseScroll:|Media:)[^"\']*', r'\1[REDACTED]', line)
+            if re.search(r"(KeyPress:|OS:|MouseClick:|MouseScroll:|Media:)", line):
+                line = re.sub(
+                    r'(:["\']?)(KeyPress:|OS:|MouseClick:|MouseScroll:|Media:)[^"\']*',
+                    r"\1[REDACTED]",
+                    line,
+                )
             lines.append(line)
         return "\n".join(lines)
 
 
 def redact_logs_text(content: str) -> str:
     """Redact logs to strip application names, gesture names, and action simulations."""
-    app_pattern = re.compile(r'\b[a-zA-Z0-9_\-]+\.exe\b|\b(chrome|firefox|safari|finder|explorer|notepad|cmd|powershell)\b', re.IGNORECASE)
-    gesture_pattern = re.compile(r'\b(SwipeLeft|SwipeRight|SwipeUp|SwipeDown|Fist|HoldFist|MinimizeWindow|CustomCopy)\b', re.IGNORECASE)
-    
+    app_pattern = re.compile(
+        r"\b[a-zA-Z0-9_\-]+\.exe\b|\b(chrome|firefox|safari|finder|explorer|notepad|cmd|powershell)\b",
+        re.IGNORECASE,
+    )
+    gesture_pattern = re.compile(
+        r"\b(SwipeLeft|SwipeRight|SwipeUp|SwipeDown|Fist|HoldFist|MinimizeWindow|CustomCopy)\b",
+        re.IGNORECASE,
+    )
+
     redacted_lines = []
     for line in content.splitlines():
         try:
@@ -86,7 +106,16 @@ def redact_logs_text(content: str) -> str:
                         if isinstance(val, str):
                             val = app_pattern.sub("[REDACTED]", val)
                             val = gesture_pattern.sub("[REDACTED]", val)
-                            if key == "action" or any(p in val for p in ("KeyPress:", "OS:", "MouseClick:", "MouseScroll:", "Media:")):
+                            if key == "action" or any(
+                                p in val
+                                for p in (
+                                    "KeyPress:",
+                                    "OS:",
+                                    "MouseClick:",
+                                    "MouseScroll:",
+                                    "Media:",
+                                )
+                            ):
                                 val = "[REDACTED]"
                             data[key] = val
                         elif isinstance(val, dict):
@@ -94,33 +123,45 @@ def redact_logs_text(content: str) -> str:
                                 if isinstance(subv, str):
                                     subv = app_pattern.sub("[REDACTED]", subv)
                                     subv = gesture_pattern.sub("[REDACTED]", subv)
-                                    if any(p in subv for p in ("KeyPress:", "OS:", "MouseClick:", "MouseScroll:", "Media:")):
+                                    if any(
+                                        p in subv
+                                        for p in (
+                                            "KeyPress:",
+                                            "OS:",
+                                            "MouseClick:",
+                                            "MouseScroll:",
+                                            "Media:",
+                                        )
+                                    ):
                                         subv = "[REDACTED]"
                                     val[subk] = subv
                 redacted_lines.append(json.dumps(data))
                 continue
         except json.JSONDecodeError:
             pass
-            
+
         # Plaintext redactions
         line = app_pattern.sub("[REDACTED]", line)
         line = gesture_pattern.sub("[REDACTED]", line)
         line = re.sub(r'action=["\'].*?["\']', 'action="[REDACTED]"', line)
-        line = re.sub(r'(KeyPress:|OS:|MouseClick:|MouseScroll:|Media:)[^ "\']*', '[REDACTED]', line)
+        line = re.sub(
+            r'(KeyPress:|OS:|MouseClick:|MouseScroll:|Media:)[^ "\']*', "[REDACTED]", line
+        )
         redacted_lines.append(line)
-        
+
     return "\n".join(redacted_lines)
 
 
 def get_plugins_metadata(plugins_dir: Path) -> List[Dict[str, Any]]:
     """Scan the plugins directory and return list of metadata instead of source code."""
     from gesture_controller.plugins.plugin_loader import PluginLoader
+
     loader = PluginLoader(None)
-    
+
     plugins_meta = []
     if not plugins_dir.exists():
         return []
-        
+
     # Discover python plugins
     for py_file in plugins_dir.glob("*.py"):
         if py_file.name.startswith("_"):
@@ -128,15 +169,17 @@ def get_plugins_metadata(plugins_dir: Path) -> List[Dict[str, Any]]:
         try:
             meta = loader._extract_meta_without_exec(py_file)
             if meta:
-                plugins_meta.append({
-                    "name": meta.get("name", py_file.stem),
-                    "version": meta.get("version", "unknown"),
-                    "description": meta.get("description", ""),
-                    "author": meta.get("author", "")
-                })
+                plugins_meta.append(
+                    {
+                        "name": meta.get("name", py_file.stem),
+                        "version": meta.get("version", "unknown"),
+                        "description": meta.get("description", ""),
+                        "author": meta.get("author", ""),
+                    }
+                )
         except Exception:
             pass
-            
+
     # Discover WASM plugins
     for sub_dir in plugins_dir.iterdir():
         manifest_path = sub_dir / "maestro.toml"
@@ -146,22 +189,25 @@ def get_plugins_metadata(plugins_dir: Path) -> List[Dict[str, Any]]:
                 tomllib_mod = None
                 try:
                     import tomllib
+
                     tomllib_mod = tomllib
                 except ImportError:
                     pass
-                    
+
                 if tomllib_mod:
                     with open(manifest_path, "rb") as f:
                         config = tomllib_mod.load(f)
-                    plugins_meta.append({
-                        "name": config["plugin"]["name"],
-                        "version": config["plugin"]["version"],
-                        "description": config["plugin"].get("description", ""),
-                        "author": config["plugin"].get("author", "")
-                    })
+                    plugins_meta.append(
+                        {
+                            "name": config["plugin"]["name"],
+                            "version": config["plugin"]["version"],
+                            "description": config["plugin"].get("description", ""),
+                            "author": config["plugin"].get("author", ""),
+                        }
+                    )
             except Exception:
                 pass
-                
+
     return plugins_meta
 
 
@@ -203,7 +249,9 @@ def export_data(output_zip_path: Path) -> None:
                         redacted_logs = redact_logs_text(log_content)
                         zipf.writestr(f"logs/{log_file.name}", redacted_logs)
                     except Exception as e:
-                        logger.error("Failed to export redacted logs", path=str(log_file), error=str(e))
+                        logger.error(
+                            "Failed to export redacted logs", path=str(log_file), error=str(e)
+                        )
 
         # 3. Write custom templates (no sensitive data)
         templates_dir = config_dir / "templates"
@@ -224,6 +272,7 @@ def export_data(output_zip_path: Path) -> None:
         # 5. System info (Sprint 14) — platform / package versions, no PII
         try:
             from gesture_controller.core.crash_reporter import gather_system_info
+
             sys_info = gather_system_info()
             zipf.writestr("system_info.json", json.dumps(sys_info, indent=2, default=str))
         except Exception as e:
@@ -232,6 +281,7 @@ def export_data(output_zip_path: Path) -> None:
         # 6. Crash reports (Sprint 14) — up to 10 most recent
         try:
             from gesture_controller.core.paths import user_data_dir
+
             crash_dir = user_data_dir() / "crash_reports"
             if crash_dir.exists():
                 reports = sorted(
@@ -243,4 +293,3 @@ def export_data(output_zip_path: Path) -> None:
                     zipf.writestr(f"crash_reports/{rpt.name}", rpt.read_text(encoding="utf-8"))
         except Exception as e:
             logger.warning("Could not include crash reports in export", error=str(e))
-

@@ -4,6 +4,7 @@ Replaces 7 copies of platform-path logic across:
   config_manager, compliance, dtw_matcher, plugin_loader,
   onboarding, broker, updater
 """
+
 from __future__ import annotations
 
 import os
@@ -94,11 +95,9 @@ def broker_socket_path() -> Path:
         if runtime_dir:
             return Path(runtime_dir) / "gesture_controller_broker.sock"
     # Fallback with safe UID lookup
-    try:
-        uid = os.getuid()
-    except AttributeError:
-        uid = "default"
-    return Path("/tmp") / f"gesture_controller_broker_{uid}.sock"
+    getuid_fn = getattr(os, "getuid", None)
+    uid = getuid_fn() if getuid_fn else "default"
+    return Path("/tmp") / f"gesture_controller_broker_{uid}.sock"  # nosec B108
 
 
 def ensure_dirs() -> None:

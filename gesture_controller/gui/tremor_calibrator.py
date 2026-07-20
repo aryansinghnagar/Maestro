@@ -1,4 +1,5 @@
 """Tremor calibration wizard dialog."""
+
 from __future__ import annotations
 
 import time
@@ -10,7 +11,9 @@ from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QProgress
 class TremorCalibrator(QDialog):
     """Calibrate tremor compensation by recording 10 seconds of hand data."""
 
-    DURATION_SECONDS = 10  # 10s is much better for user experience while still sufficient for 30Hz camera
+    DURATION_SECONDS = (
+        10  # 10s is much better for user experience while still sufficient for 30Hz camera
+    )
 
     def __init__(self, config_manager, landmark_callback, parent=None) -> None:
         super().__init__(parent)
@@ -46,7 +49,9 @@ class TremorCalibrator(QDialog):
         self.start_button = QPushButton("Start Calibration")
         self.start_button.clicked.connect(self._start)
         self.start_button.setAccessibleName("Start Calibration Button")
-        self.start_button.setAccessibleDescription("Start recording hand positioning to analyze tremors.")
+        self.start_button.setAccessibleDescription(
+            "Start recording hand positioning to analyze tremors."
+        )
         layout.addWidget(self.start_button)
 
     def _start(self) -> None:
@@ -79,7 +84,9 @@ class TremorCalibrator(QDialog):
 
     def _finish(self) -> None:
         if len(self._samples) < 15:
-            self.label.setText("No hand coordinates detected. Please hold your hand in front of the camera and try again.")
+            self.label.setText(
+                "No hand coordinates detected. Please hold your hand in front of the camera and try again."
+            )
             self.start_button.setEnabled(True)
             self.start_button.setText("Retry")
             return

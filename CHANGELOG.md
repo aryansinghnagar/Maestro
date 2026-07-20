@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2026-07-20
 
 ### Added
+- **Adaptive Performance Tier System (T0–T3)**: Implemented automated zero-config dynamic scaling from Ultra (T0: 60 FPS, FP16 model, full HUD) to Minimal (T3: 10 FPS, INT8 model, battery-saver mode) based on real-time hardware capabilities, CPU load, and battery/thermal state.
+- **Hardware Probing & pure Tier Classifier**: Added `<5ms` hardware probe (`HardwareProfile`), pure tier classifier (`classify_tier`), and `TierManager` with debounced transitions and safety floors.
+- **Win32 Broker Process SID Auth**: Replaced open handle validation in `broker.py` with Win32 process token user SID verification and per-method rate limiting (120/s for pointer moves).
+- **Audit Verification CLI**: Added `maestro verify-audit-log` CLI subcommand verifying SHA-256 hash chains across recorded input actions.
+- **Integration Server Security**: Added 1MB payload size limit on POST requests and RFC 6455 masked WebSocket frame handling.
 - **GUI Crash Report & Diagnostics Viewer**: Added a PyQt6 `CrashReportViewerDialog` allowing users to view recorded stack traces, scrub sensitive PII, and export sanitized diagnostic archives (`.zip`).
 - **Vision Engine Test Hardening**: Expanded unit coverage across `HandPoseEstimator`, `PalmDetector`, and `BaseONNXBackend` for crop padding, anchor calculations, and fallback mechanisms.
 - **Hardened Voice Command Engine**: Added `VoiceCommandRegistry` supporting custom phrase-to-gesture mapping, configurable wake-word gates (`maestro`), and post-wake cooldown windows.

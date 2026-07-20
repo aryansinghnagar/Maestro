@@ -63,7 +63,9 @@ def test_onnx_backend_detect_success() -> None:
     with (
         patch("pathlib.Path.exists", return_value=True),
         patch("gesture_controller.vision.onnx_backend.PalmDetector", return_value=mock_palm_det),
-        patch("gesture_controller.vision.onnx_backend.HandPoseEstimator", return_value=mock_hand_pose),
+        patch(
+            "gesture_controller.vision.onnx_backend.HandPoseEstimator", return_value=mock_hand_pose
+        ),
     ):
         landmarker = ONNXHandLandmarker(config)
 

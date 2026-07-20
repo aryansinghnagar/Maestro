@@ -6,13 +6,14 @@ Verifies that:
 3. The config_changed signal fires with the updated dict.
 4. Reopening Settings reflects the previously persisted value.
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch, call
 import pytest
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _make_config(overrides: dict | None = None):
     """Build a ConfigManager-like mock that stores and returns values."""
@@ -39,9 +40,7 @@ def _make_config(overrides: dict | None = None):
         store.update(overrides)
 
     mock_config = MagicMock()
-    mock_config._config = {
-        "hud": {"enabled": True, "opacity": 0.8, "show_tracking_points": True}
-    }
+    mock_config._config = {"hud": {"enabled": True, "opacity": 0.8, "show_tracking_points": True}}
 
     def _get(key, default=None):
         return store.get(key, default)
@@ -57,10 +56,12 @@ def _make_config(overrides: dict | None = None):
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
+
 class TestSettingsPersistence:
     def test_settings_window_opens_without_error(self, qapp) -> None:
         """Settings window can be constructed with a valid config mock."""
         from gesture_controller.gui.settings_window import SettingsWindow
+
         cfg = _make_config()
         win = SettingsWindow(cfg)
         assert win is not None
@@ -70,6 +71,7 @@ class TestSettingsPersistence:
     def test_hud_slider_reflects_config_opacity(self, qapp) -> None:
         """HUD opacity slider initialises to the configured value."""
         from gesture_controller.gui.settings_window import SettingsWindow
+
         cfg = _make_config({"hud.opacity": 0.6})
         win = SettingsWindow(cfg)
         # slider range 0-100 maps opacity 0.0-1.0
@@ -80,6 +82,7 @@ class TestSettingsPersistence:
     def test_sensitivity_slider_reflects_config(self, qapp) -> None:
         """Global sensitivity slider reflects the configured 1.0× value (maps to slider=100)."""
         from gesture_controller.gui.settings_window import SettingsWindow
+
         cfg = _make_config({"sensitivity.global_multiplier": 1.0})
         win = SettingsWindow(cfg)
         # slider range is 10-300 representing 0.1x to 3.0x; 1.0x → 100
@@ -90,6 +93,7 @@ class TestSettingsPersistence:
     def test_config_changed_signal_fires_on_apply(self, qapp) -> None:
         """config_changed signal fires when the dialog is accepted via _on_apply."""
         from gesture_controller.gui.settings_window import SettingsWindow
+
         cfg = _make_config()
 
         received_signals = []
@@ -105,6 +109,7 @@ class TestSettingsPersistence:
     def test_hud_enabled_checkbox_state(self, qapp) -> None:
         """HUD enabled checkbox is checked when config has hud.enabled=True."""
         from gesture_controller.gui.settings_window import SettingsWindow
+
         cfg = _make_config({"hud.enabled": True})
         win = SettingsWindow(cfg)
         assert win._hud_enabled.isChecked() is True
@@ -114,6 +119,7 @@ class TestSettingsPersistence:
     def test_hud_enabled_unchecked_when_disabled(self, qapp) -> None:
         """HUD enabled checkbox is unchecked when config has hud.enabled=False."""
         from gesture_controller.gui.settings_window import SettingsWindow
+
         cfg = _make_config({"hud.enabled": False})
         win = SettingsWindow(cfg)
         assert win._hud_enabled.isChecked() is False
@@ -123,6 +129,7 @@ class TestSettingsPersistence:
     def test_tremor_checkbox_reflects_config(self, qapp) -> None:
         """Tremor compensation checkbox reflects config value."""
         from gesture_controller.gui.settings_window import SettingsWindow
+
         # Real config key is filtering.tremor.enabled
         cfg = _make_config({"filtering.tremor.enabled": True})
         win = SettingsWindow(cfg)
@@ -133,13 +140,11 @@ class TestSettingsPersistence:
     def test_language_combo_defaults_to_english(self, qapp) -> None:
         """Language combo box has English selected for 'en' config."""
         from gesture_controller.gui.settings_window import SettingsWindow
+
         cfg = _make_config({"ui.language": "en"})
         win = SettingsWindow(cfg)
         # Find 'en' item data in the combo
-        found_en = any(
-            win._lang_combo.itemData(i) == "en"
-            for i in range(win._lang_combo.count())
-        )
+        found_en = any(win._lang_combo.itemData(i) == "en" for i in range(win._lang_combo.count()))
         assert found_en, "'en' language code not found in language combo"
         assert win._lang_combo.currentData() == "en"
         win.reject()

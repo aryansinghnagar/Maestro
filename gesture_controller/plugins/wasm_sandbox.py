@@ -11,7 +11,7 @@ class WasmSandbox:
 
     def __init__(self, config: dict) -> None:
         self._config = config
-        
+
         cfg = wasmtime.Config()
         try:
             cfg.consume_fuel = True
@@ -19,7 +19,7 @@ class WasmSandbox:
             pass
         self._engine = wasmtime.Engine(cfg)
         self._store = wasmtime.Store(self._engine)
-        
+
         fuel = config.get("plugins", {}).get("wasm", {}).get("fuel", 1_000_000)
         try:
             self._store.add_fuel(fuel)
@@ -40,11 +40,11 @@ class WasmSandbox:
     def load_plugin(self, wasm_path: Any) -> Any:
         """Load a WASM plugin from file."""
         module = wasmtime.Module.from_file(self._engine, str(wasm_path))
-        
+
         linker = wasmtime.Linker(self._engine)
         linker.define_wasi()
         instance = linker.instantiate(self._store, module)
-        
+
         exports = instance.exports(self._store)
         return WasmPlugin(exports, self._store)
 

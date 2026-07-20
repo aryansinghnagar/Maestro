@@ -141,20 +141,6 @@ def test_minimize_gesture_e2e() -> None:
         shm_instance.buf = bytearray(1843208)
         MockSHM.return_value = shm_instance
 
-        # Instantiate the engine
-        engine = GestureEngine()
-        engine._frame_ready_event.wait = MagicMock(return_value=True)
-
-        # Replace OS controller with our mock
-        mock_controller = MockOSController()
-        engine._controller = mock_controller
-        engine._dispatcher._controller = mock_controller
-
-        # Mock extractor to return a dummy hand to keep the engine loop going
-        dummy_landmarks = tuple(Landmark3D(x=0.5, y=0.5, z=0.0) for _ in range(21))
-        dummy_hand = Hand(landmarks=dummy_landmarks, handedness="Right", confidence=0.95)
-        engine._extractor.extract = MagicMock(return_value=[dummy_hand])
-
         # Mock compute_features to yield our simulated feature sequence step by step
         feature_idx = 0
 
@@ -168,9 +154,29 @@ def test_minimize_gesture_e2e() -> None:
                 # Return standard idle feature vector after sequence completes
                 return make_fv(0.36 + 0.06 * (feature_idx - 6), False, 0.0, 0.3)
 
-        # Patch compute_features in the engine execution context
-        with patch(
-            "gesture_controller.core.engine.compute_features", side_effect=mock_compute_features
+        # Instantiate the engine
+        engine = GestureEngine()
+        engine._inference_pipeline._compute_features_fn = mock_compute_features
+        engine._frame_ready_event.wait = MagicMock(return_value=True)
+
+        # Replace OS controller with our mock
+        mock_controller = MockOSController()
+        engine._controller = mock_controller
+        engine._dispatcher._controller = mock_controller
+
+        # Mock extractor to return a dummy hand to keep the engine loop going
+        dummy_landmarks = tuple(Landmark3D(x=0.5, y=0.5, z=0.0) for _ in range(21))
+        dummy_hand = Hand(landmarks=dummy_landmarks, handedness="Right", confidence=0.95)
+        engine._extractor.extract = MagicMock(return_value=[dummy_hand])
+
+        with (
+            patch(
+                "gesture_controller.core.engine.compute_features", side_effect=mock_compute_features
+            ),
+            patch(
+                "gesture_controller.models.feature_engineering.compute_features",
+                side_effect=mock_compute_features,
+            ),
         ):
             # Start engine processing thread
             engine.start()

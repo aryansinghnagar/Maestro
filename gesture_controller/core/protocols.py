@@ -3,6 +3,7 @@
 Defines structural subtyping contracts for all major components.
 Enables mocking in tests without inheritance coupling.
 """
+
 from __future__ import annotations
 
 from typing import Protocol, runtime_checkable, Callable, Any
@@ -14,18 +15,18 @@ from gesture_controller.models.data_types import Hand, FeatureVector, GestureEve
 @runtime_checkable
 class FrameSource(Protocol):
     """Provides camera frames."""
+
     def get_frame(self) -> np.ndarray | None: ...
 
 
 @runtime_checkable
 class InferenceBackend(Protocol):
     """Hand landmark detection backend (MediaPipe, ONNX, etc.)."""
+
     @property
     def name(self) -> str: ...
 
-    def detect_hands(
-        self, frame: np.ndarray, timestamp_ms: int
-    ) -> list[Hand] | None: ...
+    def detect_hands(self, frame: np.ndarray, timestamp_ms: int) -> list[Hand] | None: ...
 
     def close(self) -> None: ...
 
@@ -33,18 +34,20 @@ class InferenceBackend(Protocol):
 @runtime_checkable
 class GestureRecognizer(Protocol):
     """Gesture recognition from feature vectors."""
-    def evaluate(
-        self, features: list[tuple[int, np.ndarray]], frame_num: int
-    ) -> None: ...
+
+    def evaluate(self, features: list[tuple[int, np.ndarray]], frame_num: int) -> None: ...
 
 
 @runtime_checkable
 class InputEmitter(Protocol):
     """OS-level input simulation."""
+
     def key_combo(self, keys: list[str]) -> None: ...
     def key_press(self, key: str, modifiers: list[str] | None = None) -> None: ...
     def key_release(self, key: str) -> None: ...
-    def mouse_click(self, button: str = "left", x: int | None = None, y: int | None = None) -> None: ...
+    def mouse_click(
+        self, button: str = "left", x: int | None = None, y: int | None = None
+    ) -> None: ...
     def mouse_move(self, x: int, y: int, absolute: bool = True) -> None: ...
     def mouse_scroll(self, delta_x: int = 0, delta_y: int = 0) -> None: ...
     def minimize_active_window(self) -> None: ...
@@ -62,21 +65,22 @@ class InputEmitter(Protocol):
 @runtime_checkable
 class ActionDispatcher(Protocol):
     """Routes gesture events to input actions."""
+
     def dispatch(self, event: GestureEvent) -> None: ...
 
 
 @runtime_checkable
 class HandTracker(Protocol):
     """Assigns persistent IDs to hands across frames."""
-    def update(
-        self, hands: list[Hand], frame_number: int
-    ) -> list[tuple[Hand, int]]: ...
+
+    def update(self, hands: list[Hand], frame_number: int) -> list[tuple[Hand, int]]: ...
     def reset(self) -> None: ...
 
 
 @runtime_checkable
 class ConfigManager(Protocol):
     """Configuration access."""
+
     def get(self, key: str, default: object = None) -> object: ...
     def set(self, key: str, value: object) -> None: ...
     def reload(self) -> None: ...
@@ -85,14 +89,14 @@ class ConfigManager(Protocol):
 @runtime_checkable
 class PluginManager(Protocol):
     """Plugin lifecycle management."""
+
     def discover(self) -> None: ...
-    def get_all_gestures(self) -> list[dict]: ...
-    def get_action_handlers(self) -> dict[str, Callable]: ...
+    def get_all_gestures(self) -> list[dict[str, Any]]: ...
+    def get_action_handlers(self) -> dict[str, Callable[..., Any]]: ...
 
 
 @runtime_checkable
 class TelemetrySink(Protocol):
     """Telemetry export."""
-    def export(
-        self, metric: str, value: float, tags: dict[str, str] | None = None
-    ) -> None: ...
+
+    def export(self, metric: str, value: float, tags: dict[str, str] | None = None) -> None: ...

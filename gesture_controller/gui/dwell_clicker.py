@@ -1,4 +1,5 @@
 """Dwell click — automatic click when cursor dwells in one spot for N ms."""
+
 from __future__ import annotations
 
 import time

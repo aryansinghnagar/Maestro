@@ -32,6 +32,7 @@ _CRASH_REPORT_VERSION = 1
 
 # ── System info ───────────────────────────────────────────────────────────────
 
+
 def gather_system_info() -> dict[str, Any]:
     """Collect safe, non-PII system metadata for crash reports and diagnostics.
 
@@ -53,8 +54,9 @@ def gather_system_info() -> dict[str, Any]:
     # ── Screen info (Qt, optional) ──────────────────────────────────────────
     try:
         from PyQt6.QtWidgets import QApplication
+
         app = QApplication.instance()
-        if app:
+        if isinstance(app, QApplication):
             screens = app.screens()
             info["screens"] = [
                 {
@@ -71,12 +73,18 @@ def gather_system_info() -> dict[str, Any]:
     # ── Key package versions ────────────────────────────────────────────────
     packages: dict[str, str] = {}
     _pkg_names = [
-        "PyQt6", "mediapipe", "numpy", "structlog",
-        "jsonschema", "pyautogui", "opencv-python",
+        "PyQt6",
+        "mediapipe",
+        "numpy",
+        "structlog",
+        "jsonschema",
+        "pyautogui",
+        "opencv-python",
     ]
     for pkg in _pkg_names:
         try:
             import importlib.metadata
+
             packages[pkg] = importlib.metadata.version(pkg)
         except Exception:
             packages[pkg] = "unknown"
@@ -86,6 +94,7 @@ def gather_system_info() -> dict[str, Any]:
 
 
 # ── Crash report writer ───────────────────────────────────────────────────────
+
 
 def write_crash_report(
     exc_type: type[BaseException],
@@ -131,10 +140,20 @@ def write_crash_report(
 
 # ── Qt crash dialog ───────────────────────────────────────────────────────────
 
+
 def _show_crash_dialog(report_path: Path, traceback_text: str) -> None:
     """Show a user-friendly crash dialog if a QApplication is running."""
     try:
-        from PyQt6.QtWidgets import QApplication, QMessageBox, QDialog, QVBoxLayout, QTextEdit, QPushButton, QLabel, QHBoxLayout
+        from PyQt6.QtWidgets import (
+            QApplication,
+            QMessageBox,
+            QDialog,
+            QVBoxLayout,
+            QTextEdit,
+            QPushButton,
+            QLabel,
+            QHBoxLayout,
+        )
         from PyQt6.QtCore import Qt
 
         app = QApplication.instance()
@@ -176,7 +195,13 @@ def _show_crash_dialog(report_path: Path, traceback_text: str) -> None:
 
         copy_btn = QPushButton("Copy Report Path")
         copy_btn.setAccessibleName("Copy crash report path to clipboard")
-        copy_btn.clicked.connect(lambda: QApplication.clipboard().setText(str(report_path)))
+
+        def _set_clip() -> None:
+            cb = QApplication.clipboard()
+            if cb is not None:
+                cb.setText(str(report_path))
+
+        copy_btn.clicked.connect(_set_clip)
         btn_row.addWidget(copy_btn)
 
         close_btn = QPushButton("Close")
@@ -193,6 +218,7 @@ def _show_crash_dialog(report_path: Path, traceback_text: str) -> None:
 
 
 # ── Hook installation ─────────────────────────────────────────────────────────
+
 
 class CrashReporter:
     """Installs global exception hooks and manages crash report directories."""
@@ -234,7 +260,9 @@ class CrashReporter:
             )
 
             report_path = write_crash_report(
-                exc_type, exc_value, exc_tb,
+                exc_type,
+                exc_value,
+                exc_tb,
                 crash_dir=_reporter.crash_dir,
                 thread_name="MainThread",
             )
@@ -259,14 +287,15 @@ class CrashReporter:
                 thread=thread_name,
                 exc_type=args.exc_type.__name__ if args.exc_type else "?",
             )
-            write_crash_report(
-                args.exc_type,
-                args.exc_value,
-                args.exc_traceback,
-                crash_dir=_reporter.crash_dir,
-                thread_name=thread_name,
-            )
-            _reporter._prune_old_reports()
+            if args.exc_value:
+                write_crash_report(
+                    args.exc_type or Exception,
+                    args.exc_value,
+                    args.exc_traceback,
+                    crash_dir=_reporter.crash_dir,
+                    thread_name=thread_name,
+                )
+                _reporter._prune_old_reports()
 
         sys.excepthook = _excepthook
         threading.excepthook = _threading_excepthook
@@ -296,7 +325,7 @@ class CrashReporter:
         """Delete oldest reports beyond the cap."""
         reports = self.list_reports()
         if len(reports) > self._max_reports:
-            for old in reports[self._max_reports:]:
+            for old in reports[self._max_reports :]:
                 try:
                     old.unlink()
                 except OSError:
@@ -304,6 +333,7 @@ class CrashReporter:
 
 
 # ── Convenience installer ─────────────────────────────────────────────────────
+
 
 def install_crash_handler(
     event_bus: Any = None,
@@ -324,6 +354,7 @@ def install_crash_handler(
     """
     if user_dir is None:
         from gesture_controller.core.paths import user_data_dir
+
         user_dir = user_data_dir()
 
     reporter = CrashReporter(

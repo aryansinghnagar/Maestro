@@ -4,12 +4,22 @@ import tempfile
 import json
 import hashlib
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 from PyQt6.QtWidgets import QApplication
 
 from securesystemslib.signer import CryptoSigner
-from tuf.api.metadata import Metadata, Root, Timestamp, Snapshot, Targets, TargetFile, Key, Role, MetaFile
+from tuf.api.metadata import (
+    Metadata,
+    Root,
+    Timestamp,
+    Snapshot,
+    Targets,
+    TargetFile,
+    Key,
+    Role,
+    MetaFile,
+)
 from gesture_controller.core.updater import UpdateCheckerThread, LocalFileFetcher
 
 
@@ -28,11 +38,17 @@ def temp_tuf_env():
     timestamp_signer = CryptoSigner.generate_ed25519()
 
     root_key = Key.from_dict(root_signer.public_key.keyid, root_signer.public_key.to_dict())
-    targets_key = Key.from_dict(targets_signer.public_key.keyid, targets_signer.public_key.to_dict())
-    snapshot_key = Key.from_dict(snapshot_signer.public_key.keyid, snapshot_signer.public_key.to_dict())
-    timestamp_key = Key.from_dict(timestamp_signer.public_key.keyid, timestamp_signer.public_key.to_dict())
+    targets_key = Key.from_dict(
+        targets_signer.public_key.keyid, targets_signer.public_key.to_dict()
+    )
+    snapshot_key = Key.from_dict(
+        snapshot_signer.public_key.keyid, snapshot_signer.public_key.to_dict()
+    )
+    timestamp_key = Key.from_dict(
+        timestamp_signer.public_key.keyid, timestamp_signer.public_key.to_dict()
+    )
 
-    expiry = datetime.utcnow() + timedelta(days=365)
+    expiry = datetime.now(timezone.utc) + timedelta(days=365)
     root = Root(
         version=1,
         spec_version="1.0.3",
@@ -48,13 +64,13 @@ def temp_tuf_env():
             "targets": Role([targets_key.keyid], 1),
             "snapshot": Role([snapshot_key.keyid], 1),
             "timestamp": Role([timestamp_key.keyid], 1),
-        }
+        },
     )
-    
+
     root_meta = Metadata(root)
     root_meta.sign(root_signer)
     root_json_bytes = json.dumps(root_meta.to_dict()).encode("utf-8")
-    
+
     with open(repo_dir / "root.json", "wb") as f:
         f.write(root_json_bytes)
     with open(repo_dir / "1.root.json", "wb") as f:
@@ -89,19 +105,16 @@ def write_tuf_metadata(env, target_filename, target_version, target_url):
         length=len(target_data),
         hashes={"sha256": target_hash},
         path=target_filename,
-        unrecognized_fields={"custom": {"version": target_version, "release_url": target_url}}
+        unrecognized_fields={"custom": {"version": target_version, "release_url": target_url}},
     )
 
     targets = Targets(
-        version=1,
-        spec_version="1.0.3",
-        expires=expiry,
-        targets={target_filename: tf}
+        version=1, spec_version="1.0.3", expires=expiry, targets={target_filename: tf}
     )
     targets_meta = Metadata(targets)
     targets_meta.sign(targets_signer)
     targets_json_bytes = json.dumps(targets_meta.to_dict()).encode("utf-8")
-    
+
     with open(repo_dir / "targets.json", "wb") as f:
         f.write(targets_json_bytes)
     with open(repo_dir / "1.targets.json", "wb") as f:
@@ -115,14 +128,14 @@ def write_tuf_metadata(env, target_filename, target_version, target_url):
             "targets.json": MetaFile(
                 version=1,
                 length=len(targets_json_bytes),
-                hashes={"sha256": hashlib.sha256(targets_json_bytes).hexdigest()}
+                hashes={"sha256": hashlib.sha256(targets_json_bytes).hexdigest()},
             )
-        }
+        },
     )
     snapshot_meta = Metadata(snapshot)
     snapshot_meta.sign(snapshot_signer)
     snapshot_json_bytes = json.dumps(snapshot_meta.to_dict()).encode("utf-8")
-    
+
     with open(repo_dir / "snapshot.json", "wb") as f:
         f.write(snapshot_json_bytes)
     with open(repo_dir / "1.snapshot.json", "wb") as f:
@@ -135,13 +148,13 @@ def write_tuf_metadata(env, target_filename, target_version, target_url):
         snapshot_meta=MetaFile(
             version=1,
             length=len(snapshot_json_bytes),
-            hashes={"sha256": hashlib.sha256(snapshot_json_bytes).hexdigest()}
-        )
+            hashes={"sha256": hashlib.sha256(snapshot_json_bytes).hexdigest()},
+        ),
     )
     timestamp_meta = Metadata(timestamp)
     timestamp_meta.sign(timestamp_signer)
     timestamp_json_bytes = json.dumps(timestamp_meta.to_dict()).encode("utf-8")
-    
+
     with open(repo_dir / "timestamp.json", "wb") as f:
         f.write(timestamp_json_bytes)
 
@@ -174,7 +187,7 @@ def test_updater_network_check_success(temp_tuf_env, qapp: QApplication) -> None
         metadata_url=repo_url,
         targets_url=repo_url,
         cache_dir=temp_tuf_env["client_dir"],
-        bootstrap_root=temp_tuf_env["root_json_bytes"]
+        bootstrap_root=temp_tuf_env["root_json_bytes"],
     )
 
     updates = []
@@ -197,7 +210,7 @@ def test_updater_network_check_no_update(temp_tuf_env, qapp: QApplication) -> No
         metadata_url=repo_url,
         targets_url=repo_url,
         cache_dir=temp_tuf_env["client_dir"],
-        bootstrap_root=temp_tuf_env["root_json_bytes"]
+        bootstrap_root=temp_tuf_env["root_json_bytes"],
     )
 
     updates = []
@@ -210,21 +223,23 @@ def test_updater_network_check_no_update(temp_tuf_env, qapp: QApplication) -> No
 
 def test_updater_network_check_failure(temp_tuf_env, qapp: QApplication) -> None:
     repo_url = temp_tuf_env["repo_dir"].as_uri() + "/"
-    
+
     # Intentionally corrupt the bootstrap root by signing with a different key
     bad_signer = CryptoSigner.generate_ed25519()
-    bad_root_meta = Metadata(Root(
-        version=1,
-        spec_version="1.0.3",
-        expires=datetime.utcnow() + timedelta(days=365),
-        keys={},
-        roles={
-            "root": Role([], 1),
-            "targets": Role([], 1),
-            "snapshot": Role([], 1),
-            "timestamp": Role([], 1),
-        }
-    ))
+    bad_root_meta = Metadata(
+        Root(
+            version=1,
+            spec_version="1.0.3",
+            expires=datetime.now(timezone.utc) + timedelta(days=365),
+            keys={},
+            roles={
+                "root": Role([], 1),
+                "targets": Role([], 1),
+                "snapshot": Role([], 1),
+                "timestamp": Role([], 1),
+            },
+        )
+    )
     bad_root_meta.sign(bad_signer)
     bad_root_bytes = json.dumps(bad_root_meta.to_dict()).encode("utf-8")
 
@@ -233,7 +248,7 @@ def test_updater_network_check_failure(temp_tuf_env, qapp: QApplication) -> None
         metadata_url=repo_url,
         targets_url=repo_url,
         cache_dir=temp_tuf_env["client_dir"],
-        bootstrap_root=bad_root_bytes
+        bootstrap_root=bad_root_bytes,
     )
 
     errors = []
@@ -242,16 +257,19 @@ def test_updater_network_check_failure(temp_tuf_env, qapp: QApplication) -> None
     updater.run()
 
     assert len(errors) == 1
-    assert any(word in errors[0] for word in ["RepositoryError", "UnsignedMetadataError", "Signature", "signed by", "keys"])
+    assert any(
+        word in errors[0]
+        for word in ["RepositoryError", "UnsignedMetadataError", "Signature", "signed by", "keys"]
+    )
 
 
 def test_tuf_threshold_3() -> None:
     """Verify default BOOTSTRAP_ROOT has threshold=3 for root/targets."""
     from gesture_controller.core.updater import BOOTSTRAP_ROOT
+
     root_role = BOOTSTRAP_ROOT["signed"]["roles"]["root"]
     targets_role = BOOTSTRAP_ROOT["signed"]["roles"]["targets"]
     assert root_role["threshold"] == 3
     assert targets_role["threshold"] == 3
     assert len(root_role["keyids"]) >= 5
     assert len(targets_role["keyids"]) >= 5
-

@@ -4,19 +4,23 @@ import subprocess as _real_subprocess
 import shutil
 from typing import Optional
 
+
 class _SubprocessWrapper:
     def __getattr__(self, name):
         import sys
+
         return getattr(sys.modules.get("subprocess", _real_subprocess), name)
 
     def run(self, cmd, *args, **kwargs):
         import sys
+
         real_sub = sys.modules.get("subprocess", _real_subprocess)
         real_run = getattr(real_sub, "run", _real_subprocess.run)
-        
+
         is_mock = False
         try:
             import unittest.mock
+
             if isinstance(real_run, unittest.mock.NonCallableMock):
                 is_mock = True
         except ImportError:
@@ -32,7 +36,13 @@ class _SubprocessWrapper:
     @property
     def TimeoutExpired(self):
         import sys
-        return getattr(sys.modules.get("subprocess", _real_subprocess), "TimeoutExpired", _real_subprocess.TimeoutExpired)
+
+        return getattr(
+            sys.modules.get("subprocess", _real_subprocess),
+            "TimeoutExpired",
+            _real_subprocess.TimeoutExpired,
+        )
+
 
 subprocess = _SubprocessWrapper()
 from gesture_controller.os_integration.base_controller import BaseController
@@ -398,6 +408,7 @@ class LinuxController(BaseController):
             self._emit_event(evdev.ecodes.EV_KEY, 164, 0)
         else:
             from gesture_controller.os_integration.mpris_media import mpris_play_pause
+
             mpris_play_pause()
 
     def media_next(self) -> None:
@@ -406,6 +417,7 @@ class LinuxController(BaseController):
             self._emit_event(evdev.ecodes.EV_KEY, 163, 0)
         else:
             from gesture_controller.os_integration.mpris_media import mpris_next
+
             mpris_next()
 
     def media_previous(self) -> None:
@@ -414,6 +426,7 @@ class LinuxController(BaseController):
             self._emit_event(evdev.ecodes.EV_KEY, 165, 0)
         else:
             from gesture_controller.os_integration.mpris_media import mpris_previous
+
             mpris_previous()
 
     def media_volume_up(self) -> None:

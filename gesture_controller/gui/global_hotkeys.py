@@ -1,4 +1,5 @@
 """Cross-platform global hotkey registration."""
+
 from __future__ import annotations
 
 import platform
@@ -23,7 +24,7 @@ VK_CODES = {
     "w": 0x57,
     "esc": 0x1B,
     ",": 0xBC,
-    "q": 0x51
+    "q": 0x51,
 }
 
 
@@ -138,6 +139,7 @@ class _WindowsHotkeys:
         # Send a dummy hotkey or post a quit message to wake up GetMessageW
         if self._thread:
             import ctypes
+
             # WM_QUIT = 0x0012
             ctypes.windll.user32.PostThreadMessageW(self._thread.ident, 0x0012, 0, 0)
             self._thread.join(timeout=0.5)

@@ -16,9 +16,7 @@ def temp_plugin_dir() -> Path:
     shutil.rmtree(temp_dir)
 
 
-def create_wasm_plugin(
-    directory: Path, name: str, wat_content: str, capabilities: dict
-) -> Path:
+def create_wasm_plugin(directory: Path, name: str, wat_content: str, capabilities: dict) -> Path:
     plugin_path = directory / name
     plugin_path.mkdir(parents=True, exist_ok=True)
 
@@ -32,8 +30,6 @@ def create_wasm_plugin(
         },
         "capabilities": capabilities,
     }
-
-
 
     # Write manually to avoid dependency conflicts
     toml_str = f"""[plugin]

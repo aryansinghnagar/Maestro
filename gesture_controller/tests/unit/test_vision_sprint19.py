@@ -19,8 +19,8 @@ from gesture_controller.vision.hand_pose_estimator import HandPoseEstimator
 from gesture_controller.vision.palm_detector import PalmDetector
 from gesture_controller.vision.backends.base_backend import BaseONNXBackend
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def mock_ort_session():
@@ -32,6 +32,7 @@ def mock_ort_session():
 
 
 # ── HandPoseEstimator Tests ───────────────────────────────────────────────────
+
 
 class TestHandPoseEstimator:
 
@@ -63,7 +64,28 @@ class TestHandPoseEstimator:
         with patch("onnxruntime.InferenceSession", return_value=mock_ort_session):
             estimator = HandPoseEstimator("dummy_path.onnx")
             img = np.zeros((480, 640, 3), dtype=np.uint8)
-            palm = np.array([100, 100, 200, 200, 150, 150, 160, 160, 170, 170, 180, 180, 190, 190, 110, 110, 120, 120])
+            palm = np.array(
+                [
+                    100,
+                    100,
+                    200,
+                    200,
+                    150,
+                    150,
+                    160,
+                    160,
+                    170,
+                    170,
+                    180,
+                    180,
+                    190,
+                    190,
+                    110,
+                    110,
+                    120,
+                    120,
+                ]
+            )
 
             blob, r_bbox, angle, r_mat, bias = estimator._preprocess(img, palm)
             assert blob.shape == (1, 224, 224, 3)
@@ -103,6 +125,7 @@ class TestHandPoseEstimator:
 
 
 # ── PalmDetector Tests ────────────────────────────────────────────────────────
+
 
 class TestPalmDetector:
 
@@ -156,6 +179,7 @@ class TestPalmDetector:
 
 # ── BaseONNXBackend Tests ─────────────────────────────────────────────────────
 
+
 class TestBaseONNXBackend:
 
     def test_missing_model_files_raises_error(self, tmp_path):
@@ -170,8 +194,10 @@ class TestBaseONNXBackend:
         (d / "palm_detection.onnx").touch()
         (d / "hand_landmark.onnx").touch()
 
-        with patch("gesture_controller.vision.backends.base_backend.Path") as mock_path, \
-             patch("onnxruntime.InferenceSession", return_value=mock_ort_session):
+        with (
+            patch("gesture_controller.vision.backends.base_backend.Path") as mock_path,
+            patch("onnxruntime.InferenceSession", return_value=mock_ort_session),
+        ):
 
             mock_data_dir = tmp_path
             mock_path.return_value.parent.parent.parent = mock_data_dir

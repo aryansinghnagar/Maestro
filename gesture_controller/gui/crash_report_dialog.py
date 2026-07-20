@@ -280,7 +280,9 @@ class CrashReportViewerDialog(QDialog):
         if self.report_list.count() > 0:
             self.report_list.setCurrentRow(0)
 
-    def _on_report_selected(self, current: QListWidgetItem | None, previous: QListWidgetItem | None = None) -> None:
+    def _on_report_selected(
+        self, current: QListWidgetItem | None, previous: QListWidgetItem | None = None
+    ) -> None:
         if not current:
             return
         path_str = current.data(Qt.ItemDataRole.UserRole)
@@ -346,6 +348,7 @@ class CrashReportViewerDialog(QDialog):
         text = self.tb_edit.toPlainText()
         if text:
             from PyQt6.QtWidgets import QApplication
+
             app = QApplication.instance()
             if app:
                 app.clipboard().setText(text)
@@ -358,6 +361,7 @@ class CrashReportViewerDialog(QDialog):
         path_str = current.data(Qt.ItemDataRole.UserRole)
         if path_str:
             from PyQt6.QtWidgets import QApplication
+
             app = QApplication.instance()
             if app:
                 app.clipboard().setText(path_str)

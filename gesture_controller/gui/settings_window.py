@@ -344,9 +344,15 @@ class SettingsWindow(QDialog):
         self._lang_combo.setAccessibleDescription("Select the display language for Maestro.")
 
         from gesture_controller.core.i18n import available_languages, current_lang
+
         _LANG_DISPLAY = {
-            "en": "English", "es": "Español", "fr": "Français",
-            "de": "Deutsch", "ja": "日本語", "ar": "العربية", "hi": "हिन्दी",
+            "en": "English",
+            "es": "Español",
+            "fr": "Français",
+            "de": "Deutsch",
+            "ja": "日本語",
+            "ar": "العربية",
+            "hi": "हिन्दी",
         }
         _cur = current_lang()
         for code in available_languages():
@@ -455,24 +461,31 @@ class SettingsWindow(QDialog):
 
         # 1. Voice Control Group
         from PyQt6.QtWidgets import QGroupBox, QFormLayout, QLineEdit
+
         voice_group = QGroupBox("Voice Control")
         voice_layout = QVBoxLayout()
         self._voice_enabled = QCheckBox("Enable Voice Control (offline, Vosk)")
         self._voice_enabled.setAccessibleName("Enable voice control checkbox")
-        self._voice_enabled.setAccessibleDescription("Check this to enable offline voice command recognition via Vosk.")
+        self._voice_enabled.setAccessibleDescription(
+            "Check this to enable offline voice command recognition via Vosk."
+        )
         voice_layout.addWidget(self._voice_enabled)
 
         form_layout = QFormLayout()
         self._voice_wake_word = QLineEdit()
         self._voice_wake_word.setAccessibleName("Voice wake word field")
-        self._voice_wake_word.setAccessibleDescription("Set the word to say before triggering commands (default: maestro).")
+        self._voice_wake_word.setAccessibleDescription(
+            "Set the word to say before triggering commands (default: maestro)."
+        )
         form_layout.addRow(QLabel("Wake Word:"), self._voice_wake_word)
         voice_layout.addLayout(form_layout)
 
         self._download_voice_btn = QPushButton("Download Voice Model (~50MB)")
         self._download_voice_btn.clicked.connect(self._download_voice_model)
         self._download_voice_btn.setAccessibleName("Download voice model button")
-        self._download_voice_btn.setAccessibleDescription("Click to download and set up the offline Vosk speech model.")
+        self._download_voice_btn.setAccessibleDescription(
+            "Click to download and set up the offline Vosk speech model."
+        )
         voice_layout.addWidget(self._download_voice_btn)
 
         voice_group.setLayout(voice_layout)
@@ -483,13 +496,17 @@ class SettingsWindow(QDialog):
         tremor_layout = QVBoxLayout()
         self._tremor_enabled = QCheckBox("Enable Tremor Compensation")
         self._tremor_enabled.setAccessibleName("Enable tremor compensation checkbox")
-        self._tremor_enabled.setAccessibleDescription("Dynamically damp high-frequency hand tremors.")
+        self._tremor_enabled.setAccessibleDescription(
+            "Dynamically damp high-frequency hand tremors."
+        )
         tremor_layout.addWidget(self._tremor_enabled)
 
         self._calibrate_tremor_btn = QPushButton("Run Tremor Calibration...")
         self._calibrate_tremor_btn.clicked.connect(self._on_calibrate_tremor)
         self._calibrate_tremor_btn.setAccessibleName("Run tremor calibration button")
-        self._calibrate_tremor_btn.setAccessibleDescription("Record hand position for 10 seconds to detect peak tremor frequency.")
+        self._calibrate_tremor_btn.setAccessibleDescription(
+            "Record hand position for 10 seconds to detect peak tremor frequency."
+        )
         tremor_layout.addWidget(self._calibrate_tremor_btn)
 
         tremor_group.setLayout(tremor_layout)
@@ -500,12 +517,16 @@ class SettingsWindow(QDialog):
         visual_layout = QVBoxLayout()
         self._high_contrast = QCheckBox("High Contrast Mode")
         self._high_contrast.setAccessibleName("Enable high contrast mode checkbox")
-        self._high_contrast.setAccessibleDescription("Increases readability with black backgrounds and bright yellow highlights.")
+        self._high_contrast.setAccessibleDescription(
+            "Increases readability with black backgrounds and bright yellow highlights."
+        )
         visual_layout.addWidget(self._high_contrast)
 
         self._reduced_motion = QCheckBox("Reduced Motion (disable HUD animations)")
         self._reduced_motion.setAccessibleName("Reduced motion checkbox")
-        self._reduced_motion.setAccessibleDescription("Disables smooth visual feedback transitions on the screen.")
+        self._reduced_motion.setAccessibleDescription(
+            "Disables smooth visual feedback transitions on the screen."
+        )
         visual_layout.addWidget(self._reduced_motion)
 
         visual_group.setLayout(visual_layout)
@@ -516,14 +537,18 @@ class SettingsWindow(QDialog):
         dwell_layout = QVBoxLayout()
         self._dwell_enabled = QCheckBox("Enable Dwell Clicking")
         self._dwell_enabled.setAccessibleName("Enable dwell clicking checkbox")
-        self._dwell_enabled.setAccessibleDescription("Automatically trigger mouse click when cursor stays still.")
+        self._dwell_enabled.setAccessibleDescription(
+            "Automatically trigger mouse click when cursor stays still."
+        )
         dwell_layout.addWidget(self._dwell_enabled)
 
         dwell_form = QFormLayout()
         self._dwell_duration = QSlider(Qt.Orientation.Horizontal)
         self._dwell_duration.setRange(200, 3000)
         self._dwell_duration.setAccessibleName("Dwell duration slider")
-        self._dwell_duration.setAccessibleDescription("Sets how long the cursor must stay still before clicking (in milliseconds).")
+        self._dwell_duration.setAccessibleDescription(
+            "Sets how long the cursor must stay still before clicking (in milliseconds)."
+        )
         self._dwell_label = QLabel("800 ms")
         self._dwell_duration.valueChanged.connect(lambda v: self._dwell_label.setText(f"{v} ms"))
         dwell_form.addRow(self._dwell_duration, self._dwell_label)
@@ -540,14 +565,17 @@ class SettingsWindow(QDialog):
         if not lang_code:
             return
         from gesture_controller.core.i18n import install
+
         install(lang_code)
         self._config.set("ui.language", lang_code)
         # Inform the user a restart may be needed for all strings to refresh
         import structlog
+
         structlog.get_logger(__name__).info("Language changed", lang=lang_code)
 
     def _on_calibrate_tremor(self) -> None:
         from gesture_controller.gui.tremor_calibrator import TremorCalibrator
+
         calibrator = TremorCalibrator(self._config, self._landmark_callback, parent=self)
         if calibrator.exec():
             self._tremor_enabled.setChecked(self._config.get("filtering.tremor.enabled", False))
@@ -567,34 +595,38 @@ class SettingsWindow(QDialog):
             zip_path = model_dir / "vosk-model.zip"
 
             try:
-                urllib.request.urlretrieve(model_url, zip_path)
+                urllib.request.urlretrieve(model_url, zip_path)  # nosec B310
                 with zipfile.ZipFile(zip_path) as z:
-                    z.extractall(model_dir)
+                    z.extractall(model_dir)  # nosec B202
                 zip_path.unlink()
 
                 from PyQt6.QtCore import QMetaObject
+
                 QMetaObject.invokeMethod(
-                    self,
-                    "_on_download_success",
-                    Qt.ConnectionType.QueuedConnection
+                    self, "_on_download_success", Qt.ConnectionType.QueuedConnection
                 )
             except Exception as e:
                 from PyQt6.QtCore import QMetaObject, Q_ARG
+
                 QMetaObject.invokeMethod(
                     self,
                     "_on_download_failed",
                     Qt.ConnectionType.QueuedConnection,
-                    Q_ARG(str, str(e))
+                    Q_ARG(str, str(e)),
                 )
 
         import threading
+
         threading.Thread(target=run_download, daemon=True).start()
 
     from PyQt6.QtCore import pyqtSlot
+
     @pyqtSlot()
     def _on_download_success(self) -> None:
         self._download_voice_btn.setText("Download Complete")
-        QMessageBox.information(self, "Download Successful", "Vosk speech model downloaded and set up successfully!")
+        QMessageBox.information(
+            self, "Download Successful", "Vosk speech model downloaded and set up successfully!"
+        )
 
     @pyqtSlot(str)
     def _on_download_failed(self, err_msg: str) -> None:
@@ -629,7 +661,7 @@ class SettingsWindow(QDialog):
         self._voice_enabled.setChecked(self._config.get("voice.enabled", False))
         self._voice_wake_word.setText(self._config.get("voice.wake_word", "maestro"))
         self._tremor_enabled.setChecked(self._config.get("filtering.tremor.enabled", False))
-        
+
         theme_val = self._config.get("a11y.theme", "auto")
         self._high_contrast.setChecked(theme_val == "high-contrast")
         self._reduced_motion.setChecked(self._config.get("a11y.reduced_motion", False))
@@ -731,7 +763,9 @@ class SettingsWindow(QDialog):
         self._config.set("voice.enabled", self._voice_enabled.isChecked())
         self._config.set("voice.wake_word", self._voice_wake_word.text().strip())
         self._config.set("filtering.tremor.enabled", self._tremor_enabled.isChecked())
-        self._config.set("a11y.theme", "high-contrast" if self._high_contrast.isChecked() else "auto")
+        self._config.set(
+            "a11y.theme", "high-contrast" if self._high_contrast.isChecked() else "auto"
+        )
         self._config.set("a11y.reduced_motion", self._reduced_motion.isChecked())
         self._config.set("a11y.dwell_click_enabled", self._dwell_enabled.isChecked())
         self._config.set("a11y.dwell_duration_ms", self._dwell_duration.value())
@@ -790,7 +824,9 @@ class SettingsWindow(QDialog):
 
                 # Save accessibility settings nested keys
                 set_nested(user_config, ["voice", "enabled"], self._voice_enabled.isChecked())
-                set_nested(user_config, ["voice", "wake_word"], self._voice_wake_word.text().strip())
+                set_nested(
+                    user_config, ["voice", "wake_word"], self._voice_wake_word.text().strip()
+                )
                 set_nested(
                     user_config,
                     ["filtering", "tremor", "enabled"],
@@ -801,8 +837,12 @@ class SettingsWindow(QDialog):
                     ["a11y", "theme"],
                     "high-contrast" if self._high_contrast.isChecked() else "auto",
                 )
-                set_nested(user_config, ["a11y", "reduced_motion"], self._reduced_motion.isChecked())
-                set_nested(user_config, ["a11y", "dwell_click_enabled"], self._dwell_enabled.isChecked())
+                set_nested(
+                    user_config, ["a11y", "reduced_motion"], self._reduced_motion.isChecked()
+                )
+                set_nested(
+                    user_config, ["a11y", "dwell_click_enabled"], self._dwell_enabled.isChecked()
+                )
                 set_nested(user_config, ["a11y", "dwell_duration_ms"], self._dwell_duration.value())
 
                 with open(config_path, "w", encoding="utf-8") as f:
@@ -824,8 +864,13 @@ class SettingsWindow(QDialog):
     def _setup_plugins_tab(self) -> None:
         """Build the Plugins management tab."""
         from PyQt6.QtWidgets import (
-            QLineEdit, QListWidget, QListWidgetItem, QPushButton,
-            QHBoxLayout, QLabel, QFileDialog,
+            QLineEdit,
+            QListWidget,
+            QListWidgetItem,
+            QPushButton,
+            QHBoxLayout,
+            QLabel,
+            QFileDialog,
         )
         from PyQt6.QtCore import Qt
 
@@ -905,6 +950,7 @@ class SettingsWindow(QDialog):
             try:
                 from gesture_controller.plugins.plugin_manager import PluginManager
                 from gesture_controller.core.event_bus import EventBus
+
                 self._plugin_manager = PluginManager(EventBus(), self._config)
                 self._plugin_manager.load_all()
             except Exception as e:
@@ -916,6 +962,7 @@ class SettingsWindow(QDialog):
         """Refresh the plugin list widget from the PluginManager."""
         from PyQt6.QtWidgets import QListWidgetItem
         from PyQt6.QtCore import Qt
+
         self._plugin_list.clear()
         manager = self._get_plugin_manager()
         if manager is None:
@@ -930,6 +977,7 @@ class SettingsWindow(QDialog):
 
     def _selected_plugin_name(self) -> str | None:
         from PyQt6.QtCore import Qt
+
         item = self._plugin_list.currentItem()
         if item:
             return item.data(Qt.ItemDataRole.UserRole)
@@ -937,6 +985,7 @@ class SettingsWindow(QDialog):
 
     def _on_plugin_enable(self) -> None:
         from PyQt6.QtWidgets import QMessageBox
+
         name = self._selected_plugin_name()
         if not name:
             return
@@ -954,14 +1003,17 @@ class SettingsWindow(QDialog):
 
     def _on_plugin_uninstall(self) -> None:
         from PyQt6.QtWidgets import QMessageBox
+
         name = self._selected_plugin_name()
         if not name:
             return
         reply = QMessageBox.question(
-            self, "Uninstall Plugin",
+            self,
+            "Uninstall Plugin",
             f"Uninstall '{name}'? This will remove its files from disk.",
         )
         from PyQt6.QtWidgets import QMessageBox as QMB
+
         if reply == QMB.StandardButton.Yes:
             manager = self._get_plugin_manager()
             if manager and manager.uninstall(name):
@@ -970,6 +1022,7 @@ class SettingsWindow(QDialog):
     def _on_plugin_install_file(self) -> None:
         from PyQt6.QtWidgets import QFileDialog, QMessageBox
         from pathlib import Path
+
         path_str, _ = QFileDialog.getOpenFileName(
             self, "Select Plugin File", "", "Python Plugins (*.py);;All Files (*)"
         )
@@ -979,15 +1032,22 @@ class SettingsWindow(QDialog):
         if manager:
             record = manager.install_from_path(Path(path_str))
             if record:
-                QMessageBox.information(self, "Plugin Installed",
-                                        f"'{record.name}' v{record.version} installed successfully.")
+                QMessageBox.information(
+                    self,
+                    "Plugin Installed",
+                    f"'{record.name}' v{record.version} installed successfully.",
+                )
                 self._populate_plugin_list()
             else:
-                QMessageBox.warning(self, "Install Failed",
-                                    "Could not install the plugin. Check the log for details.")
+                QMessageBox.warning(
+                    self,
+                    "Install Failed",
+                    "Could not install the plugin. Check the log for details.",
+                )
 
     def _on_plugin_registry_search(self) -> None:
         from PyQt6.QtWidgets import QListWidgetItem
+
         query = self._plugin_search.text().strip()
         if not query:
             self._registry_list.setVisible(False)

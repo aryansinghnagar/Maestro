@@ -36,7 +36,7 @@ class Hand:
         object.__setattr__(self, "palm_center", pc)
 
 
-@dataclass
+@dataclass(slots=True)
 class FeatureVector:
     """Computed features from one frame of one hand."""
 
@@ -74,7 +74,7 @@ class FeatureVector:
     palm_delta_y: float = 0.0
 
 
-@dataclass
+@dataclass(slots=True)
 class GestureEvent:
     """Emitted when a gesture is recognized."""
 

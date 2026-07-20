@@ -3,6 +3,7 @@
 Replaces 2 copies across:
   models/feature_engineering.py, models/dtw_matcher.py
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -42,7 +43,7 @@ def normalize_landmarks(
     if handedness == "Left":
         normalized[:, 0] *= -1.0
 
-    return normalized
+    return np.asarray(normalized, dtype=np.float32)
 
 
 def normalize_landmarks_inplace(
@@ -82,12 +83,12 @@ def landmarks_to_flat_vector(
 ) -> np.ndarray:
     """Normalize landmarks and flatten to (63,) vector for DTW."""
     normalized = normalize_landmarks(landmarks, handedness)
-    return normalized.flatten()
+    return np.asarray(normalized.flatten(), dtype=np.float32)
 
 
 def palm_center(landmarks: np.ndarray) -> np.ndarray:
     """Compute palm center as mean of wrist, index MCP, pinky MCP."""
-    return (landmarks[0] + landmarks[5] + landmarks[17]) / 3.0
+    return np.asarray((landmarks[0] + landmarks[5] + landmarks[17]) / 3.0, dtype=np.float32)
 
 
 def palm_normal_vector(landmarks: np.ndarray) -> np.ndarray:

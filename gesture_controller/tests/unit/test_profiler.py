@@ -7,6 +7,7 @@ Tests cover:
 - /metrics endpoint: returns Prometheus text format
 - PerfMonitorOverlay: record_frame, update_stage_stats, FPS calculation
 """
+
 from __future__ import annotations
 
 import socket
@@ -17,14 +18,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # FrameTimeBudget
 # ---------------------------------------------------------------------------
 
+
 class TestFrameTimeBudget:
     def setup_method(self) -> None:
         from gesture_controller.core.profiler import FrameTimeBudget
+
         self.budget = FrameTimeBudget()
 
     def test_context_manager_records_elapsed(self) -> None:
@@ -100,25 +102,30 @@ class TestFrameTimeBudget:
 # cProfile integration
 # ---------------------------------------------------------------------------
 
+
 class TestCProfileIntegration:
     def setup_method(self) -> None:
         from gesture_controller.core import profiler as prof
+
         # Ensure clean state
         prof._profiler = None
 
     def teardown_method(self) -> None:
         from gesture_controller.core import profiler as prof
+
         if prof._profiler is not None:
             prof._profiler.disable()
             prof._profiler = None
 
     def test_start_profiling_activates_session(self) -> None:
         from gesture_controller.core.profiler import start_profiling, is_profiling
+
         start_profiling()
         assert is_profiling() is True
 
     def test_stop_profiling_deactivates_session(self) -> None:
         from gesture_controller.core.profiler import start_profiling, stop_profiling, is_profiling
+
         start_profiling()
         report = stop_profiling()
         assert is_profiling() is False
@@ -127,17 +134,20 @@ class TestCProfileIntegration:
 
     def test_stop_without_start_returns_message(self) -> None:
         from gesture_controller.core.profiler import stop_profiling
+
         result = stop_profiling()
         assert "no profiling session" in result.lower()
 
     def test_start_idempotent(self) -> None:
         from gesture_controller.core.profiler import start_profiling, is_profiling
+
         start_profiling()
         start_profiling()  # Second call should be a no-op
         assert is_profiling() is True
 
     def test_stop_profiling_writes_dump(self, tmp_path) -> None:
         from gesture_controller.core.profiler import start_profiling, stop_profiling
+
         start_profiling()
         dump_path = tmp_path / "test.pstats"
         stop_profiling(output_path=dump_path)
@@ -146,6 +156,7 @@ class TestCProfileIntegration:
 
     def test_report_contains_cumulative_stats(self) -> None:
         from gesture_controller.core.profiler import start_profiling, stop_profiling
+
         start_profiling()
         # Do something measurable
         _ = [x**2 for x in range(1000)]
@@ -157,9 +168,11 @@ class TestCProfileIntegration:
 # FramePipeline instrumentation
 # ---------------------------------------------------------------------------
 
+
 class TestFramePipelineInstrumentation:
     def test_skip_count_property(self) -> None:
         from gesture_controller.core.frame_pipeline import FramePipeline
+
         fp = FramePipeline(MagicMock(get=MagicMock(return_value=30)))
         fp._skip_count = 7
         assert fp.skip_count == 7
@@ -167,6 +180,7 @@ class TestFramePipelineInstrumentation:
     def test_frame_budget_snapshot_property(self) -> None:
         from gesture_controller.core.frame_pipeline import FramePipeline
         from gesture_controller.core.profiler import frame_budget
+
         # Record something
         with frame_budget.measure("test_stage"):
             time.sleep(0.001)
@@ -193,9 +207,11 @@ class TestFramePipelineInstrumentation:
 # /metrics Prometheus endpoint
 # ---------------------------------------------------------------------------
 
+
 class TestMetricsEndpoint:
     def test_send_text_response_builds_correct_headers(self) -> None:
         from gesture_controller.core.integration_server import IntegrationServer
+
         mock_event_bus = MagicMock()
         server = IntegrationServer(mock_event_bus)
         server.token = "testtoken"
@@ -204,9 +220,10 @@ class TestMetricsEndpoint:
         client, server_conn = socket.socketpair()
         try:
             server._send_text_response(
-                server_conn, 200,
+                server_conn,
+                200,
                 "maestro_profiling_active 0\n",
-                content_type="text/plain; version=0.0.4"
+                content_type="text/plain; version=0.0.4",
             )
             raw = client.recv(4096).decode("utf-8")
             assert "HTTP/1.1 200 OK" in raw
@@ -219,6 +236,7 @@ class TestMetricsEndpoint:
     def test_metrics_endpoint_returns_prometheus_format(self) -> None:
         from gesture_controller.core.integration_server import IntegrationServer
         from gesture_controller.core.profiler import frame_budget, is_profiling
+
         mock_event_bus = MagicMock()
         server = IntegrationServer(mock_event_bus)
         server.token = "tok123"
@@ -233,9 +251,7 @@ class TestMetricsEndpoint:
             req = f"GET /metrics?token=tok123 HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n"
             # Directly invoke the routing logic
             with patch.object(server, "_send_text_response") as mock_send:
-                server._handle_connection_payload(
-                    "GET", "/metrics", {}, "tok123", server_conn
-                )
+                server._handle_connection_payload("GET", "/metrics", {}, "tok123", server_conn)
         except AttributeError:
             # _handle_connection_payload may not exist as a standalone method;
             # Test the _send_text_response helper directly instead.
@@ -249,9 +265,11 @@ class TestMetricsEndpoint:
 # PerfMonitorOverlay
 # ---------------------------------------------------------------------------
 
+
 class TestPerfMonitorOverlay:
     def test_record_frame_tracks_frames(self, qapp) -> None:
         from gesture_controller.gui.perf_monitor import PerfMonitorOverlay
+
         overlay = PerfMonitorOverlay()
         for _ in range(10):
             overlay.record_frame(0.033)
@@ -262,6 +280,7 @@ class TestPerfMonitorOverlay:
 
     def test_record_dropped_frame(self, qapp) -> None:
         from gesture_controller.gui.perf_monitor import PerfMonitorOverlay
+
         overlay = PerfMonitorOverlay()
         overlay.record_frame(0.033, dropped=True)
         assert overlay._dropped_frames == 1
@@ -270,8 +289,11 @@ class TestPerfMonitorOverlay:
 
     def test_update_stage_stats(self, qapp) -> None:
         from gesture_controller.gui.perf_monitor import PerfMonitorOverlay
+
         overlay = PerfMonitorOverlay()
-        stats = {"decode": {"mean_ms": 5.0, "p95_ms": 8.0, "count": 30.0, "min_ms": 2.0, "max_ms": 12.0}}
+        stats = {
+            "decode": {"mean_ms": 5.0, "p95_ms": 8.0, "count": 30.0, "min_ms": 2.0, "max_ms": 12.0}
+        }
         overlay.update_stage_stats(stats)
         assert overlay._stage_stats == stats
         overlay.deleteLater()
@@ -279,6 +301,7 @@ class TestPerfMonitorOverlay:
 
     def test_fps_calculated_after_refresh(self, qapp) -> None:
         from gesture_controller.gui.perf_monitor import PerfMonitorOverlay
+
         overlay = PerfMonitorOverlay()
         # Simulate 30 frames arrived
         for _ in range(30):

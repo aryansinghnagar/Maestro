@@ -18,7 +18,7 @@ def create_backend(config: dict[str, Any]) -> InferenceBackend:
             logger.warning(
                 "Failed to create preferred backend, falling back to auto-detect",
                 preferred=preferred,
-                error=str(e)
+                error=str(e),
             )
 
     return _auto_detect(config)
@@ -27,15 +27,19 @@ def create_backend(config: dict[str, Any]) -> InferenceBackend:
 def _create_specific(name: str, config: dict[str, Any]) -> InferenceBackend:
     if name == "coreml":
         from gesture_controller.vision.backends.coreml_backend import CoreMLBackend
+
         return CoreMLBackend(config)
     elif name == "tensorrt":
         from gesture_controller.vision.backends.tensorrt_backend import TensorRTBackend
+
         return TensorRTBackend(config)
     elif name == "directml":
         from gesture_controller.vision.backends.directml_backend import DirectMLBackend
+
         return DirectMLBackend(config)
     elif name in ("cpu", "cpu-int8"):
         from gesture_controller.vision.backends.cpu_backend import CPUBackend
+
         return CPUBackend(config)
     else:
         raise ValueError(f"Unknown specific backend: {name}")
@@ -43,10 +47,12 @@ def _create_specific(name: str, config: dict[str, Any]) -> InferenceBackend:
 
 def _auto_detect(config: dict[str, Any]) -> InferenceBackend:
     system = platform.system()
+    backend: InferenceBackend
 
     if system == "Darwin":
         try:
             from gesture_controller.vision.backends.coreml_backend import CoreMLBackend
+
             backend = CoreMLBackend(config)
             logger.info("Using CoreML backend", name=backend.name)
             return backend
@@ -56,6 +62,7 @@ def _auto_detect(config: dict[str, Any]) -> InferenceBackend:
     elif system == "Windows":
         try:
             from gesture_controller.vision.backends.tensorrt_backend import TensorRTBackend
+
             backend = TensorRTBackend(config)
             logger.info("Using TensorRT backend", name=backend.name)
             return backend
@@ -64,6 +71,7 @@ def _auto_detect(config: dict[str, Any]) -> InferenceBackend:
 
         try:
             from gesture_controller.vision.backends.directml_backend import DirectMLBackend
+
             backend = DirectMLBackend(config)
             logger.info("Using DirectML backend", name=backend.name)
             return backend
@@ -73,6 +81,7 @@ def _auto_detect(config: dict[str, Any]) -> InferenceBackend:
     elif system == "Linux":
         try:
             from gesture_controller.vision.backends.tensorrt_backend import TensorRTBackend
+
             backend = TensorRTBackend(config)
             logger.info("Using TensorRT backend", name=backend.name)
             return backend
@@ -81,6 +90,7 @@ def _auto_detect(config: dict[str, Any]) -> InferenceBackend:
 
     # CPU Fallback
     from gesture_controller.vision.backends.cpu_backend import CPUBackend
+
     backend = CPUBackend(config)
     logger.info("Using CPU fallback backend", name=backend.name)
     return backend

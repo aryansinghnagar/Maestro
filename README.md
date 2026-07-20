@@ -10,16 +10,17 @@
 
 ## Features
 
-- **21-point hand landmark tracking** — MediaPipe / ONNX Runtime with GPU acceleration (CoreML / TensorRT / DirectML / OpenVINO)
+- **Adaptive Performance Tiers (T0–T3)** — Automatic zero-config dynamic scaling from Ultra (T0: 60 FPS, FP16 model, full HUD) to Minimal (T3: 10 FPS, INT8 model, battery-saver mode) based on real-time hardware capabilities, CPU load, and battery/thermal state
+- **21-point hand landmark tracking** — ONNX Runtime with multi-backend GPU acceleration (CUDA / CoreML / TensorRT / DirectML)
 - **Cross-platform OS input** — Linux (uinput/X11/Wayland), macOS (CGEvent), Windows (SendInput)
 - **FSM-based gesture recognition** with custom gestures via DTW
 - **On-device processing** — no data leaves your computer (privacy by design)
-- **Plugin system** with pluggy-based hooks and WASM sandboxing
+- **Plugin system** with pluggy-based hooks and process isolation
 - **Accessibility features** — tremor compensation, voice control (Vosk, offline), high contrast themes, screen reader support
 - **Trigger conditions DSL** — context-aware gestures (per-app, per-time, per-display, per-audio-state)
 - **Per-device profiles** — different gestures for laptop webcam vs external camera
 - **Multi-monitor and HiDPI** support
-- **Privilege-separated input broker** with rate limiting and audit log
+- **Privilege-separated input broker** with Win32 process token SID auth, per-method rate limiting, and audit log verification
 - **TUF-signed auto-updates** with threshold=3
 - **GDPR compliance** — data export and erasure APIs
 

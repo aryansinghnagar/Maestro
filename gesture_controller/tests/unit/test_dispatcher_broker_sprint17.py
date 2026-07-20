@@ -31,6 +31,7 @@ AuditLogger:
   - Thread-safe concurrent writes
   - Multiple events produce correct chain of length N
 """
+
 from __future__ import annotations
 
 import json
@@ -48,8 +49,8 @@ from gesture_controller.models.data_types import GestureEvent
 from gesture_controller.core.event_bus import EventBus
 from gesture_controller.os_integration.broker import RateLimiter, AuditLogger
 
-
 # ── Shared fixtures ────────────────────────────────────────────────────────────
+
 
 def _make_event(gesture="TestGesture", action="OS:MinimizeActiveWindow") -> GestureEvent:
     return GestureEvent(
@@ -72,9 +73,7 @@ def _make_dispatcher(action_map: dict | None = None, auto_detect: bool = True):
         "profiles": {"auto_detect_app": auto_detect},
     }.get(k, default)
     bus = EventBus()
-    with patch.object(
-        ActionDispatcher, "_load_profiles", return_value=action_map or {}
-    ):
+    with patch.object(ActionDispatcher, "_load_profiles", return_value=action_map or {}):
         dispatcher = ActionDispatcher(controller, config, bus)
     return dispatcher, controller, bus
 
@@ -82,6 +81,7 @@ def _make_dispatcher(action_map: dict | None = None, auto_detect: bool = True):
 # ═══════════════════════════════════════════════════════════════════════════════
 # ActionDispatcher — _execute branches
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class TestActionDispatcherExecute:
 
@@ -189,6 +189,7 @@ class TestActionDispatcherExecute:
 # ActionDispatcher — _resolve_action branches
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class TestActionDispatcherResolveAction:
 
     def test_auto_detect_off_returns_event_action(self) -> None:
@@ -257,6 +258,7 @@ class TestActionDispatcherResolveAction:
 # ActionDispatcher — _classify_app
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class TestClassifyApp:
 
     @pytest.fixture(autouse=True)
@@ -319,6 +321,7 @@ class TestClassifyApp:
 # ═══════════════════════════════════════════════════════════════════════════════
 # RateLimiter — additional branches
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class TestRateLimiterAdditional:
 
@@ -411,6 +414,7 @@ class TestRateLimiterAdditional:
 # AuditLogger — additional branches
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class TestAuditLoggerAdditional:
 
     def test_log_chain_length(self, tmp_path) -> None:
@@ -442,8 +446,7 @@ class TestAuditLoggerAdditional:
         log_path = tmp_path / "concurrent_audit.log"
         al = AuditLogger(log_path)
         threads = [
-            threading.Thread(target=al.log, args=(f"event_{i}", {"i": i}))
-            for i in range(20)
+            threading.Thread(target=al.log, args=(f"event_{i}", {"i": i})) for i in range(20)
         ]
         for t in threads:
             t.start()

@@ -30,7 +30,10 @@ class FramePipeline:
         self._camera_process: Any = None
 
         if create_camera_process is None:
-            from gesture_controller.vision.camera_stream import create_camera_process as default_create
+            from gesture_controller.vision.camera_stream import (
+                create_camera_process as default_create,
+            )
+
             self._create_camera_process = default_create
         else:
             self._create_camera_process = create_camera_process
@@ -38,17 +41,21 @@ class FramePipeline:
     def start(self) -> None:
         self._db_buffer = DoubleFrameBuffer(self._shm_name, create=True, size=self._frame_size)
         self._shm_name = self._db_buffer.shm.name
-        
+
         # Tighten SharedMemory permissions on Unix (S3-14)
         if platform.system() != "Windows":
             shm_file = Path("/dev/shm") / self._shm_name  # nosec B108
             if shm_file.exists():
                 try:
                     shm_file.chmod(0o600)
-                    logger.debug("Tightened shared memory file permissions", path=str(shm_file), mode="0600")
+                    logger.debug(
+                        "Tightened shared memory file permissions", path=str(shm_file), mode="0600"
+                    )
                 except Exception as e:
-                    logger.warning("Failed to chmod shared memory segment", path=str(shm_file), error=str(e))
-                    
+                    logger.warning(
+                        "Failed to chmod shared memory segment", path=str(shm_file), error=str(e)
+                    )
+
         self._camera_process = self._create_camera_process(
             self._config._config, self._shm_name, self._frame_ready_event
         )
@@ -143,6 +150,6 @@ class FramePipeline:
         return self._skip_count
 
     @property
-    def frame_budget_snapshot(self) -> dict:
+    def frame_budget_snapshot(self) -> dict[str, Any]:
         """Return per-stage timing stats from FrameTimeBudget."""
         return frame_budget.snapshot()
