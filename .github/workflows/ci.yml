@@ -54,7 +54,7 @@ jobs:
         run: black --check gesture_controller/
 
       - name: Run Mypy Type Checking
-        run: mypy gesture_controller/
+        run: mypy --config-file pyproject.toml gesture_controller/
 
   security-scan:
     name: Security Scan
@@ -109,8 +109,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb \
             portaudio19-dev libasound2-dev \
-            libegl1-mesa libgl1 \
-            libgles2-mesa libgles2-mesa-dev \
+            libegl1 libgl1 libgles2 \
             libglib2.0-0 libfontconfig1 libdbus-1-3 \
             libxkbcommon0 libxkbcommon-x11-0
           echo "DISPLAY=:99" >> $GITHUB_ENV
