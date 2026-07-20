@@ -39,8 +39,6 @@ dependencies = [
     "psutil>=5.9.0",
     "watchdog>=3.0.0",
     "RestrictedPython>=6.0",
-    "vosk>=0.3.45",
-    "pyaudio>=0.2.13",
     "wasmtime>=12.0.0",
     # Platform-specific — declared with markers so non-target platforms skip them
     "evdev>=1.6.0; sys_platform == 'linux'",
@@ -68,6 +66,10 @@ dev = [
     "flake8>=6.1.0",
     "mypy>=1.5.0",
     "types-PyYAML>=6.0.12",
+]
+voice = [
+    "vosk>=0.3.45",
+    "pyaudio>=0.2.13; sys_platform == 'win32'",
 ]
 
 [project.scripts]
