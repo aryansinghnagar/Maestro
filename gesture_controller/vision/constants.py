@@ -3,6 +3,7 @@
 Replaces 4 copies across:
   camera_stream, double_buffer, landmark_extractor, onnx_backend
 """
+
 from __future__ import annotations
 
 # Frame dimensions (must match camera capture and SHM buffer)

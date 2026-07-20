@@ -18,45 +18,72 @@ logger = structlog.get_logger(__name__)
 
 def get_broker_address() -> str:
     if platform.system() == "Windows":
-        return r'\\.\pipe\gesture_controller_broker'
+        return r"\\.\pipe\gesture_controller_broker"
     else:
         from gesture_controller.core.paths import broker_socket_path
+
         p = broker_socket_path()
         p.parent.mkdir(parents=True, exist_ok=True)
         return str(p)
 
 
 def get_broker_family() -> str:
-    return 'AF_PIPE' if platform.system() == "Windows" else 'AF_UNIX'
+    return "AF_PIPE" if platform.system() == "Windows" else "AF_UNIX"
 
 
 def verify_peer(conn: Any) -> bool:
     """Verify that the connecting peer process belongs to the same UID."""
     if platform.system() == "Windows":
+        try:
+            import win32security  # type: ignore[import-untyped]
+            import win32api  # type: ignore[import-untyped]
+            import ctypes
+
+            token_handle = win32security.OpenProcessToken(
+                win32api.GetCurrentProcess(), win32security.TOKEN_QUERY
+            )
+            current_sid, _ = win32security.GetTokenInformation(
+                token_handle, win32security.TokenUser
+            )
+
+            handle = conn.fileno()
+            client_pid = ctypes.c_ulong()
+            kernel32 = getattr(ctypes.windll, "kernel32", None)
+            if kernel32 and hasattr(kernel32, "GetNamedPipeClientProcessId"):
+                if kernel32.GetNamedPipeClientProcessId(handle, ctypes.byref(client_pid)):
+                    client_proc = win32api.OpenProcess(0x0400, False, client_pid.value)
+                    client_token = win32security.OpenProcessToken(
+                        client_proc, win32security.TOKEN_QUERY
+                    )
+                    client_sid, _ = win32security.GetTokenInformation(
+                        client_token, win32security.TokenUser
+                    )
+                    return bool(current_sid == client_sid)
+        except Exception as e:
+            logger.warning("Windows peer verification fallback", error=str(e))
         return True
 
     import socket
     import struct
+
     try:
-        # Wrap connection descriptor in a standard socket
+        af_unix = getattr(socket, "AF_UNIX", 1)
         fd = conn.fileno()
-        s = socket.fromfd(fd, socket.AF_UNIX, socket.SOCK_STREAM)
-        
+        s = socket.fromfd(fd, af_unix, socket.SOCK_STREAM)
+        getuid_fn = getattr(os, "getuid", lambda: -1)
+
         if platform.system() == "Linux":
-            # SO_PEERCRED returns struct ucred: { pid_t pid, uid_t uid, gid_t gid }
-            cred = s.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i"))
+            so_peercred = getattr(socket, "SO_PEERCRED", 17)
+            cred = s.getsockopt(socket.SOL_SOCKET, so_peercred, struct.calcsize("3i"))
             _, uid, _ = struct.unpack("3i", cred)
-            return uid == os.getuid()
-            
+            return bool(uid == getuid_fn())
+
         elif platform.system() == "Darwin":
-            # LOCAL_PEERCRED on macOS returns struct xucred:
-            # { u_short cr_version; uid_t cr_uid; short cr_ngroups; gid_t cr_groups[16]; }
             sol_local = getattr(socket, "SOL_LOCAL", 0)
             local_peercred = getattr(socket, "LOCAL_PEERCRED", 1)
             cred = s.getsockopt(sol_local, local_peercred, 128)
-            # Unpack version (2 bytes) and uid (4 bytes)
             _, uid = struct.unpack("=HI", cred[:6])
-            return uid == os.getuid()
+            return bool(uid == getuid_fn())
     except Exception as e:
         logger.error("Peer verification failed", error=str(e))
         return False
@@ -71,17 +98,20 @@ class RateLimiter:
 
     def check_and_record(self, gesture_id: Optional[str]) -> bool:
         now = time.monotonic()
-        
-        # 1. Global rate limit: 30 actions/sec
+
+        max_global = 120 if gesture_id in ("mouse_move", "MouseScroll") else 30
+        max_burst = 30 if gesture_id in ("mouse_move", "MouseScroll") else 10
+
+        # 1. Global rate limit
         while self.global_history and now - self.global_history[0] > 1.0:
             self.global_history.popleft()
-        if len(self.global_history) >= 30:
+        if len(self.global_history) >= max_global:
             return False
 
-        # 2. Burst limit: 10 actions in 100ms (0.1s)
+        # 2. Burst limit
         while self.burst_history and now - self.burst_history[0] > 0.1:
             self.burst_history.popleft()
-        if len(self.burst_history) >= 10:
+        if len(self.burst_history) >= max_burst:
             return False
 
         # 3. Per-gesture rate limit: 5 actions/sec
@@ -124,12 +154,12 @@ class AuditLogger:
                 "timestamp": now_str,
                 "event": event_type,
                 "details": details,
-                "prev_hash": self.last_hash
+                "prev_hash": self.last_hash,
             }
             entry_json = json.dumps(entry, sort_keys=True)
             current_hash = hashlib.sha256(entry_json.encode("utf-8")).hexdigest()
             entry["hash"] = current_hash
-            
+
             try:
                 with open(self.log_path, "a", encoding="utf-8") as f:
                     f.write(json.dumps(entry) + "\n")
@@ -143,34 +173,36 @@ class InjectionBrokerServer:
         self.address = address or get_broker_address()
         self.family = get_broker_family()
         self.rate_limiter = RateLimiter()
-        
+
         from gesture_controller.core.paths import user_config_dir
+
         log_dir = user_config_dir()
         log_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self.audit_logger = AuditLogger(log_dir / "audit.log")
         self.kill_switch_active = False
         self.esc_presses: List[float] = []
-        
+
         # Instantiate actual OS controller (use_broker=False)
         from gesture_controller.os_integration import create_controller
+
         self.controller = create_controller(use_broker=False)
         self.running = False
         self._listener: Optional[Listener] = None
 
     def start(self) -> None:
         # Clean up existing Unix socket file if present
-        if self.family == 'AF_UNIX' and os.path.exists(self.address):
+        if self.family == "AF_UNIX" and os.path.exists(self.address):
             try:
                 os.remove(self.address)
             except Exception:
                 pass
-                
+
         logger.info("Starting input injection broker", address=self.address)
         self._listener = Listener(self.address, self.family)
         self.running = True
         self.audit_logger.log("broker_started", {"address": self.address})
-        
+
         try:
             while self.running:
                 try:
@@ -194,7 +226,7 @@ class InjectionBrokerServer:
                 self._listener.close()
             except Exception:
                 pass
-        if self.family == 'AF_UNIX' and os.path.exists(self.address):
+        if self.family == "AF_UNIX" and os.path.exists(self.address):
             try:
                 os.remove(self.address)
             except Exception:
@@ -226,13 +258,13 @@ class InjectionBrokerServer:
             gesture_str: Optional[str] = gesture_id
         else:
             gesture_str = None
-        
+
         if action == "set_kill_switch":
             active = bool(req.get("active", False))
             self.kill_switch_active = active
             self.audit_logger.log("kill_switch_changed", {"active": active})
             return {"status": "ok"}
-            
+
         if action == "get_kill_switch_state":
             return {"status": "ok", "active": self.kill_switch_active}
 
@@ -242,15 +274,17 @@ class InjectionBrokerServer:
 
         method_name = req.get("method")
         args = req.get("args", {})
-        
+
         if not isinstance(method_name, str):
             return {"status": "error", "message": "Method name must be a string"}
-            
+
         if not hasattr(self.controller, method_name):
             return {"status": "error", "message": f"Method {method_name} not supported"}
-            
+
         if not self.rate_limiter.check_and_record(gesture_str):
-            self.audit_logger.log("rate_limited", {"method": method_name, "gesture_id": gesture_str})
+            self.audit_logger.log(
+                "rate_limited", {"method": method_name, "gesture_id": gesture_str}
+            )
             return {"status": "rate_limited"}
 
         # Esc x 3 detection
@@ -259,15 +293,13 @@ class InjectionBrokerServer:
         elif method_name == "key_press" and args.get("key") == "escape":
             self._handle_esc_press()
 
-        self.audit_logger.log("action_executed", {
-            "method": method_name,
-            "args": args,
-            "gesture_id": gesture_str
-        })
+        self.audit_logger.log(
+            "action_executed", {"method": method_name, "args": args, "gesture_id": gesture_str}
+        )
 
         try:
             method = getattr(self.controller, method_name)
-            
+
             # Call controller method dynamically
             if method_name in ("key_press", "key_release"):
                 method(args.get("key"), **{k: v for k, v in args.items() if k != "key"})
@@ -280,16 +312,22 @@ class InjectionBrokerServer:
             elif method_name == "mouse_scroll":
                 method(args.get("delta_x", 0), args.get("delta_y", 0))
             elif method_name in (
-                "get_foreground_app", "minimize_active_window", "switch_window",
-                "show_desktop", "media_play_pause", "media_next", "media_previous",
-                "media_volume_up", "media_volume_down"
+                "get_foreground_app",
+                "minimize_active_window",
+                "switch_window",
+                "show_desktop",
+                "media_play_pause",
+                "media_next",
+                "media_previous",
+                "media_volume_up",
+                "media_volume_down",
             ):
                 res = method()
                 if method_name == "get_foreground_app":
                     return {"status": "ok", "result": res}
             else:
                 method(**args)
-                
+
             return {"status": "ok"}
         except Exception as e:
             logger.error("Broker failed to execute action", method=method_name, error=str(e))
@@ -329,7 +367,7 @@ class BrokerClientController(BaseController):
     def _ensure_connected(self) -> bool:
         if self._conn:
             return True
-        
+
         with self._lock:
             # Try connecting to existing broker
             try:
@@ -337,17 +375,20 @@ class BrokerClientController(BaseController):
                 return True
             except Exception:
                 pass
-                
+
             # If not running, spawn server process in background
             try:
                 import subprocess
+
                 subprocess.Popen(
                     [sys.executable, "-m", "gesture_controller.os_integration.broker"],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
-                    creationflags=subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0
+                    creationflags=(
+                        subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0
+                    ),
                 )
-                
+
                 # Retry connection loop (up to 3 seconds)
                 for _ in range(30):
                     time.sleep(0.1)
@@ -358,20 +399,20 @@ class BrokerClientController(BaseController):
                         pass
             except Exception as e:
                 logger.error("Failed to spawn background broker", error=str(e))
-                
+
         return False
 
     def _send_request(self, method_name: str, args: dict[str, Any]) -> dict[str, Any]:
         if not self._ensure_connected():
             return {"status": "error", "message": "Failed to connect to broker"}
-            
+
         req = {
             "action": "input_action",
             "method": method_name,
             "args": args,
-            "gesture_id": self.get_active_gesture()
+            "gesture_id": self.get_active_gesture(),
         }
-        
+
         with self._lock:
             try:
                 self._conn.send_bytes(json.dumps(req).encode("utf-8"))
@@ -382,7 +423,7 @@ class BrokerClientController(BaseController):
             except Exception as e:
                 logger.error("Broker connection error, retrying...", error=str(e))
                 self._conn = None
-                
+
         # Retry once
         if self._ensure_connected():
             with self._lock:
@@ -394,7 +435,7 @@ class BrokerClientController(BaseController):
                         return res
                 except Exception:
                     self._conn = None
-                    
+
         return {"status": "error", "message": "Broker connection lost"}
 
     def is_supported(self) -> bool:

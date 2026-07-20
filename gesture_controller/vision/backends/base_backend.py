@@ -21,14 +21,20 @@ logger = structlog.get_logger(__name__)
 class BaseONNXBackend:
     """Base class for all ONNX Runtime gesture inference backends."""
 
-    def __init__(self, config: dict[str, Any], providers: list[Any], use_int8: bool = False, sess_options: Any = None) -> None:
+    def __init__(
+        self,
+        config: dict[str, Any],
+        providers: list[Any],
+        use_int8: bool = False,
+        sess_options: Any = None,
+    ) -> None:
         self.config = config
         self.providers = providers
         self.use_int8 = use_int8
 
         data_dir = Path(__file__).parent.parent.parent / "data"
         palm_model_path = data_dir / PALM_DETECTION_ONNX
-        
+
         if use_int8:
             landmark_model_path = data_dir / HAND_LANDMARKER_INT8_ONNX
         else:
@@ -40,14 +46,14 @@ class BaseONNXBackend:
             raise FileNotFoundError(f"Hand landmark model not found: {landmark_model_path}")
 
         conf_threshold = config.get("engine", {}).get("min_detection_confidence", 0.7)
-        
-        self.palm_det = PalmDetector(
+
+        self.palm_det = PalmDetector(  # type: ignore[no-untyped-call]
             str(palm_model_path),
             scoreThreshold=conf_threshold,
             providers=providers,
             sess_options=sess_options,
         )
-        self.hand_pose = HandPoseEstimator(
+        self.hand_pose = HandPoseEstimator(  # type: ignore[no-untyped-call]
             str(landmark_model_path),
             confThreshold=conf_threshold,
             providers=providers,
@@ -70,7 +76,7 @@ class BaseONNXBackend:
         image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
         # 1. Palm Detection
-        palms = self.palm_det.infer(image_bgr)
+        palms = self.palm_det.infer(image_bgr)  # type: ignore[no-untyped-call]
         if palms is None or len(palms) == 0:
             return None
 
@@ -78,7 +84,7 @@ class BaseONNXBackend:
         hands = []
         max_hands = self.config.get("engine", {}).get("max_hands", 2)
         for palm in palms[:max_hands]:
-            res = self.hand_pose.infer(image_bgr, palm)
+            res = self.hand_pose.infer(image_bgr, palm)  # type: ignore[no-untyped-call]
             if res is None:
                 continue
 

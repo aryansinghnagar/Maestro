@@ -39,7 +39,9 @@ def temp_crash_dir(tmp_path):
     return crash_dir
 
 
-def _create_sample_crash_json(crash_dir: Path, report_id: str, exc_msg: str = "Test failure") -> Path:
+def _create_sample_crash_json(
+    crash_dir: Path, report_id: str, exc_msg: str = "Test failure"
+) -> Path:
     data = {
         "report_version": 1,
         "report_id": report_id,
@@ -120,7 +122,10 @@ def test_dialog_clear_all(qapp, temp_crash_dir):
     dialog = CrashReportViewerDialog(crash_dir=temp_crash_dir)
     assert dialog.report_list.count() == 2
 
-    with patch("PyQt6.QtWidgets.QMessageBox.question", return_value=pytest.importorskip("PyQt6.QtWidgets").QMessageBox.StandardButton.Yes):
+    with patch(
+        "PyQt6.QtWidgets.QMessageBox.question",
+        return_value=pytest.importorskip("PyQt6.QtWidgets").QMessageBox.StandardButton.Yes,
+    ):
         dialog._clear_all()
 
     assert dialog.report_list.count() == 1
@@ -132,8 +137,13 @@ def test_dialog_export_diagnostics(qapp, temp_crash_dir, tmp_path):
     dialog = CrashReportViewerDialog(crash_dir=temp_crash_dir)
     out_zip = tmp_path / "output_test_diag.zip"
 
-    with patch("PyQt6.QtWidgets.QFileDialog.getSaveFileName", return_value=(str(out_zip), "Zip Archives (*.zip)")), \
-         patch("PyQt6.QtWidgets.QMessageBox.information") as mock_info:
+    with (
+        patch(
+            "PyQt6.QtWidgets.QFileDialog.getSaveFileName",
+            return_value=(str(out_zip), "Zip Archives (*.zip)"),
+        ),
+        patch("PyQt6.QtWidgets.QMessageBox.information") as mock_info,
+    ):
         dialog.export_diagnostics()
         assert out_zip.exists()
         mock_info.assert_called_once()

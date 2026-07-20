@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import structlog
 from typing import Any
@@ -13,15 +14,23 @@ logger = structlog.get_logger(__name__)
 class InferencePipeline:
     """Manages landmark extraction, tracking, and filtering."""
 
-    def __init__(self, config: ConfigManager, landmark_extractor_cls: Any = None, compute_features_fn: Any = None) -> None:
+    def __init__(
+        self,
+        config: ConfigManager,
+        landmark_extractor_cls: Any = None,
+        compute_features_fn: Any = None,
+    ) -> None:
         self._config = config
-        
+
         if landmark_extractor_cls is None:
-            from gesture_controller.vision.landmark_extractor import LandmarkExtractor as default_cls
+            from gesture_controller.vision.landmark_extractor import (
+                LandmarkExtractor as default_cls,
+            )
+
             self._extractor = default_cls(config._config)
         else:
             self._extractor = landmark_extractor_cls(config._config)
-            
+
         self._compute_features_fn = compute_features_fn
         self._hand_tracker = HandTracker()
         self._filters: dict[int, OneEuroFilter] = {}
@@ -32,7 +41,9 @@ class InferencePipeline:
         self._arr_bufs = [np.empty((21, 3), dtype=np.float64) for _ in range(max_hands)]
         self._centered_bufs = [np.empty((21, 3), dtype=np.float64) for _ in range(max_hands)]
 
-    def process(self, shm_name: str, timestamp: float, frame_count: int) -> tuple[list[Hand], list[Hand], list[tuple[int, Any]]]:
+    def process(
+        self, shm_name: str, timestamp: float, frame_count: int
+    ) -> tuple[list[Hand], list[Hand], list[tuple[int, Any]]]:
         """Run landmark extraction, tracking, filtering, and feature extraction."""
         raw_hands = self._extractor.extract(shm_name, int(timestamp * 1000))
         if not raw_hands:
@@ -44,11 +55,14 @@ class InferencePipeline:
         if self._compute_features_fn is not None:
             compute_features_fn = self._compute_features_fn
         else:
-            try:
-                from gesture_controller.core.engine import compute_features as engine_compute_features
-                compute_features_fn = engine_compute_features
-            except ImportError:
-                from gesture_controller.models.feature_engineering import compute_features as default_compute_features
+            engine_mod = sys.modules.get("gesture_controller.core.engine")
+            if engine_mod and hasattr(engine_mod, "compute_features"):
+                compute_features_fn = getattr(engine_mod, "compute_features")
+            else:
+                from gesture_controller.models.feature_engineering import (
+                    compute_features as default_compute_features,
+                )
+
                 compute_features_fn = default_compute_features
 
         tracked_assignments = self._hand_tracker.update(raw_hands)
@@ -80,7 +94,7 @@ class InferencePipeline:
             dm_x = lm_array[5, 0] - lm_array[0, 0]
             dm_y = lm_array[5, 1] - lm_array[0, 1]
             dm_z = lm_array[5, 2] - lm_array[0, 2]
-            depth_metric = float(np.sqrt(dm_x*dm_x + dm_y*dm_y + dm_z*dm_z))
+            depth_metric = float(np.sqrt(dm_x * dm_x + dm_y * dm_y + dm_z * dm_z))
 
             # Apply One-Euro filter
             filtered, velocity, acceleration = filt.filter(
@@ -88,9 +102,7 @@ class InferencePipeline:
             )
 
             # Reconstruct Hand with filtered positions
-            smoothed_landmarks = tuple(
-                Landmark3D(x=f[0], y=f[1], z=f[2]) for f in filtered
-            )
+            smoothed_landmarks = tuple(Landmark3D(x=f[0], y=f[1], z=f[2]) for f in filtered)
             smoothed_hand = Hand(
                 landmarks=smoothed_landmarks,
                 handedness=hand.handedness,

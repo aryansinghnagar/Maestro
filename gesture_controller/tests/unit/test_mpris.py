@@ -5,7 +5,7 @@ import pytest
 from gesture_controller.os_integration.mpris_media import (
     mpris_play_pause,
     mpris_next,
-    mpris_previous
+    mpris_previous,
 )
 
 

@@ -160,7 +160,10 @@ class OverlayHUD(QWidget):
             return
 
         from gesture_controller.gui.theme import detect_reduced_motion
-        reduced_motion = self._config.get("a11y", {}).get("reduced_motion", False) or detect_reduced_motion()
+
+        reduced_motion = (
+            self._config.get("a11y", {}).get("reduced_motion", False) or detect_reduced_motion()
+        )
 
         w, h = self.width(), self.height()
         center_x = w - 100
@@ -176,7 +179,9 @@ class OverlayHUD(QWidget):
         painter.setPen(QPen(QColor(0, 255, 136, 230), 5))
         rect = QRectF(center_x - radius, center_y - radius, radius * 2, radius * 2)
         # Angle parameter is in 1/16th of a degree
-        progress = 1.0 if self._fsm_progress >= 0.95 else 0.0 if reduced_motion else self._fsm_progress
+        progress = (
+            1.0 if self._fsm_progress >= 0.95 else 0.0 if reduced_motion else self._fsm_progress
+        )
         angle_span = int(-360 * progress * 16)
         painter.drawArc(rect, 90 * 16, angle_span)
 

@@ -4,6 +4,7 @@
 - Accessibility tab in SettingsWindow (load & apply)
 - Reduced motion flag in overlay
 """
+
 from __future__ import annotations
 
 import time
@@ -16,6 +17,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # DwellClicker
 # ---------------------------------------------------------------------------
+
 
 class TestDwellClicker:
     """Unit tests for DwellClicker.update_cursor logic (no Qt event loop needed)."""
@@ -86,6 +88,7 @@ class TestDwellClicker:
 
     def test_start_and_stop_thread(self) -> None:
         from gesture_controller.gui.dwell_clicker import DwellClicker
+
         config = MagicMock()
         config.get.return_value = False  # dwell disabled
         dc = DwellClicker(config, MagicMock())
@@ -97,6 +100,7 @@ class TestDwellClicker:
 
     def test_start_idempotent(self) -> None:
         from gesture_controller.gui.dwell_clicker import DwellClicker
+
         config = MagicMock()
         config.get.return_value = False
         dc = DwellClicker(config, MagicMock())
@@ -110,6 +114,7 @@ class TestDwellClicker:
 # ---------------------------------------------------------------------------
 # TremorCalibrator – pure FFT logic tests (no Qt dialog needed)
 # ---------------------------------------------------------------------------
+
 
 class TestTremorCalibratorFFT:
     """Test the core FFT analysis that TremorCalibrator._finish() relies on."""
@@ -129,7 +134,9 @@ class TestTremorCalibratorFFT:
             return float(freqs[tremor_mask][peak_idx]), float(magnitudes[tremor_mask][peak_idx])
         return 0.0, 0.0
 
-    def _synthetic_samples(self, freq_hz: float, n: int = 300, sample_rate: float = 30.0) -> list[tuple[float, float]]:
+    def _synthetic_samples(
+        self, freq_hz: float, n: int = 300, sample_rate: float = 30.0
+    ) -> list[tuple[float, float]]:
         dt = 1.0 / sample_rate
         samples = []
         for i in range(n):
@@ -177,11 +184,13 @@ class TestTremorCalibratorConfig:
         config.set = MagicMock()
 
         # Patch super().__init__ to avoid needing a QApplication
-        with patch("gesture_controller.gui.tremor_calibrator.QDialog.__init__", return_value=None), \
-             patch("gesture_controller.gui.tremor_calibrator.QVBoxLayout"), \
-             patch("gesture_controller.gui.tremor_calibrator.QLabel") as MockLabel, \
-             patch("gesture_controller.gui.tremor_calibrator.QPushButton"), \
-             patch("gesture_controller.gui.tremor_calibrator.QProgressBar"):
+        with (
+            patch("gesture_controller.gui.tremor_calibrator.QDialog.__init__", return_value=None),
+            patch("gesture_controller.gui.tremor_calibrator.QVBoxLayout"),
+            patch("gesture_controller.gui.tremor_calibrator.QLabel") as MockLabel,
+            patch("gesture_controller.gui.tremor_calibrator.QPushButton"),
+            patch("gesture_controller.gui.tremor_calibrator.QProgressBar"),
+        ):
             mock_label = MagicMock()
             MockLabel.return_value = mock_label
             cal = TremorCalibrator.__new__(TremorCalibrator)
@@ -192,7 +201,9 @@ class TestTremorCalibratorConfig:
             cal.start_button = MagicMock()
             return cal, config
 
-    def _synthetic_samples(self, freq_hz: float, n: int = 300, sample_rate: float = 30.0) -> list[tuple[float, float]]:
+    def _synthetic_samples(
+        self, freq_hz: float, n: int = 300, sample_rate: float = 30.0
+    ) -> list[tuple[float, float]]:
         dt = 1.0 / sample_rate
         return [(i * dt, 0.5 + 0.05 * np.sin(2.0 * np.pi * freq_hz * i * dt)) for i in range(n)]
 
@@ -229,6 +240,7 @@ class TestTremorCalibratorConfig:
 # ---------------------------------------------------------------------------
 # Accessibility Settings Tab – SettingsWindow integration
 # ---------------------------------------------------------------------------
+
 
 class TestAccessibilitySettingsTab:
     """Tests that accessibility settings are correctly loaded and applied."""
@@ -344,9 +356,11 @@ class TestAccessibilitySettingsTab:
 # detect_reduced_motion – theme.py
 # ---------------------------------------------------------------------------
 
+
 class TestDetectReducedMotion:
     def test_returns_bool(self) -> None:
         from gesture_controller.gui.theme import detect_reduced_motion
+
         result = detect_reduced_motion()
         assert isinstance(result, bool)
 
@@ -365,6 +379,7 @@ class TestDetectReducedMotion:
 # ---------------------------------------------------------------------------
 # Overlay reduced motion integration
 # ---------------------------------------------------------------------------
+
 
 class TestOverlayReducedMotion:
     def test_reduced_motion_config_is_respected(self, qapp) -> None:

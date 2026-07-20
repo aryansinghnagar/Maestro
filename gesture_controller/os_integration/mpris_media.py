@@ -9,6 +9,7 @@ def _send_mpris_cmd(member: str) -> None:
     # Method 1: Try importing dbus-next or dbus
     try:
         import dbus  # type: ignore[import-not-found]
+
         bus = dbus.SessionBus()
         # Find player service
         for service in bus.list_names():
@@ -34,25 +35,39 @@ def _send_mpris_cmd(member: str) -> None:
         # Let's run a quick find or broadcast.
         # We can list session bus services matching org.mpris.MediaPlayer2.
         p = subprocess.Popen(
-            ["dbus-send", "--session", "--dest=org.freedesktop.DBus", "--type=method_call",
-             "--print-reply", "/org/freedesktop/DBus", "org.freedesktop.DBus.ListNames"],
+            [
+                "dbus-send",
+                "--session",
+                "--dest=org.freedesktop.DBus",
+                "--type=method_call",
+                "--print-reply",
+                "/org/freedesktop/DBus",
+                "org.freedesktop.DBus.ListNames",
+            ],
             stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL
+            stderr=subprocess.DEVNULL,
         )
         out, _ = p.communicate()
         if out:
             services = [
-                s.strip().strip('"') for s in out.decode("utf-8", errors="ignore").split()
+                s.strip().strip('"')
+                for s in out.decode("utf-8", errors="ignore").split()
                 if "org.mpris.MediaPlayer2" in s
             ]
             for service in services:
                 # Clean name (remove string array markup)
                 service_clean = service.replace("string", "").strip().strip('"')
                 if service_clean.startswith("org.mpris.MediaPlayer2."):
-                    subprocess.run([
-                        "dbus-send", "--session", f"--dest={service_clean}",
-                        "/org/mpris/MediaPlayer2", f"org.mpris.MediaPlayer2.Player.{member}"
-                    ], capture_output=True)
+                    subprocess.run(
+                        [
+                            "dbus-send",
+                            "--session",
+                            f"--dest={service_clean}",
+                            "/org/mpris/MediaPlayer2",
+                            f"org.mpris.MediaPlayer2.Player.{member}",
+                        ],
+                        capture_output=True,
+                    )
             return
     except Exception as e:
         logger.warning("MPRIS dbus-send execution failed", error=str(e))

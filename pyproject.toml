@@ -138,7 +138,7 @@ markers = [
     "real_mediapipe: integration tests using real mediapipe assets",
     "requires_hardware: integration tests requiring physical hardware",
 ]
-addopts = "-v --tb=short --strict-markers --strict-config --cov=gesture_controller --cov-fail-under=69"
+addopts = "-v --tb=short --strict-markers --strict-config --cov=gesture_controller --cov-fail-under=70"
 
 [tool.coverage.run]
 source = ["gesture_controller"]
@@ -152,5 +152,5 @@ omit = [
 ]
 
 [tool.coverage.report]
-fail_under = 69
+fail_under = 70
 show_missing = true

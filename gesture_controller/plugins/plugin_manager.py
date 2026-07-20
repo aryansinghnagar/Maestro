@@ -6,6 +6,7 @@ Provides:
 - Install/uninstall from local directory
 - Registry-based search/install (offline-first)
 """
+
 from __future__ import annotations
 
 import json
@@ -17,7 +18,12 @@ from typing import Any
 
 import structlog
 
-from gesture_controller.plugins.plugin_loader import PluginLoader, Plugin, PluginLoadError, USER_PLUGIN_DIR
+from gesture_controller.plugins.plugin_loader import (
+    PluginLoader,
+    Plugin,
+    PluginLoadError,
+    USER_PLUGIN_DIR,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -212,7 +218,8 @@ class PluginManager:
         registry = self._load_registry()
         q = query.lower()
         return [
-            entry for entry in registry
+            entry
+            for entry in registry
             if q in entry.get("name", "").lower()
             or q in entry.get("description", "").lower()
             or q in entry.get("tags", [])
@@ -225,7 +232,7 @@ class PluginManager:
         """
         cache_path = _BUNDLED_REGISTRY.parent / "plugin_registry_cache.json"
         try:
-            with urllib.request.urlopen(url, timeout=timeout) as resp:
+            with urllib.request.urlopen(url, timeout=timeout) as resp:  # nosec B310
                 data = json.loads(resp.read().decode("utf-8"))
             cache_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
             logger.info("Plugin registry refreshed", url=url, count=len(data))

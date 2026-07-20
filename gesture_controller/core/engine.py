@@ -51,15 +51,19 @@ class GestureEngine:
         self._controller = self._create_os_controller()
         self._dispatcher = ActionDispatcher(self._controller, self._config, self._event_bus)
 
-        self._frame_pipeline = FramePipeline(self._config, create_camera_process=create_camera_process)
-        
+        self._frame_pipeline = FramePipeline(
+            self._config, create_camera_process=create_camera_process
+        )
+
         try:
             self._frame_pipeline.start()
             self._inference_pipeline = InferencePipeline(
                 self._config,
                 landmark_extractor_cls=LandmarkExtractor,
             )
-            self._gesture_recognizer = GestureRecognizer(self._config, self._event_bus, self._plugin_loader)
+            self._gesture_recognizer = GestureRecognizer(
+                self._config, self._event_bus, self._plugin_loader
+            )
             self._signal_handler = SignalHandler(self.shutdown)
         except Exception as e:
             logger.critical("Engine initialization failed, rolling back resources...", error=str(e))
@@ -89,6 +93,7 @@ class GestureEngine:
         current_os = platform.system()
         try:
             from gesture_controller.os_integration import create_controller
+
             return create_controller()
         except Exception as e:
             logger.warning(
@@ -101,36 +106,56 @@ class GestureEngine:
             class DummyController(BaseController):
                 def is_supported(self) -> bool:
                     return False
+
                 def key_press(self, key: str, modifiers: list[str] | None = None) -> None:
                     pass
+
                 def key_release(self, key: str) -> None:
                     pass
+
                 def key_combo(self, keys: list[str]) -> None:
                     pass
-                def mouse_click(self, button: str = "left", x: int | None = None, y: int | None = None) -> None:
+
+                def mouse_click(
+                    self, button: str = "left", x: int | None = None, y: int | None = None
+                ) -> None:
                     pass
-                def mouse_double_click(self, button: str = "left", x: int | None = None, y: int | None = None) -> None:
+
+                def mouse_double_click(
+                    self, button: str = "left", x: int | None = None, y: int | None = None
+                ) -> None:
                     pass
+
                 def mouse_move(self, x: int, y: int, absolute: bool = True) -> None:
                     pass
+
                 def mouse_scroll(self, delta_x: int = 0, delta_y: int = 0) -> None:
                     pass
+
                 def get_foreground_app(self) -> str:
                     return ""
+
                 def minimize_active_window(self) -> None:
                     pass
+
                 def switch_window(self) -> None:
                     pass
+
                 def show_desktop(self) -> None:
                     pass
+
                 def media_play_pause(self) -> None:
                     pass
+
                 def media_next(self) -> None:
                     pass
+
                 def media_previous(self) -> None:
                     pass
+
                 def media_volume_up(self) -> None:
                     pass
+
                 def media_volume_down(self) -> None:
                     pass
 
@@ -172,7 +197,7 @@ class GestureEngine:
 
                 loop_start = time.perf_counter()
                 self._correlation_counter += 1
-                correlation_id = self._correlation_counter
+                correlation_id = f"corr-{self._correlation_counter}"
 
                 # Rolling FPS calculation
                 self._fps_frame_count += 1
@@ -202,7 +227,9 @@ class GestureEngine:
 
                     for track_id, features in features_list:
                         # Find the correct hand by matching track ID index
-                        hand_idx = next(i for i, (tid, _) in enumerate(features_list) if tid == track_id)
+                        hand_idx = next(
+                            i for i, (tid, _) in enumerate(features_list) if tid == track_id
+                        )
                         hand = smoothed_hands[hand_idx]
 
                         event = self._gesture_recognizer.evaluate(
@@ -235,9 +262,7 @@ class GestureEngine:
                 self._frame_pipeline.adapt_fps(processing_time)
                 self._frame_pipeline.maybe_idle(last_hand_time)
                 self._frame_count += 1
-                self._metrics.observe(
-                    "frame_processing_latency_seconds", processing_time
-                )
+                self._metrics.observe("frame_processing_latency_seconds", processing_time)
             except Exception as e:
                 logger.error("Error inside engine main loop", error=str(e))
 

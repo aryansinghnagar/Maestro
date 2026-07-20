@@ -1,5 +1,5 @@
 from typing import Any
-import onnxruntime as ort
+import onnxruntime as ort  # type: ignore[import-untyped]
 
 from gesture_controller.vision.backends.base_backend import BaseONNXBackend
 
@@ -12,9 +12,12 @@ class CoreMLBackend(BaseONNXBackend):
             raise RuntimeError("CoreMLExecutionProvider is not available on this system")
 
         providers = [
-            ("CoreMLExecutionProvider", {
-                "coreml_flags": 0,  # MLComputeUnits_All
-            }),
+            (
+                "CoreMLExecutionProvider",
+                {
+                    "coreml_flags": 0,  # MLComputeUnits_All
+                },
+            ),
             "CPUExecutionProvider",
         ]
 

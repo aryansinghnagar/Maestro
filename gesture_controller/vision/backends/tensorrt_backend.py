@@ -1,5 +1,5 @@
 import os
-import onnxruntime as ort
+import onnxruntime as ort  # type: ignore[import-untyped]
 from pathlib import Path
 from typing import Any
 
@@ -19,14 +19,17 @@ class TensorRTBackend(BaseONNXBackend):
         cache_dir.mkdir(parents=True, exist_ok=True)
 
         providers = [
-            ("TensorrtExecutionProvider", {
-                "trt_max_workspace_size": 4 << 30,  # 4 GB
-                "trt_fp16_enable": True,            # Use FP16
-                "trt_engine_cache_enable": True,
-                "trt_engine_cache_path": str(cache_dir),
-                "trt_max_partition_iterations": 1000,
-                "trt_min_subgraph_size": 5,
-            }),
+            (
+                "TensorrtExecutionProvider",
+                {
+                    "trt_max_workspace_size": 4 << 30,  # 4 GB
+                    "trt_fp16_enable": True,  # Use FP16
+                    "trt_engine_cache_enable": True,
+                    "trt_engine_cache_path": str(cache_dir),
+                    "trt_max_partition_iterations": 1000,
+                    "trt_min_subgraph_size": 5,
+                },
+            ),
             "CUDAExecutionProvider",
             "CPUExecutionProvider",
         ]

@@ -16,7 +16,7 @@ logger = structlog.get_logger(__name__)
 def calculate_ws_accept(key: str) -> str:
     """Calculate the WebSocket accept key according to RFC 6455."""
     guid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-    accept_hash = hashlib.sha1((key.strip() + guid).encode("utf-8")).digest()
+    accept_hash = hashlib.sha1((key.strip() + guid).encode("utf-8")).digest()  # nosec B324
     return base64.b64encode(accept_hash).decode("utf-8")
 
 
@@ -34,6 +34,7 @@ def make_websocket_frame(text: str) -> bytes:
 
 
 import secrets
+
 
 def get_or_create_api_token() -> str:
     """Get or create the API authentication token.
@@ -67,7 +68,13 @@ def get_or_create_api_token() -> str:
 class IntegrationServer:
     """Lightweight, zero-dependency REST & WebSocket integration API server (Phase 17)."""
 
-    def __init__(self, event_bus: EventBus, host: str = "127.0.0.1", port: int = 8765, token: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        event_bus: EventBus,
+        host: str = "127.0.0.1",
+        port: int = 8765,
+        token: Optional[str] = None,
+    ) -> None:
         self.event_bus = event_bus
         self.host = host
         self.port = port
@@ -89,7 +96,7 @@ class IntegrationServer:
         self._server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._server_socket.bind((self.host, self.port))
         self._server_socket.listen(10)
-        
+
         self._thread = threading.Thread(target=self._listen_loop, daemon=True)
         self._thread.start()
         logger.info("Integration API server started", host=self.host, port=self.port)
@@ -117,7 +124,9 @@ class IntegrationServer:
             try:
                 if self._server_socket:
                     conn, addr = self._server_socket.accept()
-                    threading.Thread(target=self._handle_connection, args=(conn,), daemon=True).start()
+                    threading.Thread(
+                        target=self._handle_connection, args=(conn,), daemon=True
+                    ).start()
                 else:
                     break
             except Exception:
@@ -154,7 +163,7 @@ class IntegrationServer:
             query_params = urllib.parse.parse_qs(parsed_url.query)
             token_param = query_params.get("token", [None])[0]
             auth_header = headers.get("authorization", "")
-            
+
             token_header = None
             if auth_header.lower().startswith("bearer "):
                 token_header = auth_header[7:].strip()
@@ -187,6 +196,11 @@ class IntegrationServer:
             body = ""
             if method == "POST":
                 content_length = int(headers.get("content-length", 0))
+                if content_length > 1_048_576:
+                    self._send_http_response(conn, 400, {"error": "Payload Too Large"})
+                    conn.close()
+                    return
+
                 parts = req_str.split("\r\n\r\n", 1)
                 body = parts[1] if len(parts) > 1 else ""
                 while len(body.encode("utf-8")) < content_length:
@@ -207,10 +221,12 @@ class IntegrationServer:
                             action="",
                             confidence=1.0,
                             hand="None",
-                            timestamp=0.0
+                            timestamp=0.0,
                         )
                         self.event_bus.publish("gesture_triggered", event)
-                        self._send_http_response(conn, 200, {"status": "ok", "message": f"Triggered {gesture}"})
+                        self._send_http_response(
+                            conn, 200, {"status": "ok", "message": f"Triggered {gesture}"}
+                        )
                     else:
                         self._send_http_response(conn, 400, {"error": "Missing 'gesture' field"})
                 except Exception as e:
@@ -221,7 +237,9 @@ class IntegrationServer:
                     paused = payload.get("paused")
                     if paused is not None:
                         self.event_bus.publish("engine_pause_requested", bool(paused))
-                        self._send_http_response(conn, 200, {"status": "ok", "paused": bool(paused)})
+                        self._send_http_response(
+                            conn, 200, {"status": "ok", "paused": bool(paused)}
+                        )
                     else:
                         self._send_http_response(conn, 400, {"error": "Missing 'paused' field"})
                 except Exception as e:
@@ -232,6 +250,7 @@ class IntegrationServer:
                 # Prometheus-compatible text exposition format
                 # No token auth required (guarded by localhost-only binding)
                 from gesture_controller.core.profiler import frame_budget
+
                 stage_stats = frame_budget.snapshot()
                 lines_out: list[str] = [
                     "# HELP maestro_frame_stage_mean_ms Mean per-stage processing time in milliseconds",
@@ -239,24 +258,31 @@ class IntegrationServer:
                 ]
                 for stage, stats in sorted(stage_stats.items()):
                     safe = stage.replace(" ", "_").replace("-", "_")
-                    lines_out.append(f'maestro_frame_stage_mean_ms{{stage="{stage}"}} {stats["mean_ms"]:.3f}')
                     lines_out.append(
-                        f'# HELP maestro_frame_stage_p95_ms p95 per-stage latency in milliseconds'
+                        f'maestro_frame_stage_mean_ms{{stage="{stage}"}} {stats["mean_ms"]:.3f}'
                     )
-                    lines_out.append(f'# TYPE maestro_frame_stage_p95_ms gauge')
-                    lines_out.append(f'maestro_frame_stage_p95_ms{{stage="{stage}"}} {stats["p95_ms"]:.3f}')
+                    lines_out.append(
+                        f"# HELP maestro_frame_stage_p95_ms p95 per-stage latency in milliseconds"
+                    )
+                    lines_out.append(f"# TYPE maestro_frame_stage_p95_ms gauge")
+                    lines_out.append(
+                        f'maestro_frame_stage_p95_ms{{stage="{stage}"}} {stats["p95_ms"]:.3f}'
+                    )
                 # Add basic counters
                 lines_out += [
                     "# HELP maestro_profiling_active 1 if cProfile session is active",
                     "# TYPE maestro_profiling_active gauge",
                 ]
                 from gesture_controller.core.profiler import is_profiling
+
                 lines_out.append(f"maestro_profiling_active {1 if is_profiling() else 0}")
                 lines_out.append("")  # trailing newline
-                self._send_text_response(conn, 200, "\n".join(lines_out), content_type="text/plain; version=0.0.4")
+                self._send_text_response(
+                    conn, 200, "\n".join(lines_out), content_type="text/plain; version=0.0.4"
+                )
             else:
                 self._send_http_response(conn, 404, {"error": "Not Found"})
-            
+
             conn.close()
         except Exception as e:
             logger.error("Error processing server connection", error=str(e))
@@ -265,10 +291,12 @@ class IntegrationServer:
             except Exception:
                 pass
 
-    def _send_http_response(self, conn: socket.socket, status_code: int, payload: dict[str, Any]) -> None:
+    def _send_http_response(
+        self, conn: socket.socket, status_code: int, payload: dict[str, Any]
+    ) -> None:
         status_map = {200: "OK", 400: "Bad Request", 401: "Unauthorized", 404: "Not Found"}
         status_text = status_map.get(status_code, "Internal Server Error")
-        
+
         body = json.dumps(payload)
         resp = (
             f"HTTP/1.1 {status_code} {status_text}\r\n"
@@ -322,23 +350,25 @@ class IntegrationServer:
         with self._clients_lock:
             if not self.clients:
                 return
-            
-            payload = json.dumps({
-                "event": "gesture_triggered",
-                "gesture": event.gesture_name,
-                "type": event.gesture_type,
-                "confidence": event.confidence,
-                "hand": event.hand
-            })
+
+            payload = json.dumps(
+                {
+                    "event": "gesture_triggered",
+                    "gesture": event.gesture_name,
+                    "type": event.gesture_type,
+                    "confidence": event.confidence,
+                    "hand": event.hand,
+                }
+            )
             frame = make_websocket_frame(payload)
-            
+
             dead_clients = []
             for client in self.clients:
                 try:
                     client.sendall(frame)
                 except Exception:
                     dead_clients.append(client)
-                    
+
             for client in dead_clients:
                 try:
                     client.close()

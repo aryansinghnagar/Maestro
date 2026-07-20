@@ -24,6 +24,7 @@ def test_api_token_generation_and_chmod(tmp_path, monkeypatch):
 
     # Check file permissions on non-Windows platforms
     import platform
+
     if platform.system() != "Windows":
         mode = token_file.stat().st_mode & 0o777
         assert mode == 0o600
@@ -32,6 +33,7 @@ def test_api_token_generation_and_chmod(tmp_path, monkeypatch):
 def test_broker_verify_peer_same_uid():
     """Verify that socket connection from same UID succeeds."""
     import platform
+
     if platform.system() == "Windows":
         pytest.skip("Socket credential verification not applicable on Windows")
 
@@ -46,7 +48,7 @@ def test_broker_verify_peer_same_uid():
 def test_ast_sandbox_blocked_builtins(tmp_path):
     """Verify that plugin loader AST scanner blocks eval, exec, and __import__."""
     loader = PluginLoader(MagicMock())
-    
+
     # Test eval block
     bad_code_eval = "x = eval('1+1')"
     p = tmp_path / "bad_eval.py"
@@ -72,7 +74,7 @@ def test_ast_sandbox_blocked_builtins(tmp_path):
 def test_ast_sandbox_blocked_from_imports(tmp_path):
     """Verify that plugin loader AST scanner blocks ImportFrom bypasses."""
     loader = PluginLoader(MagicMock())
-    
+
     # Test from subprocess import Popen
     bad_code = "from subprocess import Popen"
     p = tmp_path / "bad_sub.py"
@@ -91,7 +93,7 @@ def test_ast_sandbox_blocked_from_imports(tmp_path):
 def test_ast_sandbox_blocked_attribute_access(tmp_path):
     """Verify that plugin loader AST scanner blocks attribute access to blocked attributes."""
     loader = PluginLoader(MagicMock())
-    
+
     # Test accessing __builtins__.__import__
     bad_code = "getattr(x, '__import__')"
     p = tmp_path / "bad_attr.py"

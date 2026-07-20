@@ -8,6 +8,7 @@ Usage:
 Locale files are stored in gesture_controller/data/locales/<lang>/LC_MESSAGES/maestro.po
 They are compiled to .mo files via `msgfmt`.
 """
+
 from __future__ import annotations
 
 import gettext
@@ -29,9 +30,11 @@ _current_lang: str = "en"
 _translation_lock = threading.Lock()
 _translators: dict[str, gettext.NullTranslations] = {}
 
+
 # Default: passthrough
 def _noop(s: str) -> str:
     return s
+
 
 _ = _noop
 
@@ -116,9 +119,7 @@ def available_languages() -> list[str]:
     if not _LOCALE_DIR.exists():
         return ["en"]
     langs = sorted(
-        d.name
-        for d in _LOCALE_DIR.iterdir()
-        if d.is_dir() and (d / "LC_MESSAGES").is_dir()
+        d.name for d in _LOCALE_DIR.iterdir() if d.is_dir() and (d / "LC_MESSAGES").is_dir()
     )
     return langs if langs else ["en"]
 

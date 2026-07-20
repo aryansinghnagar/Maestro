@@ -7,6 +7,7 @@ Tests the full sequence:
 
 All network calls are mocked so tests run fully offline.
 """
+
 from __future__ import annotations
 
 import io
@@ -16,8 +17,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 import pytest
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _fake_release(tag: str, prerelease: bool = False) -> dict:
     return {
@@ -61,6 +62,7 @@ def _mock_urlopen_download(payload: bytes, content_length: int | None = None):
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
+
 
 class TestUpdateFlow:
     def test_check_finds_newer_stable_release(self) -> None:
@@ -149,7 +151,12 @@ class TestUpdateFlow:
 
     def test_full_check_download_apply_flow(self, tmp_path) -> None:
         """End-to-end: check finds release → download asset → apply archive."""
-        from gesture_controller.core.updater import check_for_update, download_update, apply_update, UpdateChannel
+        from gesture_controller.core.updater import (
+            check_for_update,
+            download_update,
+            apply_update,
+            UpdateChannel,
+        )
 
         # 1. Check
         releases = [_fake_release("v3.0.0")]
@@ -175,6 +182,7 @@ class TestUpdateFlow:
     def test_network_error_during_check_handled_gracefully(self) -> None:
         """check_for_update returns None (not raises) on network failure."""
         from gesture_controller.core.updater import check_for_update, UpdateChannel
+
         with patch("urllib.request.urlopen", side_effect=OSError("network error")):
             result = check_for_update("1.0.0", channel=UpdateChannel.STABLE)
         assert result is None
@@ -182,6 +190,7 @@ class TestUpdateFlow:
     def test_network_error_during_download_raises_oserror(self, tmp_path) -> None:
         """download_update raises OSError on network failure."""
         from gesture_controller.core.updater import download_update
+
         with patch("urllib.request.urlopen", side_effect=OSError("connection reset")):
             with pytest.raises(OSError):
                 download_update("https://example.com/dl/update.zip", dest=tmp_path)

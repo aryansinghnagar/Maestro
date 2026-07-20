@@ -262,6 +262,7 @@ class OnboardingWizard(QDialog):
     def request_system_permissions(self) -> None:
         """Launch system preference panels or print manual installer setup instructions."""
         import subprocess
+
         os_type = platform.system()
 
         if os_type == "Darwin":
@@ -269,7 +270,10 @@ class OnboardingWizard(QDialog):
             if not self.os_control_ok:
                 try:
                     subprocess.run(
-                        ["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"],
+                        [
+                            "open",
+                            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+                        ],
                         timeout=5.0,
                         check=False,
                     )
@@ -278,7 +282,10 @@ class OnboardingWizard(QDialog):
             if not self.camera_ok:
                 try:
                     subprocess.run(
-                        ["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera"],
+                        [
+                            "open",
+                            "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera",
+                        ],
                         timeout=5.0,
                         check=False,
                     )

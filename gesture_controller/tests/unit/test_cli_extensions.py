@@ -17,19 +17,19 @@ def test_cli_trigger_and_status(mock_argv: MagicMock, mock_urlopen: MagicMock) -
     mock_resp = MagicMock()
     mock_resp.read.return_value = b'{"status": "ok", "message": "Triggered SwipeLeft"}'
     mock_urlopen.return_value.__enter__.return_value = mock_resp
-    
+
     with patch("sys.argv", ["maestro", "trigger", "SwipeLeft"]):
         main()
-        
+
     assert mock_urlopen.called
 
     # 2. Test status subcommand
     mock_urlopen.reset_mock()
     mock_resp.read.return_value = b'{"status": "running"}'
-    
+
     with patch("sys.argv", ["maestro", "status"]):
         main()
-        
+
     assert mock_urlopen.called
 
 

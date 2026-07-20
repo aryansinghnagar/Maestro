@@ -4,6 +4,7 @@ Renders a compact semi-transparent HUD in the bottom-left corner of the screen
 showing live FPS, per-stage latency, and dropped-frame count.
 Updated every second from a QTimer.
 """
+
 from __future__ import annotations
 
 import time
@@ -108,7 +109,11 @@ class PerfMonitorOverlay(QWidget):
         painter.drawRoundedRect(QRectF(x, y, w, h), 6, 6)
 
         # Draw text
-        fps_color = QColor("#00ff88") if self._fps >= 25 else QColor("#ffaa00") if self._fps >= 15 else QColor("#ff4444")
+        fps_color = (
+            QColor("#00ff88")
+            if self._fps >= 25
+            else QColor("#ffaa00") if self._fps >= 15 else QColor("#ff4444")
+        )
         font = QFont("Consolas", 9)
         painter.setFont(font)
 

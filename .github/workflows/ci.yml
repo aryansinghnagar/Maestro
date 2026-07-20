@@ -11,6 +11,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  workflow-lint:
+    name: Workflow Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify CI workflow triggers on main
+        run: |
+          python -c "
+          import yaml
+          with open('.github/workflows/ci.yml') as f:
+              w = yaml.safe_load(f)
+          on = w['on'] if 'on' in w else w[True]
+          push_branches = on.get('push', {}).get('branches', [])
+          pr_branches = on.get('pull_request', {}).get('branches', [])
+          assert 'main' in push_branches, f'push.branches must contain main, got {push_branches}'
+          assert 'main' in pr_branches, f'pull_request.branches must contain main, got {pr_branches}'
+          print('CI workflow trigger validation passed!')
+          "
+
   lint-and-typecheck:
     name: Lint & Typecheck
     runs-on: ubuntu-latest
@@ -111,7 +130,7 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          python -m pytest -m "not real_mediapipe and not requires_hardware and not slow" --cov=gesture_controller --cov-fail-under=60 --junitxml=pytest.xml
+          python -m pytest -m "not real_mediapipe and not requires_hardware and not slow" --cov=gesture_controller --cov-fail-under=70 --junitxml=pytest.xml
 
       - name: Upload test results
         if: always()

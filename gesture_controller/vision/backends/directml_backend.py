@@ -1,5 +1,5 @@
 from typing import Any
-import onnxruntime as ort
+import onnxruntime as ort  # type: ignore[import-untyped]
 
 from gesture_controller.vision.backends.base_backend import BaseONNXBackend
 
@@ -20,9 +20,12 @@ class DirectMLBackend(BaseONNXBackend):
 
         device_id = config.get("engine", {}).get("directml_device_id", 0)
         providers = [
-            (dml_provider, {
-                "device_id": device_id,
-            }),
+            (
+                dml_provider,
+                {
+                    "device_id": device_id,
+                },
+            ),
             "CPUExecutionProvider",
         ]
 

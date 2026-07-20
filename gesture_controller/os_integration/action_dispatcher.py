@@ -135,6 +135,7 @@ class ActionDispatcher:
 
     def _normalize_key(self, key: str) -> str:
         from gesture_controller.os_integration.keycodes import normalize_key
+
         return normalize_key(key)
 
     def _execute_keypress(self, keys_str: str) -> None:

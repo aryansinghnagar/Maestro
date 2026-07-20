@@ -1,5 +1,5 @@
 import psutil
-import onnxruntime as ort
+import onnxruntime as ort  # type: ignore[import-untyped]
 from typing import Any
 
 from gesture_controller.vision.backends.base_backend import BaseONNXBackend
@@ -10,14 +10,17 @@ class CPUBackend(BaseONNXBackend):
 
     def __init__(self, config: dict[str, Any]) -> None:
         quantization = config.get("engine", {}).get("quantization", "int8")
-        use_int8 = (quantization == "int8")
+        use_int8 = quantization == "int8"
 
         num_threads = min(psutil.cpu_count(logical=False) or 4, 8)
         providers = [
-            ("CPUExecutionProvider", {
-                "intra_op_num_threads": num_threads,
-                "inter_op_num_threads": 1,
-            }),
+            (
+                "CPUExecutionProvider",
+                {
+                    "intra_op_num_threads": num_threads,
+                    "inter_op_num_threads": 1,
+                },
+            ),
         ]
 
         sess_options = ort.SessionOptions()

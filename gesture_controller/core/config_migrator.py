@@ -66,7 +66,9 @@ def migrate_2_to_3(config: dict[str, Any]) -> dict[str, Any]:
     if "filtering" in config and isinstance(config["filtering"], dict):
         if "one_euro" in config["filtering"] and isinstance(config["filtering"]["one_euro"], dict):
             if "derivate_cutoff" in config["filtering"]["one_euro"]:
-                config["filtering"]["one_euro"]["derivative_cutoff"] = config["filtering"]["one_euro"].pop("derivate_cutoff")
+                config["filtering"]["one_euro"]["derivative_cutoff"] = config["filtering"][
+                    "one_euro"
+                ].pop("derivate_cutoff")
 
     # engine.use_onnx -> engine.inference_backend
     if "engine" in config and isinstance(config["engine"], dict):

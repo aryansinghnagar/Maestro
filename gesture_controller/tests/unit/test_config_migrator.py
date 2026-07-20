@@ -47,7 +47,7 @@ def test_migrate_v2_to_v3() -> None:
         },
         "engine": {
             "use_onnx": True,
-        }
+        },
     }
 
     migrated = migrate_config(v2_config)

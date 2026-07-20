@@ -9,6 +9,7 @@ def create_controller(use_broker: bool = True) -> BaseController:
     """Factory function that returns the correct platform controller."""
     if use_broker:
         from gesture_controller.os_integration.broker import BrokerClientController
+
         logger.info("Created BrokerClientController OS adapter")
         return BrokerClientController()
 

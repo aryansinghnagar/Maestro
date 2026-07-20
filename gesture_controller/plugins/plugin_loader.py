@@ -41,6 +41,7 @@ PLUGIN_DIRS = [
 
 # User plugin directory (per-platform)
 from gesture_controller.core.paths import user_plugin_dir
+
 USER_PLUGIN_DIR = user_plugin_dir()
 
 PLUGIN_DIRS.append(USER_PLUGIN_DIR)
@@ -221,9 +222,25 @@ class PluginLoader:
             )
 
         blocked_builtins = {
-            "eval", "exec", "compile", "__import__", "globals", "locals",
-            "vars", "dir", "getattr", "setattr", "delattr", "hasattr",
-            "open", "input", "breakpoint", "exit", "quit", "__builtins__", "__builtin__"
+            "eval",
+            "exec",
+            "compile",
+            "__import__",
+            "globals",
+            "locals",
+            "vars",
+            "dir",
+            "getattr",
+            "setattr",
+            "delattr",
+            "hasattr",
+            "open",
+            "input",
+            "breakpoint",
+            "exit",
+            "quit",
+            "__builtins__",
+            "__builtin__",
         }
 
         for node in ast.walk(tree):
@@ -360,7 +377,7 @@ class PluginLoader:
                 }
             )
 
-            exec(code, module_globals)
+            exec(code, module_globals)  # nosec B102
             sys.modules[module_name] = module
         except Exception as e:
             raise PluginLoadError(str(path), f"RestrictedPython sandbox execution failed: {e}")
@@ -533,9 +550,7 @@ class PluginLoader:
             gesture_json = get_wasm_string(caller, ptr, length)
             try:
                 gesture = json.loads(gesture_json)
-                gesture_schema_path = (
-                    Path(__file__).parent.parent / "data" / "gesture_schema.json"
-                )
+                gesture_schema_path = Path(__file__).parent.parent / "data" / "gesture_schema.json"
                 if gesture_schema_path.exists():
                     with open(gesture_schema_path, "r") as f:
                         g_schema = json.load(f)

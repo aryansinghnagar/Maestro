@@ -8,6 +8,7 @@ Covers:
 - PluginManager: search_registry, _load_registry
 - Settings Plugins tab: widget construction, populate list, enable/disable/search
 """
+
 from __future__ import annotations
 
 import json
@@ -16,13 +17,14 @@ from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
 
+
 def _make_record(name="test-plugin", enabled=True):
     from gesture_controller.plugins.plugin_manager import PluginRecord
+
     return PluginRecord(
         name=name,
         version="1.2.3",
@@ -55,11 +57,20 @@ def _make_manager(tmp_path, plugins=None):
 # PluginRecord
 # ---------------------------------------------------------------------------
 
+
 class TestPluginRecord:
     def test_to_dict_has_required_keys(self) -> None:
         record = _make_record()
         d = record.to_dict()
-        assert set(d.keys()) >= {"name", "version", "description", "author", "permissions", "path", "enabled"}
+        assert set(d.keys()) >= {
+            "name",
+            "version",
+            "description",
+            "author",
+            "permissions",
+            "path",
+            "enabled",
+        }
 
     def test_to_dict_enabled_true(self) -> None:
         assert _make_record(enabled=True).to_dict()["enabled"] is True
@@ -69,6 +80,7 @@ class TestPluginRecord:
 
     def test_from_plugin_roundtrip(self) -> None:
         from gesture_controller.plugins.plugin_manager import PluginRecord
+
         mock_plugin = MagicMock()
         mock_plugin.meta = {
             "name": "roundtrip",
@@ -87,6 +99,7 @@ class TestPluginRecord:
 # ---------------------------------------------------------------------------
 # PluginManager: enable / disable / list
 # ---------------------------------------------------------------------------
+
 
 class TestPluginManagerEnableDisable:
     def test_enable_sets_enabled_true(self, tmp_path) -> None:
@@ -147,6 +160,7 @@ class TestPluginManagerEnableDisable:
 # PluginManager: uninstall
 # ---------------------------------------------------------------------------
 
+
 class TestPluginManagerUninstall:
     def test_uninstall_removes_record(self, tmp_path) -> None:
         plugin_file = tmp_path / "my_plugin.py"
@@ -178,6 +192,7 @@ class TestPluginManagerUninstall:
 
     def test_uninstall_builtin_blocked(self, tmp_path) -> None:
         from gesture_controller.plugins.plugin_manager import PluginRecord
+
         record = PluginRecord(
             name="builtin",
             version="1.0",
@@ -196,6 +211,7 @@ class TestPluginManagerUninstall:
 # PluginManager: install_from_path
 # ---------------------------------------------------------------------------
 
+
 class TestPluginManagerInstallFromPath:
     def test_install_copies_file_and_returns_record(self, tmp_path) -> None:
         from gesture_controller.plugins.plugin_manager import PluginManager, PluginRecord
@@ -203,8 +219,8 @@ class TestPluginManagerInstallFromPath:
         src = tmp_path / "new_plugin.py"
         src.write_text(
             'PLUGIN_META = {"name": "new-plugin", "version": "0.1.0"}\n'
-            'GESTURE_DEFINITIONS = []\n'
-            'ACTION_HANDLERS = {}\n'
+            "GESTURE_DEFINITIONS = []\n"
+            "ACTION_HANDLERS = {}\n"
         )
         user_dir = tmp_path / "user_plugins"
         user_dir.mkdir()
@@ -225,12 +241,22 @@ class TestPluginManagerInstallFromPath:
         manager = PluginManager(mock_bus, mock_config)
         manager._records = {}
 
-        with patch.object(manager._loader, "_load_plugin", return_value=MagicMock(
-            meta={"name": "new-plugin", "version": "0.1.0", "description": "", "author": "", "permissions": []},
-            path=user_dir / "new_plugin.py",
-            gestures=[],
-            actions={},
-        )):
+        with patch.object(
+            manager._loader,
+            "_load_plugin",
+            return_value=MagicMock(
+                meta={
+                    "name": "new-plugin",
+                    "version": "0.1.0",
+                    "description": "",
+                    "author": "",
+                    "permissions": [],
+                },
+                path=user_dir / "new_plugin.py",
+                gestures=[],
+                actions={},
+            ),
+        ):
             with patch("gesture_controller.plugins.plugin_manager.USER_PLUGIN_DIR", user_dir):
                 result = manager.install_from_path(src)
 
@@ -248,9 +274,11 @@ class TestPluginManagerInstallFromPath:
 # PluginManager: registry search
 # ---------------------------------------------------------------------------
 
+
 class TestPluginManagerRegistry:
     def _make_registry_manager(self, tmp_path, registry_entries):
         from gesture_controller.plugins.plugin_manager import PluginManager
+
         mock_bus = MagicMock()
         mock_config = MagicMock()
         mock_config.get.return_value = []
@@ -281,7 +309,10 @@ class TestPluginManagerRegistry:
         assert any(e["name"] == "x" for e in results)
 
     def test_search_empty_query_returns_all(self, tmp_path) -> None:
-        entries = [{"name": "a", "description": "x", "tags": []}, {"name": "b", "description": "y", "tags": []}]
+        entries = [
+            {"name": "a", "description": "x", "tags": []},
+            {"name": "b", "description": "y", "tags": []},
+        ]
         manager = self._make_registry_manager(tmp_path, entries)
         # Empty string matches everything (both name and description are supersets)
         results = manager.search_registry("")
@@ -294,6 +325,7 @@ class TestPluginManagerRegistry:
 
     def test_load_registry_from_bundled_file(self, tmp_path) -> None:
         from gesture_controller.plugins.plugin_manager import PluginManager
+
         mock_bus = MagicMock()
         mock_config = MagicMock()
         mock_config.get.return_value = []
@@ -304,14 +336,17 @@ class TestPluginManagerRegistry:
 
     def test_load_registry_returns_empty_on_missing_file(self, tmp_path) -> None:
         from gesture_controller.plugins.plugin_manager import PluginManager, _BUNDLED_REGISTRY
+
         mock_bus = MagicMock()
         mock_config = MagicMock()
         mock_config.get.return_value = []
         manager = PluginManager(mock_bus, mock_config)
         fake_cache = tmp_path / "plugin_registry_cache.json"
 
-        with patch("gesture_controller.plugins.plugin_manager._BUNDLED_REGISTRY",
-                   tmp_path / "nonexistent.json"):
+        with patch(
+            "gesture_controller.plugins.plugin_manager._BUNDLED_REGISTRY",
+            tmp_path / "nonexistent.json",
+        ):
             result = manager._load_registry()
         # Should return empty list (no exception)
         assert isinstance(result, list)
@@ -320,6 +355,7 @@ class TestPluginManagerRegistry:
 # ---------------------------------------------------------------------------
 # Settings Plugins Tab
 # ---------------------------------------------------------------------------
+
 
 def _make_settings_config():
     """Build a mock ConfigManager that returns typed defaults."""
@@ -356,6 +392,7 @@ def _make_settings_config():
 class TestSettingsPluginsTab:
     def test_plugins_tab_exists(self, qapp) -> None:
         from gesture_controller.gui.settings_window import SettingsWindow
+
         win = SettingsWindow(_make_settings_config())
         tab_titles = [win._tabs.tabText(i) for i in range(win._tabs.count())]
         assert "Plugins" in tab_titles
@@ -364,6 +401,7 @@ class TestSettingsPluginsTab:
 
     def test_plugin_list_widget_created(self, qapp) -> None:
         from gesture_controller.gui.settings_window import SettingsWindow
+
         win = SettingsWindow(_make_settings_config())
         assert hasattr(win, "_plugin_list")
         win.reject()
@@ -371,6 +409,7 @@ class TestSettingsPluginsTab:
 
     def test_plugin_search_widget_created(self, qapp) -> None:
         from gesture_controller.gui.settings_window import SettingsWindow
+
         win = SettingsWindow(_make_settings_config())
         assert hasattr(win, "_plugin_search")
         win.reject()
@@ -378,6 +417,7 @@ class TestSettingsPluginsTab:
 
     def test_registry_search_no_results(self, qapp) -> None:
         from gesture_controller.gui.settings_window import SettingsWindow
+
         win = SettingsWindow(_make_settings_config())
         win._plugin_search.setText("zzz_no_match_xyz")
         win._on_plugin_registry_search()
@@ -390,6 +430,7 @@ class TestSettingsPluginsTab:
 
     def test_registry_search_finds_media(self, qapp) -> None:
         from gesture_controller.gui.settings_window import SettingsWindow
+
         win = SettingsWindow(_make_settings_config())
         win._plugin_search.setText("media")
         win._on_plugin_registry_search()
@@ -397,4 +438,3 @@ class TestSettingsPluginsTab:
         assert any("media" in t.lower() for t in items)
         win.reject()
         qapp.processEvents()
-

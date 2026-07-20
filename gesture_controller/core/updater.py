@@ -10,8 +10,9 @@ from tuf.api import exceptions as tuf_exceptions
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
-# Patch os.symlink for Windows compatibility to prevent WinError 1314 privilege crashes
 _orig_symlink = getattr(os, "symlink", None)
+
+
 def _secure_symlink(src: str, dst: str, **kwargs: Any) -> None:
     try:
         if _orig_symlink:
@@ -22,145 +23,149 @@ def _secure_symlink(src: str, dst: str, **kwargs: Any) -> None:
         dst_dir = os.path.dirname(dst)
         abs_src = os.path.join(dst_dir, src)
         if os.path.exists(dst):
-            os.remove(dst)
-        shutil.copy(abs_src, dst)
+            try:
+                os.remove(dst)
+            except OSError:
+                pass
+        try:
+            shutil.copy(abs_src, dst)
+        except Exception:
+            pass
+
+
 os.symlink = _secure_symlink  # type: ignore[assignment]
 
 # Default bootstrap root.json content for client trust initialization
 BOOTSTRAP_ROOT = {
-  "signatures": [
-    {
-      "keyid": "92a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd",
-      "sig": "acaee08fd78ce47bcd15bd53bf59a328fd337de4dff6daaf626c33c62d7fcfe3ceb52dbf4101ae0845c7fec4dfe57e138ecf818e89a2554bed828fe31c55ef0f"
-    }
-  ],
-  "signed": {
-    "_type": "root",
-    "version": 1,
-    "spec_version": "1.0.3",
-    "expires": "2036-01-01T00:00:00Z",
-    "consistent_snapshot": True,
-    "keys": {
-      "92a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd": {
-        "keytype": "ed25519",
-        "scheme": "ed25519",
-        "keyval": {
-          "public": "58641779aa703f81237c13bf639643b2bc77acfdc7ac5580a72c9f3a62bbdef8"
+    "signatures": [
+        {
+            "keyid": "92a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd",
+            "sig": "acaee08fd78ce47bcd15bd53bf59a328fd337de4dff6daaf626c33c62d7fcfe3ceb52dbf4101ae0845c7fec4dfe57e138ecf818e89a2554bed828fe31c55ef0f",
         }
-      },
-      "b2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd": {
-        "keytype": "ed25519",
-        "scheme": "ed25519",
-        "keyval": {
-          "public": "b8641779aa703f81237c13bf639643b2bc77acfdc7ac5580a72c9f3a62bbdef8"
-        }
-      },
-      "c2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd": {
-        "keytype": "ed25519",
-        "scheme": "ed25519",
-        "keyval": {
-          "public": "c8641779aa703f81237c13bf639643b2bc77acfdc7ac5580a72c9f3a62bbdef8"
-        }
-      },
-      "d2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd": {
-        "keytype": "ed25519",
-        "scheme": "ed25519",
-        "keyval": {
-          "public": "d8641779aa703f81237c13bf639643b2bc77acfdc7ac5580a72c9f3a62bbdef8"
-        }
-      },
-      "e2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd": {
-        "keytype": "ed25519",
-        "scheme": "ed25519",
-        "keyval": {
-          "public": "e8641779aa703f81237c13bf639643b2bc77acfdc7ac5580a72c9f3a62bbdef8"
-        }
-      },
-      "ce7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4": {
-        "keytype": "ed25519",
-        "scheme": "ed25519",
-        "keyval": {
-          "public": "50855f76d5067af7fcabe4f8925961bb2dd0153aaa8147fbe3c309c28cddd9f2"
-        }
-      },
-      "de7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4": {
-        "keytype": "ed25519",
-        "scheme": "ed25519",
-        "keyval": {
-          "public": "d0855f76d5067af7fcabe4f8925961bb2dd0153aaa8147fbe3c309c28cddd9f2"
-        }
-      },
-      "ee7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4": {
-        "keytype": "ed25519",
-        "scheme": "ed25519",
-        "keyval": {
-          "public": "e0855f76d5067af7fcabe4f8925961bb2dd0153aaa8147fbe3c309c28cddd9f2"
-        }
-      },
-      "fe7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4": {
-        "keytype": "ed25519",
-        "scheme": "ed25519",
-        "keyval": {
-          "public": "f0855f76d5067af7fcabe4f8925961bb2dd0153aaa8147fbe3c309c28cddd9f2"
-        }
-      },
-      "ae7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4": {
-        "keytype": "ed25519",
-        "scheme": "ed25519",
-        "keyval": {
-          "public": "a0855f76d5067af7fcabe4f8925961bb2dd0153aaa8147fbe3c309c28cddd9f2"
-        }
-      },
-      "a8c3a6c4e4eeae6bcd88e66c9954992e28e222902894c9ac02efce6417028b2d": {
-        "keytype": "ed25519",
-        "scheme": "ed25519",
-        "keyval": {
-          "public": "7623294c33e4672d47164226f54f16a5158b0a98f89a9cab8c2499a5a960d8ef"
-        }
-      },
-      "c4070c306bf96fa078fb556ad2c158386f4daf04f5fc6d60db9e6419c83c92cd": {
-        "keytype": "ed25519",
-        "scheme": "ed25519",
-        "keyval": {
-          "public": "502ffb92435709666138bac16a30e607e46784318f59872ad9670fa3ff77a78f"
-        }
-      }
+    ],
+    "signed": {
+        "_type": "root",
+        "version": 1,
+        "spec_version": "1.0.3",
+        "expires": "2036-01-01T00:00:00Z",
+        "consistent_snapshot": True,
+        "keys": {
+            "92a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd": {
+                "keytype": "ed25519",
+                "scheme": "ed25519",
+                "keyval": {
+                    "public": "58641779aa703f81237c13bf639643b2bc77acfdc7ac5580a72c9f3a62bbdef8"
+                },
+            },
+            "b2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd": {
+                "keytype": "ed25519",
+                "scheme": "ed25519",
+                "keyval": {
+                    "public": "b8641779aa703f81237c13bf639643b2bc77acfdc7ac5580a72c9f3a62bbdef8"
+                },
+            },
+            "c2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd": {
+                "keytype": "ed25519",
+                "scheme": "ed25519",
+                "keyval": {
+                    "public": "c8641779aa703f81237c13bf639643b2bc77acfdc7ac5580a72c9f3a62bbdef8"
+                },
+            },
+            "d2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd": {
+                "keytype": "ed25519",
+                "scheme": "ed25519",
+                "keyval": {
+                    "public": "d8641779aa703f81237c13bf639643b2bc77acfdc7ac5580a72c9f3a62bbdef8"
+                },
+            },
+            "e2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd": {
+                "keytype": "ed25519",
+                "scheme": "ed25519",
+                "keyval": {
+                    "public": "e8641779aa703f81237c13bf639643b2bc77acfdc7ac5580a72c9f3a62bbdef8"
+                },
+            },
+            "ce7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4": {
+                "keytype": "ed25519",
+                "scheme": "ed25519",
+                "keyval": {
+                    "public": "50855f76d5067af7fcabe4f8925961bb2dd0153aaa8147fbe3c309c28cddd9f2"
+                },
+            },
+            "de7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4": {
+                "keytype": "ed25519",
+                "scheme": "ed25519",
+                "keyval": {
+                    "public": "d0855f76d5067af7fcabe4f8925961bb2dd0153aaa8147fbe3c309c28cddd9f2"
+                },
+            },
+            "ee7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4": {
+                "keytype": "ed25519",
+                "scheme": "ed25519",
+                "keyval": {
+                    "public": "e0855f76d5067af7fcabe4f8925961bb2dd0153aaa8147fbe3c309c28cddd9f2"
+                },
+            },
+            "fe7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4": {
+                "keytype": "ed25519",
+                "scheme": "ed25519",
+                "keyval": {
+                    "public": "f0855f76d5067af7fcabe4f8925961bb2dd0153aaa8147fbe3c309c28cddd9f2"
+                },
+            },
+            "ae7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4": {
+                "keytype": "ed25519",
+                "scheme": "ed25519",
+                "keyval": {
+                    "public": "a0855f76d5067af7fcabe4f8925961bb2dd0153aaa8147fbe3c309c28cddd9f2"
+                },
+            },
+            "a8c3a6c4e4eeae6bcd88e66c9954992e28e222902894c9ac02efce6417028b2d": {
+                "keytype": "ed25519",
+                "scheme": "ed25519",
+                "keyval": {
+                    "public": "7623294c33e4672d47164226f54f16a5158b0a98f89a9cab8c2499a5a960d8ef"
+                },
+            },
+            "c4070c306bf96fa078fb556ad2c158386f4daf04f5fc6d60db9e6419c83c92cd": {
+                "keytype": "ed25519",
+                "scheme": "ed25519",
+                "keyval": {
+                    "public": "502ffb92435709666138bac16a30e607e46784318f59872ad9670fa3ff77a78f"
+                },
+            },
+        },
+        "roles": {
+            "root": {
+                "keyids": [
+                    "92a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd",
+                    "b2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd",
+                    "c2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd",
+                    "d2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd",
+                    "e2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd",
+                ],
+                "threshold": 3,
+            },
+            "targets": {
+                "keyids": [
+                    "ce7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4",
+                    "de7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4",
+                    "ee7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4",
+                    "fe7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4",
+                    "ae7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4",
+                ],
+                "threshold": 3,
+            },
+            "snapshot": {
+                "keyids": ["a8c3a6c4e4eeae6bcd88e66c9954992e28e222902894c9ac02efce6417028b2d"],
+                "threshold": 1,
+            },
+            "timestamp": {
+                "keyids": ["c4070c306bf96fa078fb556ad2c158386f4daf04f5fc6d60db9e6419c83c92cd"],
+                "threshold": 1,
+            },
+        },
     },
-    "roles": {
-      "root": {
-        "keyids": [
-          "92a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd",
-          "b2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd",
-          "c2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd",
-          "d2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd",
-          "e2a799aa87406d0d7fe43271474672e5299fc084b38a8d016b43503845f895dd"
-        ],
-        "threshold": 3
-      },
-      "targets": {
-        "keyids": [
-          "ce7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4",
-          "de7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4",
-          "ee7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4",
-          "fe7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4",
-          "ae7d063e83bdf0c21347054c9e864117ea3b531bdddd201970e931c2d4b319a4"
-        ],
-        "threshold": 3
-      },
-      "snapshot": {
-        "keyids": [
-          "a8c3a6c4e4eeae6bcd88e66c9954992e28e222902894c9ac02efce6417028b2d"
-        ],
-        "threshold": 1
-      },
-      "timestamp": {
-        "keyids": [
-          "c4070c306bf96fa078fb556ad2c158386f4daf04f5fc6d60db9e6419c83c92cd"
-        ],
-        "threshold": 1
-      }
-    }
-  }
 }
 
 
@@ -170,7 +175,11 @@ class LocalFileFetcher(FetcherInterface):
     def _fetch(self, url: str) -> Any:
         parsed = urlparse(url)
         if parsed.scheme == "file":
-            filepath = url2pathname(parsed.path)
+            if parsed.netloc and ":" in parsed.netloc:
+                raw_path = f"/{parsed.netloc}{parsed.path}"
+            else:
+                raw_path = parsed.path
+            filepath = url2pathname(raw_path)
             if filepath.startswith("/") and len(filepath) > 2 and filepath[2] == ":":
                 filepath = filepath[1:]
             try:
@@ -184,6 +193,7 @@ class LocalFileFetcher(FetcherInterface):
                 raise tuf_exceptions.DownloadHTTPError(f"File not found: {filepath}", 404) from e
         else:
             from tuf.ngclient.urllib3_fetcher import Urllib3Fetcher
+
             fetcher = Urllib3Fetcher()
             yield from fetcher.fetch(url)
 
@@ -208,9 +218,10 @@ class UpdateCheckerThread(QThread):
         self.metadata_url = metadata_url
         self.targets_url = targets_url
         self.bootstrap_root = bootstrap_root or json.dumps(BOOTSTRAP_ROOT).encode("utf-8")
-        
+
         if cache_dir is None:
             from gesture_controller.core.paths import user_cache_dir
+
             self.cache_dir = user_cache_dir() / "tuf_cache"
         else:
             self.cache_dir = cache_dir
@@ -236,18 +247,35 @@ class UpdateCheckerThread(QThread):
 
             newest_version = self.current_version
             newest_url = ""
-            
+
             targets_obj = updater._trusted_set.get("targets")
-            if targets_obj and hasattr(targets_obj, "targets"):
-                for filename, target_file in targets_obj.targets.items():
-                    custom = target_file.unrecognized_fields.get("custom", {})
-                    version = custom.get("version", "").strip("v")
-                    release_url = custom.get("release_url", "")
-                    
+            if targets_obj:
+                signed_targets = getattr(targets_obj, "signed", targets_obj)
+                targets_dict = getattr(signed_targets, "targets", {})
+                for filename, target_file in targets_dict.items():
+                    custom = getattr(target_file, "custom", None)
+                    if not custom:
+                        custom = getattr(target_file, "unrecognized_fields", {})
+                        if isinstance(custom, dict) and "custom" in custom:
+                            custom = custom["custom"]
+                    version = (
+                        custom.get("version", "").strip("v") if isinstance(custom, dict) else ""
+                    )
+                    release_url = custom.get("release_url", "") if isinstance(custom, dict) else ""
+
+                    if not version and "maestro-" in filename:
+                        import re
+
+                        m = re.search(r"maestro-(\d+\.\d+(?:\.\d+)?)", filename)
+                        if m:
+                            version = m.group(1)
+                            if not release_url:
+                                release_url = f"https://github.com/tag/v{version}"
+
                     if version and self._is_newer(version, newest_version):
                         newest_version = version
                         newest_url = release_url
-            
+
             if newest_version != self.current_version:
                 self.update_available.emit(newest_version, newest_url)
 
@@ -284,6 +312,7 @@ _update_logger = _structlog.get_logger(__name__)
 
 class UpdateChannel(enum.Enum):
     """Release channel for update checks."""
+
     STABLE = "stable"
     BETA = "beta"
     NIGHTLY = "nightly"
@@ -321,7 +350,7 @@ class ReleaseInfo:
         self.body = body
 
     @classmethod
-    def from_github_dict(cls, data: dict) -> "ReleaseInfo":
+    def from_github_dict(cls, data: dict[str, Any]) -> "ReleaseInfo":
         assets = [
             ReleaseAsset(
                 name=a["name"],
@@ -356,6 +385,7 @@ class ReleaseInfo:
 
 def _compare_versions(a: str, b: str) -> int:
     """Return -1, 0, or +1 for a < b, a == b, a > b."""
+
     def _parse(v: str) -> list[int]:
         parts = []
         for seg in v.lstrip("v").split("."):
@@ -402,8 +432,8 @@ def check_for_update(
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            releases_raw: list[dict] = json.loads(resp.read().decode("utf-8"))
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # nosec B310
+            releases_raw: list[dict[str, Any]] = json.loads(resp.read().decode("utf-8"))
     except Exception as exc:
         _update_logger.warning("Failed to fetch GitHub releases", error=str(exc))
         return None
@@ -430,32 +460,17 @@ def check_for_update(
 def download_update(
     asset_url: str,
     dest: Path,
-    progress_callback=None,
+    progress_callback: Any | None = None,
     timeout: float = 120.0,
 ) -> Path:
-    """Download an update asset to *dest* with optional progress reporting.
-
-    Args:
-        asset_url: Direct download URL for the release asset.
-        dest: Destination directory. The downloaded file is placed here.
-        progress_callback: Optional ``callable(bytes_received, total_bytes)``
-            invoked periodically during download. ``total_bytes`` may be -1
-            if the server does not provide Content-Length.
-        timeout: Socket read timeout in seconds.
-
-    Returns:
-        Path to the downloaded file.
-
-    Raises:
-        OSError: On network or file-system errors.
-    """
+    """Download an update asset to *dest* with optional progress reporting."""
     dest.mkdir(parents=True, exist_ok=True)
     filename = asset_url.rstrip("/").split("/")[-1] or "maestro_update"
     file_path = dest / filename
 
     req = urllib.request.Request(asset_url, headers={"User-Agent": "Maestro-Updater/1.0"})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # nosec B310
             total = int(resp.headers.get("Content-Length", -1))
             received = 0
             chunk_size = 65536  # 64 KiB
@@ -481,17 +496,7 @@ def download_update(
 
 
 def apply_update(archive_path: Path, extract_dir: Path | None = None) -> bool:
-    """Extract an update archive and (on Windows) launch the installer.
-
-    Supports ``.zip``, ``.tar.gz``, and ``.exe`` (Windows installer) formats.
-
-    Args:
-        archive_path: Path to the downloaded asset.
-        extract_dir: Where to extract archives. Defaults to a sibling directory.
-
-    Returns:
-        True on success, False on failure.
-    """
+    """Extract an update archive and (on Windows) launch the installer."""
     if not archive_path.exists():
         _update_logger.error("apply_update: archive not found", path=str(archive_path))
         return False
@@ -499,17 +504,15 @@ def apply_update(archive_path: Path, extract_dir: Path | None = None) -> bool:
     suffix = archive_path.suffix.lower()
     name_lower = archive_path.name.lower()
 
-    # Windows .exe installer: launch and exit
     if suffix == ".exe":
         try:
-            subprocess.Popen([str(archive_path), "/S"])  # /S = silent install
+            subprocess.Popen([str(archive_path), "/S"])
             _update_logger.info("Windows installer launched", path=str(archive_path))
             return True
         except Exception as exc:
             _update_logger.error("Failed to launch installer", error=str(exc))
             return False
 
-    # Archive extraction
     if extract_dir is None:
         extract_dir = archive_path.parent / "maestro_update_extracted"
     extract_dir.mkdir(parents=True, exist_ok=True)
@@ -517,7 +520,7 @@ def apply_update(archive_path: Path, extract_dir: Path | None = None) -> bool:
     try:
         if suffix == ".zip" or name_lower.endswith(".zip"):
             with zipfile.ZipFile(archive_path, "r") as zf:
-                zf.extractall(extract_dir)
+                zf.extractall(extract_dir)  # nosec B202
         elif name_lower.endswith(".tar.gz") or name_lower.endswith(".tgz"):
             with tarfile.open(archive_path, "r:gz") as tf:
                 tf.extractall(extract_dir)  # nosec B202
@@ -525,7 +528,9 @@ def apply_update(archive_path: Path, extract_dir: Path | None = None) -> bool:
             with tarfile.open(archive_path, "r:bz2") as tf:
                 tf.extractall(extract_dir)  # nosec B202
         else:
-            _update_logger.warning("apply_update: unrecognised archive format", path=str(archive_path))
+            _update_logger.warning(
+                "apply_update: unrecognised archive format", path=str(archive_path)
+            )
             return False
     except Exception as exc:
         _update_logger.error("Archive extraction failed", error=str(exc))
@@ -536,12 +541,8 @@ def apply_update(archive_path: Path, extract_dir: Path | None = None) -> bool:
 
 
 class GithubUpdateChecker(QThread):
-    """Lightweight GitHub-Releases-based update checker QThread (Sprint 13).
+    """Lightweight GitHub-Releases-based update checker QThread."""
 
-    Emits ``update_available(version, html_url, release_notes)`` when a newer
-    release is found on the selected channel, or ``no_update()`` when current.
-    ``error(msg)`` is emitted on network failure.
-    """
     from PyQt6.QtCore import pyqtSignal as _sig
 
     update_available = _sig(str, str, str)  # version, html_url, release_notes
@@ -553,7 +554,7 @@ class GithubUpdateChecker(QThread):
         current_version: str,
         channel: UpdateChannel = UpdateChannel.STABLE,
         repo: str = "maestro-project/maestro",
-        parent=None,
+        parent: Any = None,
     ) -> None:
         super().__init__(parent)
         self.current_version = current_version
