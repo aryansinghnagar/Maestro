@@ -125,6 +125,7 @@ jobs:
 
       - name: Run Test Suite
         # Exclude tests that need real MediaPipe native libs, hardware, or are slow
+        shell: bash
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
