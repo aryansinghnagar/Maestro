@@ -8,7 +8,8 @@ import platform
 import structlog
 import jsonschema
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 # Try importing tomllib (Python 3.11+)
 try:
@@ -39,14 +40,8 @@ PLUGIN_DIRS = [
 ]
 
 # User plugin directory (per-platform)
-if platform.system() == "Windows":
-    USER_PLUGIN_DIR = Path(os.environ.get("APPDATA", "")) / "gesture_controller" / "plugins"
-elif platform.system() == "Darwin":
-    USER_PLUGIN_DIR = (
-        Path.home() / "Library" / "Application Support" / "gesture_controller" / "plugins"
-    )
-else:
-    USER_PLUGIN_DIR = Path.home() / ".config" / "gesture_controller" / "plugins"
+from gesture_controller.core.paths import user_plugin_dir
+USER_PLUGIN_DIR = user_plugin_dir()
 
 PLUGIN_DIRS.append(USER_PLUGIN_DIR)
 
@@ -195,6 +190,27 @@ class PluginLoader:
             "subprocess",
             "os",
             "sys",
+            "socket",
+            "pickle",
+            "multiprocessing",
+            "threading",
+            "asyncio",
+            "shutil",
+            "pathlib",
+            "tempfile",
+            "glob",
+            "urllib",
+            "http",
+            "ftplib",
+            "smtplib",
+            "telnetlib",
+            "xmlrpc",
+            "websocket",
+            "requests",
+            "httpx",
+            "aiohttp",
+            "builtins",
+            "__builtin__",
         }
 
         # If "os:input" is granted, we allow input simulation libraries
@@ -203,6 +219,12 @@ class PluginLoader:
             allowed_packages.update(
                 {"pyautogui", "ctypes", "evdev", "Quartz", "AppKit", "win32api", "win32con"}
             )
+
+        blocked_builtins = {
+            "eval", "exec", "compile", "__import__", "globals", "locals",
+            "vars", "dir", "getattr", "setattr", "delattr", "hasattr",
+            "open", "input", "breakpoint", "exit", "quit", "__builtins__", "__builtin__"
+        }
 
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -221,27 +243,28 @@ class PluginLoader:
                             str(path),
                             f"Unauthorized import from '{node.module}'. Declared permissions do not allow it.",
                         )
-
-            # Check calls to dangerous builtins or system executing methods
-            if isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Name):
-                    if node.func.id in {"eval", "exec", "__import__"}:
+                for alias in node.names:
+                    if alias.name in blocked_builtins:
                         raise PluginLoadError(
-                            str(path), f"Use of blocked builtin function '{node.func.id}'."
+                            str(path),
+                            f"Unauthorized import of blocked built-in '{alias.name}'.",
                         )
-                elif isinstance(node.func, ast.Attribute):
-                    if isinstance(node.func.value, ast.Name):
-                        val_id = node.func.value.id
-                        attr_name = node.func.attr
-                        if val_id == "os" and attr_name in {"system", "popen", "spawn"}:
-                            raise PluginLoadError(
-                                str(path), f"Use of blocked system API '{val_id}.{attr_name}'."
-                            )
-                        if val_id == "subprocess" and attr_name in {"run", "Popen", "call"}:
-                            raise PluginLoadError(
-                                str(path),
-                                f"Use of blocked subprocess execution API '{val_id}.{attr_name}'.",
-                            )
+
+            # Block any reference to security-critical names
+            if isinstance(node, ast.Name):
+                if node.id in blocked_builtins:
+                    raise PluginLoadError(
+                        str(path),
+                        f"Use of blocked security-critical identifier '{node.id}' is forbidden.",
+                    )
+
+            # Block any reference to security-critical attributes (e.g. __import__)
+            if isinstance(node, ast.Attribute):
+                if node.attr in {"__import__", "eval", "exec", "__builtins__", "__builtin__"}:
+                    raise PluginLoadError(
+                        str(path),
+                        f"Access to blocked security-critical attribute '{node.attr}' is forbidden.",
+                    )
 
     def _load_plugin(self, path: Path) -> Plugin:
         """Load and validate a single plugin file.

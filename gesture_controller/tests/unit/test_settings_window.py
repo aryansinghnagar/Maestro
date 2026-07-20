@@ -78,8 +78,8 @@ def test_settings_window_apply_overrides(qapp: QApplication, tmp_path: Path) -> 
 
     # Patch USER_CONFIG_DIRS in the settings_window module where it's imported
     with patch(
-        "gesture_controller.gui.settings_window.USER_CONFIG_DIRS",
-        {"Windows": tmp_path, "Linux": tmp_path, "Darwin": tmp_path},
+        "gesture_controller.gui.settings_window.user_config_dir",
+        return_value=tmp_path,
     ):
         with patch.object(window, "accept") as mock_accept:
             window._on_apply()
@@ -111,8 +111,8 @@ def test_settings_window_preserves_comments(qapp: QApplication, tmp_path: Path) 
     window._camera_device.setCurrentIndex(3)
 
     with patch(
-        "gesture_controller.gui.settings_window.USER_CONFIG_DIRS",
-        {"Windows": tmp_path, "Linux": tmp_path, "Darwin": tmp_path},
+        "gesture_controller.gui.settings_window.user_config_dir",
+        return_value=tmp_path,
     ):
         with patch.object(window, "accept"):
             window._on_apply()

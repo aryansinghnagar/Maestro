@@ -5,7 +5,7 @@ import onnxruntime as ort
 
 
 class HandPoseEstimator:
-    def __init__(self, modelPath, confThreshold=0.8, backendId=0, targetId=0):
+    def __init__(self, modelPath, confThreshold=0.8, backendId=0, targetId=0, providers=None, sess_options=None):
         self.model_path = modelPath
         self.conf_threshold = confThreshold
         self.backend_id = backendId
@@ -23,14 +23,15 @@ class HandPoseEstimator:
         self.HAND_BOX_ENLARGE_FACTOR = 1.65
 
         # Initialize onnxruntime session
-        providers = ["CPUExecutionProvider"]
-        if "CUDAExecutionProvider" in ort.get_available_providers():
-            providers.insert(0, "CUDAExecutionProvider")
-        if "DirectMLExecutionProvider" in ort.get_available_providers():
-            providers.insert(0, "DirectMLExecutionProvider")
-        if "CoreMLExecutionProvider" in ort.get_available_providers():
-            providers.insert(0, "CoreMLExecutionProvider")
-        self.session = ort.InferenceSession(self.model_path, providers=providers)
+        if providers is None:
+            providers = ["CPUExecutionProvider"]
+            if "CUDAExecutionProvider" in ort.get_available_providers():
+                providers.insert(0, "CUDAExecutionProvider")
+            if "DirectMLExecutionProvider" in ort.get_available_providers():
+                providers.insert(0, "DirectMLExecutionProvider")
+            if "CoreMLExecutionProvider" in ort.get_available_providers():
+                providers.insert(0, "CoreMLExecutionProvider")
+        self.session = ort.InferenceSession(self.model_path, sess_options=sess_options, providers=providers)
 
     @property
     def name(self):

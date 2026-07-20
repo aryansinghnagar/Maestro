@@ -1,17 +1,62 @@
-# Configuration Guide
+# Maestro Configuration Guide
 
-Maestro's settings are defined in a YAML configuration file.
+Maestro persists configuration in human-readable YAML format located at:
+- **Windows**: `%APPDATA%\maestro\config.yaml`
+- **Linux / macOS**: `~/.config/maestro/config.yaml`
+
+---
 
 ## Configuration Schema
 
-The following options are supported:
+Below is an annotated sample `config.yaml`:
 
-| Key | Type | Default | Description |
-|---|---|---|---|
-| `camera_id` | int | `0` | Camera device index |
-| `max_hands` | int | `2` | Maximum hands to track (1-2) |
-| `min_detection_confidence` | float | `0.7` | MediaPipe detection threshold |
-| `min_tracking_confidence` | float | `0.5` | MediaPipe tracking threshold |
-| `one_euro_filter.beta` | float | `0.05` | Filter beta coefficient |
-| `one_euro_filter.d_cutoff` | float | `1.0` | Filter derivative cutoff |
-| `one_euro_filter.min_cutoff` | float | `1.0` | Filter minimum cutoff frequency |
+```yaml
+app:
+  language: "en"             # Interface language ("en", "fr", "de", "ja")
+  onboarding_complete: true  # Onboarding status flag
+
+engine:
+  min_detection_confidence: 0.7
+  min_tracking_confidence: 0.5
+  max_hands: 2
+  fps_cap: 30
+  global_cooldown_ms: 200.0
+
+filtering:
+  one_euro:
+    min_cutoff: 1.0
+    beta: 0.007
+    d_cutoff: 1.0
+  tremor:
+    enabled: false
+    window_size: 10
+    max_displacement_px: 5.0
+
+voice:
+  enabled: true
+  wake_word: "maestro"
+  commands:
+    - phrase: "open browser"
+      gesture: "SwipeRight"
+
+profiles:
+  auto_detect_app: true
+  app_profiles:
+    chrome.exe:
+      SwipeLeft: "KeyPress:Ctrl+Shift+Tab"
+      SwipeRight: "KeyPress:Ctrl+Tab"
+    vlc.exe:
+      Fist: "Media:PlayPause"
+
+hud:
+  enabled: true
+  opacity: 0.85
+  show_tracking_dots: true
+  show_progress_ring: true
+```
+
+---
+
+## Hot-Reloading
+
+Maestro watches `config.yaml` using `watchdog`. Changes made to `config.yaml` via text editor are automatically reloaded at runtime without requiring an application restart.

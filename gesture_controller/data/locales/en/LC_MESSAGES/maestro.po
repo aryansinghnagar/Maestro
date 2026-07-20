@@ -1,0 +1,210 @@
+# Maestro - English (US) - Passthrough (source language)
+msgid ""
+msgstr ""
+"Project-Id-Version: Maestro 1.0\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Settings"
+msgstr "Settings"
+
+msgid "Maestro Onboarding & Permissions"
+msgstr "Maestro Onboarding & Permissions"
+
+msgid "Record Custom Gesture"
+msgstr "Record Custom Gesture"
+
+msgid "Tremor Calibration"
+msgstr "Tremor Calibration"
+
+msgid "Camera: Connected"
+msgstr "Camera: Connected"
+
+msgid "Camera: Disconnected"
+msgstr "Camera: Disconnected"
+
+msgid "Pause Recognition"
+msgstr "Pause Recognition"
+
+msgid "Resume Recognition"
+msgstr "Resume Recognition"
+
+msgid "Export Diagnostics"
+msgstr "Export Diagnostics"
+
+msgid "Quit Maestro"
+msgstr "Quit Maestro"
+
+msgid "General"
+msgstr "General"
+
+msgid "Sensitivity"
+msgstr "Sensitivity"
+
+msgid "Gestures"
+msgstr "Gestures"
+
+msgid "HUD"
+msgstr "HUD"
+
+msgid "Accessibility"
+msgstr "Accessibility"
+
+msgid "Camera Device"
+msgstr "Camera Device"
+
+msgid "Toggle Recognition Hotkey"
+msgstr "Toggle Recognition Hotkey"
+
+msgid "Language"
+msgstr "Language"
+
+msgid "Global Sensitivity"
+msgstr "Global Sensitivity"
+
+msgid "Min Cutoff Frequency"
+msgstr "Min Cutoff Frequency"
+
+msgid "Enable HUD"
+msgstr "Enable HUD"
+
+msgid "HUD Opacity"
+msgstr "HUD Opacity"
+
+msgid "Show Joint Tracking Dots"
+msgstr "Show Joint Tracking Dots"
+
+msgid "Show Gesture Progress Ring"
+msgstr "Show Gesture Progress Ring"
+
+msgid "Voice Control"
+msgstr "Voice Control"
+
+msgid "Enable Voice Control (offline, Vosk)"
+msgstr "Enable Voice Control (offline, Vosk)"
+
+msgid "Wake Word:"
+msgstr "Wake Word:"
+
+msgid "Download Voice Model (~50MB)"
+msgstr "Download Voice Model (~50MB)"
+
+msgid "Downloading..."
+msgstr "Downloading..."
+
+msgid "Download Complete"
+msgstr "Download Complete"
+
+msgid "Tremor Compensation"
+msgstr "Tremor Compensation"
+
+msgid "Enable Tremor Compensation"
+msgstr "Enable Tremor Compensation"
+
+msgid "Run Tremor Calibration..."
+msgstr "Run Tremor Calibration..."
+
+msgid "Visual & Contrast"
+msgstr "Visual & Contrast"
+
+msgid "High Contrast Mode"
+msgstr "High Contrast Mode"
+
+msgid "Reduced Motion (disable HUD animations)"
+msgstr "Reduced Motion (disable HUD animations)"
+
+msgid "Dwell Clicking"
+msgstr "Dwell Clicking"
+
+msgid "Enable Dwell Clicking"
+msgstr "Enable Dwell Clicking"
+
+msgid "Apply"
+msgstr "Apply"
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Retry"
+msgstr "Retry"
+
+msgid "Close"
+msgstr "Close"
+
+msgid "Next"
+msgstr "Next"
+
+msgid "Back"
+msgstr "Back"
+
+msgid "Finish"
+msgstr "Finish"
+
+msgid "Skip"
+msgstr "Skip"
+
+msgid "Gesture Name"
+msgstr "Gesture Name"
+
+msgid "Type"
+msgstr "Type"
+
+msgid "Action"
+msgstr "Action"
+
+msgid "Record New Gesture"
+msgstr "Record New Gesture"
+
+msgid "Delete Selected"
+msgstr "Delete Selected"
+
+msgid "Welcome to Maestro"
+msgstr "Welcome to Maestro"
+
+msgid "Camera Permission"
+msgstr "Camera Permission"
+
+msgid "Accessibility Permission"
+msgstr "Accessibility Permission"
+
+msgid "Microphone Permission"
+msgstr "Microphone Permission"
+
+msgid "Setup Complete"
+msgstr "Setup Complete"
+
+msgid "Hold your hand steady in front of the camera."
+msgstr "Hold your hand steady in front of the camera."
+
+msgid "Start Calibration"
+msgstr "Start Calibration"
+
+msgid "Calibration Complete!"
+msgstr "Calibration Complete!"
+
+msgid "No hand coordinates detected. Please hold your hand in front of the camera and try again."
+msgstr "No hand coordinates detected. Please hold your hand in front of the camera and try again."
+
+msgid "Gesture recognized"
+msgstr "Gesture recognized"
+
+msgid "Recognition paused"
+msgstr "Recognition paused"
+
+msgid "Recognition resumed"
+msgstr "Recognition resumed"
+
+msgid "Download Successful"
+msgstr "Download Successful"
+
+msgid "Vosk speech model downloaded and set up successfully!"
+msgstr "Vosk speech model downloaded and set up successfully!"
+
+msgid "Download Failed"
+msgstr "Download Failed"

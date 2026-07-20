@@ -62,29 +62,7 @@ class GestureCanvas(QWidget):
 
         # Draw skeleton connections
         painter.setPen(QPen(QColor("#00ffcc"), 2))
-        connections = [
-            (0, 1),
-            (1, 2),
-            (2, 3),
-            (3, 4),  # Thumb
-            (0, 5),
-            (5, 6),
-            (6, 7),
-            (7, 8),  # Index
-            (5, 9),
-            (9, 10),
-            (10, 11),
-            (11, 12),  # Middle
-            (9, 13),
-            (13, 14),
-            (14, 15),
-            (15, 16),  # Ring
-            (13, 17),
-            (17, 18),
-            (18, 19),
-            (19, 20),  # Pinky
-            (0, 17),  # Palm base
-        ]
+        from gesture_controller.models.hand_topology import CONNECTIONS as connections
         for start, end in connections:
             if start < len(points) and end < len(points):
                 painter.drawLine(points[start], points[end])

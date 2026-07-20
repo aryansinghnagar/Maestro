@@ -68,11 +68,6 @@ plugins:
             merge_init_into_class: true
             show_if_no_docstring: true
           paths: [gesture_controller]
-  - git-revision-date-localized:
-      enable_creation_date: true
-      type: date
-  - minify:
-      minify_html: true
   - tags
 
 markdown_extensions:

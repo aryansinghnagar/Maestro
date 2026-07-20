@@ -33,14 +33,45 @@ def make_websocket_frame(text: str) -> bytes:
     return header + payload
 
 
+import secrets
+
+def get_or_create_api_token() -> str:
+    """Get or create the API authentication token.
+
+    The token is generated on first run using secrets.token_urlsafe(32)
+    and stored with chmod 0600.
+    """
+    from gesture_controller.core.paths import api_token_path
+
+    token_path = api_token_path()
+    token_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if token_path.exists():
+        try:
+            token = token_path.read_text().strip()
+            if token:
+                return token
+        except Exception:
+            pass
+
+    # Generate new token
+    token = secrets.token_urlsafe(32)
+    token_path.write_text(token)
+    try:
+        token_path.chmod(0o600)
+    except Exception:
+        pass
+    return token
+
+
 class IntegrationServer:
     """Lightweight, zero-dependency REST & WebSocket integration API server (Phase 17)."""
 
-    def __init__(self, event_bus: EventBus, host: str = "127.0.0.1", port: int = 8765, token: str = "maestro_secret_token") -> None:
+    def __init__(self, event_bus: EventBus, host: str = "127.0.0.1", port: int = 8765, token: Optional[str] = None) -> None:
         self.event_bus = event_bus
         self.host = host
         self.port = port
-        self.token = token
+        self.token = token if token is not None else get_or_create_api_token()
         self.running = False
         self.clients: List[socket.socket] = []
         self._clients_lock = threading.Lock()
@@ -128,15 +159,27 @@ class IntegrationServer:
             if auth_header.lower().startswith("bearer "):
                 token_header = auth_header[7:].strip()
 
-            # Authenticate
+            # Authenticate using constant-time comparison
             client_token = token_param or token_header
-            if client_token != self.token:
+            if not client_token or not secrets.compare_digest(client_token, self.token):
                 self._send_http_response(conn, 401, {"error": "Unauthorized"})
                 conn.close()
                 return
 
             # Check if this is a WebSocket upgrade request
             if headers.get("upgrade", "").lower() == "websocket" and "sec-websocket-key" in headers:
+                origin = headers.get("origin", "")
+                allowed_origins = {
+                    "http://localhost:8765",
+                    "http://127.0.0.1:8765",
+                    "null",
+                }
+                if origin and origin not in allowed_origins:
+                    logger.warning("WebSocket handshake rejected: bad Origin header", origin=origin)
+                    self._send_http_response(conn, 403, {"error": "Forbidden - Origin not allowed"})
+                    conn.close()
+                    return
+
                 self._handle_websocket_handshake(conn, headers["sec-websocket-key"])
                 return
 
@@ -185,6 +228,32 @@ class IntegrationServer:
                     self._send_http_response(conn, 400, {"error": f"Invalid request body: {e}"})
             elif method == "GET" and parsed_url.path == "/api/status":
                 self._send_http_response(conn, 200, {"status": "running", "uptime": "active"})
+            elif method == "GET" and parsed_url.path == "/metrics":
+                # Prometheus-compatible text exposition format
+                # No token auth required (guarded by localhost-only binding)
+                from gesture_controller.core.profiler import frame_budget
+                stage_stats = frame_budget.snapshot()
+                lines_out: list[str] = [
+                    "# HELP maestro_frame_stage_mean_ms Mean per-stage processing time in milliseconds",
+                    "# TYPE maestro_frame_stage_mean_ms gauge",
+                ]
+                for stage, stats in sorted(stage_stats.items()):
+                    safe = stage.replace(" ", "_").replace("-", "_")
+                    lines_out.append(f'maestro_frame_stage_mean_ms{{stage="{stage}"}} {stats["mean_ms"]:.3f}')
+                    lines_out.append(
+                        f'# HELP maestro_frame_stage_p95_ms p95 per-stage latency in milliseconds'
+                    )
+                    lines_out.append(f'# TYPE maestro_frame_stage_p95_ms gauge')
+                    lines_out.append(f'maestro_frame_stage_p95_ms{{stage="{stage}"}} {stats["p95_ms"]:.3f}')
+                # Add basic counters
+                lines_out += [
+                    "# HELP maestro_profiling_active 1 if cProfile session is active",
+                    "# TYPE maestro_profiling_active gauge",
+                ]
+                from gesture_controller.core.profiler import is_profiling
+                lines_out.append(f"maestro_profiling_active {1 if is_profiling() else 0}")
+                lines_out.append("")  # trailing newline
+                self._send_text_response(conn, 200, "\n".join(lines_out), content_type="text/plain; version=0.0.4")
             else:
                 self._send_http_response(conn, 404, {"error": "Not Found"})
             
@@ -210,6 +279,24 @@ class IntegrationServer:
         )
         try:
             conn.sendall(resp.encode("utf-8"))
+        except Exception:
+            pass
+
+    def _send_text_response(
+        self, conn: socket.socket, status_code: int, body: str, content_type: str = "text/plain"
+    ) -> None:
+        """Send a plain-text HTTP response (used for the /metrics endpoint)."""
+        status_map = {200: "OK", 404: "Not Found"}
+        status_text = status_map.get(status_code, "OK")
+        encoded = body.encode("utf-8")
+        resp_headers = (
+            f"HTTP/1.1 {status_code} {status_text}\r\n"
+            f"Content-Type: {content_type}\r\n"
+            f"Content-Length: {len(encoded)}\r\n"
+            f"Connection: close\r\n\r\n"
+        )
+        try:
+            conn.sendall(resp_headers.encode("utf-8") + encoded)
         except Exception:
             pass
 

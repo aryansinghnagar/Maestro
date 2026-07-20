@@ -1,4 +1,3 @@
-import sys
 import platform
 import structlog
 from gesture_controller.os_integration.base_controller import BaseController

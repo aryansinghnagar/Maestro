@@ -70,11 +70,16 @@ class GestureControllerApp:
         )
 
         # Set up structured file logging
-        from gesture_controller.core.config_manager import USER_CONFIG_DIRS
-        import platform
-
-        user_dir = USER_CONFIG_DIRS.get(platform.system(), Path.home())
+        from gesture_controller.core.paths import user_config_dir, user_data_dir
+        user_dir = user_config_dir()
         setup_logging(user_dir)
+
+        # ── Install crash reporter (Sprint 14) ─────────────────────────────
+        from gesture_controller.core.crash_reporter import install_crash_handler
+        self._crash_reporter = install_crash_handler(
+            user_dir=user_data_dir(),
+            show_dialog=True,
+        )
 
         self._app = QApplication.instance()
         if self._app is None:
@@ -168,6 +173,28 @@ class GestureControllerApp:
         self._voice_listener = VoiceCommandListener(self._event_bus)
         self._voice_listener.start()
 
+        # Dwell clicker integration
+        from gesture_controller.gui.dwell_clicker import DwellClicker
+        self._dwell_clicker = DwellClicker(
+            self._config,
+            lambda x, y: self._engine._controller.mouse_click(button="left", x=x, y=y)
+        )
+        self._dwell_clicker.start()
+
+        # Apply system theme / configuration theme (dark, light, high-contrast)
+        from gesture_controller.gui.theme import apply_theme
+        apply_theme(self._config.get("a11y.theme", "auto"))
+
+        # Initialize i18n — load saved language preference or auto-detect from OS locale
+        from gesture_controller.core.i18n import install as install_i18n
+        saved_lang = self._config.get("ui.language", None)
+        install_i18n(saved_lang)  # None → auto-detect from system locale
+
+        # Global hotkeys registration
+        from gesture_controller.gui.global_hotkeys import GlobalHotkeyManager
+        self._hotkey_manager = GlobalHotkeyManager()
+        self._register_global_hotkeys()
+
         self._tray.message_clicked.connect(self._on_tray_message_clicked)
 
         # ── Polling timer: Engine -> GUI bridge ────────────────────────────
@@ -215,6 +242,10 @@ class GestureControllerApp:
         else:
             self._overlay.hide()
 
+        # Re-apply theme dynamically
+        from gesture_controller.gui.theme import apply_theme
+        apply_theme(new_config.get("a11y", {}).get("theme", "auto"))
+
     def _show_settings(self) -> None:
         """Show the settings dialog (non-modal)."""
         self._settings.show()
@@ -227,26 +258,30 @@ class GestureControllerApp:
         from pathlib import Path
         from gesture_controller.core.compliance import export_data
 
-        save_path, _ = QFileDialog.getSaveFileName(
-            None,
-            "Save Diagnostics Archive",
-            "gesture_controller_diagnostics.zip",
-            "Zip Archives (*.zip)",
-        )
-        if not save_path:
-            return
-
+    def _export_diagnostics(self) -> None:
+        """Show the Crash Report & Diagnostics Viewer dialog (Sprint 18)."""
         try:
-            export_data(Path(save_path))
-            QMessageBox.information(
-                None, "Diagnostics Exported", f"Successfully exported diagnostics to:\n{save_path}"
-            )
-            logger.info("Diagnostics archive successfully exported", path=save_path)
+            from gesture_controller.gui.crash_report_dialog import CrashReportViewerDialog
+            dialog = CrashReportViewerDialog()
+            dialog.exec()
         except Exception as e:
-            logger.exception("Failed to export diagnostics", error=str(e))
-            QMessageBox.critical(
-                None, "Export Failed", f"Failed to export diagnostics archive:\n{str(e)}"
+            logger.exception("Failed to open crash report viewer dialog", error=str(e))
+            save_path, _ = QFileDialog.getSaveFileName(
+                None,
+                "Save Diagnostics Archive",
+                "gesture_controller_diagnostics.zip",
+                "Zip Archives (*.zip)",
             )
+            if save_path:
+                try:
+                    export_data(Path(save_path))
+                    QMessageBox.information(
+                        None, "Diagnostics Exported", f"Successfully exported diagnostics to:\n{save_path}"
+                    )
+                except Exception as ex:
+                    QMessageBox.critical(
+                        None, "Export Failed", f"Failed to export diagnostics archive:\n{str(ex)}"
+                    )
 
     def _on_update_available(self, latest_version: str, download_url: str) -> None:
         """Show tray balloon notification when a newer version is available (S4-8)."""
@@ -264,6 +299,28 @@ class GestureControllerApp:
 
             webbrowser.open(self._download_url)
 
+    def _register_global_hotkeys(self) -> None:
+        ctrl = self._engine._controller
+        
+        # 1. Minimize active window: Ctrl+Shift+M
+        self._hotkey_manager.register("ctrl+shift+m", ctrl.minimize_active_window)
+        # 2. Switch window: Ctrl+Shift+W
+        self._hotkey_manager.register("ctrl+shift+w", ctrl.switch_window)
+        # 3. Show desktop: Ctrl+Shift+D
+        self._hotkey_manager.register("ctrl+shift+d", ctrl.show_desktop)
+        # 4. Volume up: Ctrl+Shift+Up
+        self._hotkey_manager.register("ctrl+shift+up", ctrl.media_volume_up)
+        # 5. Volume down: Ctrl+Shift+Down
+        self._hotkey_manager.register("ctrl+shift+down", ctrl.media_volume_down)
+        # 6. Play/pause: Ctrl+Shift+Space
+        self._hotkey_manager.register("ctrl+shift+space", ctrl.media_play_pause)
+        # 7. Next track: Ctrl+Shift+N
+        self._hotkey_manager.register("ctrl+shift+n", ctrl.media_next)
+        # 8. Previous track: Ctrl+Shift+P
+        self._hotkey_manager.register("ctrl+shift+p", ctrl.media_previous)
+        # 9. Toggle pause state: Esc
+        self._hotkey_manager.register("esc", lambda: self._engine.set_paused(not self._engine.is_paused()))
+
     # ── Lifecycle ──────────────────────────────────────────────────────────
 
     def _shutdown(self) -> None:
@@ -277,6 +334,10 @@ class GestureControllerApp:
             self._integration_server.stop()
         if hasattr(self, "_voice_listener"):
             self._voice_listener.stop()
+        if hasattr(self, "_dwell_clicker"):
+            self._dwell_clicker.stop()
+        if hasattr(self, "_hotkey_manager"):
+            self._hotkey_manager.unregister_all()
 
         # Stop and join update checker thread if running (S4-8)
         if hasattr(self, "_updater_thread"):

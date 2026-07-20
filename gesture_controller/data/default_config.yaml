@@ -1,10 +1,10 @@
-version: "2.0"
+version: "3.0"
 camera:
   device_id: 0
-  resolution: [640, 480]
+  frame_width: 640
+  frame_height: 480
   fps_target: 30
   backend_preference: ["MSMF", "DirectShow"]  # per-OS defaults
-  auto_reconnect: true
   reconnect_backoff_ms: [100, 200, 400, 800, 1600]
   watchdog_timeout_ms: 2000
 
@@ -13,29 +13,32 @@ filtering:
   one_euro:
     min_cutoff: 1.0
     beta: 0.007
-    derivate_cutoff: 1.0
+    derivative_cutoff: 1.0
   dynamic_adaptation:
     lighting_enabled: true
     depth_scaling_enabled: true
+  tremor:
+    enabled: false
+    min_freq: 4.0
+    max_freq: 12.0
+    history_length: 30
 
 sensitivity:
   global_multiplier: 1.0
-
-safety:
-  toggle_recognition_hotkey: "Win+Shift+G"  # per-OS variants documented
-  safety_gesture_enabled: false
 
 engine:
   max_hands: 2
   min_detection_confidence: 0.7
   min_tracking_confidence: 0.5
+  inference_backend: "auto"
+  quantization: "int8"
+  skip_model_verification: false
 
 hud:
   enabled: true
   opacity: 0.3
   show_tracking_points: true
   show_progress_ring: true
-  show_action_confirmation: true
   confirmation_duration_ms: 800
 
 logging:
@@ -43,18 +46,29 @@ logging:
   structured: true
   rotation: "daily"
   max_files: 7
-  telemetry_enabled: false
+
+a11y:
+  high_contrast: false
+  reduced_motion: false
+  dwell_click_enabled: false
+  dwell_duration_ms: 800
+
+voice:
+  engine: "vosk"
+  model_path: "models/vosk-model-small-en-us"
+  wake_word: "maestro"
+
+telemetry:
+  enabled: false
+  endpoint: "https://telemetry.maestro.example.com"
+
+i18n:
+  locale: "en-US"
+  fallback: "en-US"
 
 profiles:
-  active_profile: "default"
   auto_detect_app: true
+  devices: []
 
-os_integration:
-  linux:
-    input_method: "auto"  # "auto", "uinput", "x11"
-    window_manager: "auto"  # "auto", "wlr", "kwin", "gnome", "xdotool", "none"
-  macos:
-    use_axui_element: true  # Use accessibility attributes for window min/switch
-  windows:
-    use_sendinput: false  # Upgrade path from pyautogui to SendInput ctypes
-
+triggers:
+  conditions: []

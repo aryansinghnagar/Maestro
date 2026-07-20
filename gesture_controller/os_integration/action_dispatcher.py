@@ -2,7 +2,6 @@ import re
 import yaml
 import structlog
 from pathlib import Path
-from typing import Any
 
 from gesture_controller.models.data_types import GestureEvent
 from gesture_controller.os_integration.base_controller import BaseController
@@ -135,23 +134,8 @@ class ActionDispatcher:
             logger.error("Unknown OS action", action=action)
 
     def _normalize_key(self, key: str) -> str:
-        aliases = {
-            "arrowleft": "left",
-            "arrowright": "right",
-            "arrowup": "up",
-            "arrowdown": "down",
-            "win": "super",
-            "windows": "super",
-            "meta": "super",
-            "enter": "return",
-            "esc": "escape",
-            "pageup": "page_up",
-            "pagedown": "page_down",
-            "pgup": "page_up",
-            "pgdn": "page_down",
-        }
-        k = key.strip().lower()
-        return aliases.get(k, k)
+        from gesture_controller.os_integration.keycodes import normalize_key
+        return normalize_key(key)
 
     def _execute_keypress(self, keys_str: str) -> None:
         keys = [self._normalize_key(k) for k in keys_str.split("+")]

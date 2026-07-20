@@ -1,0 +1,218 @@
+# Japanese translations for Maestro gesture control application.
+# Copyright (C) 2024 Maestro Project
+# This file is distributed under the same license as the Maestro package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Maestro 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-01-01 00:00+0000\n"
+"PO-Revision-Date: 2024-01-01 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: Japanese\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Settings"
+msgstr "設定"
+
+msgid "Maestro Onboarding & Permissions"
+msgstr "Maestroのセットアップと権限"
+
+msgid "Record Custom Gesture"
+msgstr "カスタムジェスチャーを録音"
+
+msgid "Tremor Calibration"
+msgstr "震え補正の調整"
+
+msgid "Camera: Connected"
+msgstr "カメラ：接続済み"
+
+msgid "Camera: Disconnected"
+msgstr "カメラ：未接続"
+
+msgid "Pause Recognition"
+msgstr "認識を一時停止"
+
+msgid "Resume Recognition"
+msgstr "認識を再開"
+
+msgid "Export Diagnostics"
+msgstr "診断データをエクスポート"
+
+msgid "Quit Maestro"
+msgstr "Maestroを終了"
+
+msgid "General"
+msgstr "一般"
+
+msgid "Sensitivity"
+msgstr "感度"
+
+msgid "Gestures"
+msgstr "ジェスチャー"
+
+msgid "HUD"
+msgstr "HUD"
+
+msgid "Accessibility"
+msgstr "アクセシビリティ"
+
+msgid "Camera Device"
+msgstr "カメラデバイス"
+
+msgid "Toggle Recognition Hotkey"
+msgstr "認識切り替えホットキー"
+
+msgid "Language"
+msgstr "言語"
+
+msgid "Global Sensitivity"
+msgstr "全体の感度"
+
+msgid "Min Cutoff Frequency"
+msgstr "最小カットオフ周波数"
+
+msgid "Enable HUD"
+msgstr "HUDを有効化"
+
+msgid "HUD Opacity"
+msgstr "HUDの不透明度"
+
+msgid "Show Joint Tracking Dots"
+msgstr "関節トラッキングドットを表示"
+
+msgid "Show Gesture Progress Ring"
+msgstr "ジェスチャー進行リングを表示"
+
+msgid "Voice Control"
+msgstr "音声制御"
+
+msgid "Enable Voice Control (offline, Vosk)"
+msgstr "音声制御を有効化（オフライン、Vosk）"
+
+msgid "Wake Word:"
+msgstr "ウェイクワード："
+
+msgid "Download Voice Model (~50MB)"
+msgstr "音声モデルをダウンロード（約50MB）"
+
+msgid "Downloading..."
+msgstr "ダウンロード中..."
+
+msgid "Download Complete"
+msgstr "ダウンロード完了"
+
+msgid "Tremor Compensation"
+msgstr "震え補正"
+
+msgid "Enable Tremor Compensation"
+msgstr "震え補正を有効化"
+
+msgid "Run Tremor Calibration..."
+msgstr "震え補正の調整を実行..."
+
+msgid "Visual & Contrast"
+msgstr "ビジュアルとコントラスト"
+
+msgid "High Contrast Mode"
+msgstr "ハイコントラストモード"
+
+msgid "Reduced Motion (disable HUD animations)"
+msgstr "動きを減らす（HUDアニメーションを無効化）"
+
+msgid "Dwell Clicking"
+msgstr "ドウェルクリック"
+
+msgid "Enable Dwell Clicking"
+msgstr "ドウェルクリックを有効化"
+
+msgid "Apply"
+msgstr "適用"
+
+msgid "Cancel"
+msgstr "キャンセル"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Retry"
+msgstr "再試行"
+
+msgid "Close"
+msgstr "閉じる"
+
+msgid "Next"
+msgstr "次へ"
+
+msgid "Back"
+msgstr "戻る"
+
+msgid "Finish"
+msgstr "完了"
+
+msgid "Skip"
+msgstr "スキップ"
+
+msgid "Gesture Name"
+msgstr "ジェスチャー名"
+
+msgid "Type"
+msgstr "タイプ"
+
+msgid "Action"
+msgstr "アクション"
+
+msgid "Record New Gesture"
+msgstr "新しいジェスチャーを録音"
+
+msgid "Delete Selected"
+msgstr "選択項目を削除"
+
+msgid "Welcome to Maestro"
+msgstr "Maestroへようこそ"
+
+msgid "Camera Permission"
+msgstr "カメラの権限"
+
+msgid "Accessibility Permission"
+msgstr "アクセシビリティの権限"
+
+msgid "Microphone Permission"
+msgstr "マイクの権限"
+
+msgid "Setup Complete"
+msgstr "セットアップ完了"
+
+msgid "Hold your hand steady in front of the camera."
+msgstr "カメラの前で手を静止させてください。"
+
+msgid "Start Calibration"
+msgstr "調整を開始"
+
+msgid "Calibration Complete!"
+msgstr "調整が完了しました！"
+
+msgid "No hand coordinates detected. Please hold your hand in front of the camera and try again."
+msgstr "手の座標が検出されませんでした。カメラの前で手を静止させ、もう一度お試しください。"
+
+msgid "Gesture recognized"
+msgstr "ジェスチャーが認識されました"
+
+msgid "Recognition paused"
+msgstr "認識が一時停止されました"
+
+msgid "Recognition resumed"
+msgstr "認識が再開されました"
+
+msgid "Download Successful"
+msgstr "ダウンロード成功"
+
+msgid "Vosk speech model downloaded and set up successfully!"
+msgstr "Voskの音声モデルが正常にダウンロードされ、設定されました！"
+
+msgid "Download Failed"
+msgstr "ダウンロード失敗"

@@ -20,17 +20,47 @@ def get_broker_address() -> str:
     if platform.system() == "Windows":
         return r'\\.\pipe\gesture_controller_broker'
     else:
-        # User config dir
-        if platform.system() == "Darwin":
-            base = Path.home() / "Library" / "Application Support" / "gesture_controller"
-        else:
-            base = Path.home() / ".config" / "gesture_controller"
-        base.mkdir(parents=True, exist_ok=True)
-        return str(base / "broker.sock")
+        from gesture_controller.core.paths import broker_socket_path
+        p = broker_socket_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        return str(p)
 
 
 def get_broker_family() -> str:
     return 'AF_PIPE' if platform.system() == "Windows" else 'AF_UNIX'
+
+
+def verify_peer(conn: Any) -> bool:
+    """Verify that the connecting peer process belongs to the same UID."""
+    if platform.system() == "Windows":
+        return True
+
+    import socket
+    import struct
+    try:
+        # Wrap connection descriptor in a standard socket
+        fd = conn.fileno()
+        s = socket.fromfd(fd, socket.AF_UNIX, socket.SOCK_STREAM)
+        
+        if platform.system() == "Linux":
+            # SO_PEERCRED returns struct ucred: { pid_t pid, uid_t uid, gid_t gid }
+            cred = s.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i"))
+            _, uid, _ = struct.unpack("3i", cred)
+            return uid == os.getuid()
+            
+        elif platform.system() == "Darwin":
+            # LOCAL_PEERCRED on macOS returns struct xucred:
+            # { u_short cr_version; uid_t cr_uid; short cr_ngroups; gid_t cr_groups[16]; }
+            sol_local = getattr(socket, "SOL_LOCAL", 0)
+            local_peercred = getattr(socket, "LOCAL_PEERCRED", 1)
+            cred = s.getsockopt(sol_local, local_peercred, 128)
+            # Unpack version (2 bytes) and uid (4 bytes)
+            _, uid = struct.unpack("=HI", cred[:6])
+            return uid == os.getuid()
+    except Exception as e:
+        logger.error("Peer verification failed", error=str(e))
+        return False
+    return True
 
 
 class RateLimiter:
@@ -114,12 +144,8 @@ class InjectionBrokerServer:
         self.family = get_broker_family()
         self.rate_limiter = RateLimiter()
         
-        if platform.system() == "Windows":
-            log_dir = Path(os.environ.get("APPDATA", "")) / "gesture_controller"
-        elif platform.system() == "Darwin":
-            log_dir = Path.home() / "Library" / "Application Support" / "gesture_controller"
-        else:
-            log_dir = Path.home() / ".config" / "gesture_controller"
+        from gesture_controller.core.paths import user_config_dir
+        log_dir = user_config_dir()
         log_dir.mkdir(parents=True, exist_ok=True)
         
         self.audit_logger = AuditLogger(log_dir / "audit.log")
@@ -149,6 +175,11 @@ class InjectionBrokerServer:
             while self.running:
                 try:
                     conn = self._listener.accept()
+                    if not verify_peer(conn):
+                        logger.warning("Rejected unauthorized broker connection attempt")
+                        self.audit_logger.log("auth_rejected", {"reason": "unauthorized_uid"})
+                        conn.close()
+                        continue
                     threading.Thread(target=self._handle_client, args=(conn,), daemon=True).start()
                 except Exception as e:
                     if self.running:

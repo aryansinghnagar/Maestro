@@ -2,122 +2,12 @@ import platform
 import structlog
 import ctypes
 from ctypes import wintypes
-from typing import Any
 
 from gesture_controller.os_integration.base_controller import BaseController
 
 logger = structlog.get_logger(__name__)
 
-# Virtual Key (VK) codes mapping
-VK_CODES = {
-    "backspace": 0x08,
-    "tab": 0x09,
-    "clear": 0x0C,
-    "enter": 0x0D,
-    "return": 0x0D,
-    "shift": 0x10,
-    "ctrl": 0x11,
-    "control": 0x11,
-    "alt": 0x12,
-    "pause": 0x13,
-    "caps_lock": 0x14,
-    "escape": 0x1B,
-    "space": 0x20,
-    "pageup": 0x21,
-    "page_up": 0x21,
-    "pagedown": 0x22,
-    "page_down": 0x22,
-    "end": 0x23,
-    "home": 0x24,
-    "left": 0x25,
-    "up": 0x26,
-    "right": 0x27,
-    "down": 0x28,
-    "select": 0x29,
-    "print": 0x2A,
-    "execute": 0x2B,
-    "printscreen": 0x2C,
-    "prtscr": 0x2C,
-    "insert": 0x2D,
-    "delete": 0x2E,
-    "help": 0x2F,
-    "win": 0x5B,
-    "super": 0x5B,
-    "meta": 0x5B,
-    "cmd": 0x5B,
-    "numpad0": 0x60,
-    "numpad1": 0x61,
-    "numpad2": 0x62,
-    "numpad3": 0x63,
-    "numpad4": 0x64,
-    "numpad5": 0x65,
-    "numpad6": 0x66,
-    "numpad7": 0x67,
-    "numpad8": 0x68,
-    "numpad9": 0x69,
-    "multiply": 0x6A,
-    "add": 0x6B,
-    "separator": 0x6C,
-    "subtract": 0x6D,
-    "decimal": 0x6E,
-    "divide": 0x6F,
-    "f1": 0x70,
-    "f2": 0x71,
-    "f3": 0x72,
-    "f4": 0x73,
-    "f5": 0x74,
-    "f6": 0x75,
-    "f7": 0x76,
-    "f8": 0x77,
-    "f9": 0x78,
-    "f10": 0x79,
-    "f11": 0x7A,
-    "f12": 0x7B,
-    "numlock": 0x90,
-    "scrolllock": 0x91,
-    "playpause": 0xCD,
-    "nexttrack": 0xB0,
-    "prevtrack": 0xB1,
-    "volumeup": 0xAF,
-    "volumedown": 0xAE,
-    # Letters and numbers
-    "a": 0x41,
-    "b": 0x42,
-    "c": 0x43,
-    "d": 0x44,
-    "e": 0x45,
-    "f": 0x46,
-    "g": 0x47,
-    "h": 0x48,
-    "i": 0x49,
-    "j": 0x4A,
-    "k": 0x4B,
-    "l": 0x4C,
-    "m": 0x4D,
-    "n": 0x4E,
-    "o": 0x4F,
-    "p": 0x50,
-    "q": 0x51,
-    "r": 0x52,
-    "s": 0x53,
-    "t": 0x54,
-    "u": 0x55,
-    "v": 0x56,
-    "w": 0x57,
-    "x": 0x58,
-    "y": 0x59,
-    "z": 0x5A,
-    "0": 0x30,
-    "1": 0x31,
-    "2": 0x32,
-    "3": 0x33,
-    "4": 0x34,
-    "5": 0x35,
-    "6": 0x36,
-    "7": 0x37,
-    "8": 0x38,
-    "9": 0x39,
-}
+# Virtual Key (VK) codes mapping (Imported from keycodes)
 
 
 # Win32 SendInput Structures
@@ -148,19 +38,10 @@ class KEYBDINPUT(ctypes.Structure):
     ]
 
 
-class HARDWAREINPUT(ctypes.Structure):
-    _fields_ = [
-        ("uMsg", wintypes.DWORD),
-        ("wParamL", wintypes.WORD),
-        ("wParamH", wintypes.WORD),
-    ]
-
-
 class INPUT_UNION(ctypes.Union):
     _fields_ = [
         ("mi", MOUSEINPUT),
         ("ki", KEYBDINPUT),
-        ("hi", HARDWAREINPUT),
     ]
 
 
@@ -172,12 +53,8 @@ class INPUT(ctypes.Structure):
 
 
 def get_vk_code(key: str) -> int:
-    key_lower = key.lower()
-    if key_lower in VK_CODES:
-        return VK_CODES[key_lower]
-    if len(key_lower) == 1:
-        return ord(key_lower.upper())
-    return 0
+    from gesture_controller.os_integration.keycodes import get_windows_vkcode
+    return get_windows_vkcode(key)
 
 
 def send_key_event(vk_code: int, is_up: bool = False) -> None:

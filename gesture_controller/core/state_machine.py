@@ -1,11 +1,9 @@
-import ast
 import copy
-import operator
 import threading
 import time
 import structlog
 from dataclasses import dataclass, field
-from typing import Callable, Any, Optional
+from typing import Callable, Any
 
 from gesture_controller.models.data_types import FeatureVector, GestureEvent
 from gesture_controller.core.event_bus import EventBus
@@ -20,27 +18,35 @@ def compile_condition(
     expr_str: str, thresholds: dict[str, float]
 ) -> Callable[[FeatureVector], bool]:
     """Parse a condition string into a safe callable. Raises ValueError on disallowed constructs."""
-    from gesture_controller.core.config_manager import SafeExpressionEvaluator
+    import ast
+    from gesture_controller.core.expression_evaluator import SafeExpressionEvaluator
 
     compiled_ast = SafeExpressionEvaluator.compile_expression(expr_str)
 
+    # Walk the AST once at compilation time to extract all referenced variable/attribute names
+    needed_names = set()
+    for child in ast.walk(compiled_ast):
+        if isinstance(child, ast.Name):
+            name_id = child.id
+            if name_id in {"True", "False"}:
+                continue
+            needed_names.add(name_id)
+            if name_id.endswith(("_x", "_y", "_z")):
+                needed_names.add(name_id[:-2])
+
     def _execute(fv: FeatureVector) -> bool:
         context = dict(thresholds)
-        for key in dir(fv):
-            if key.startswith("_"):
-                continue
-            try:
+        for key in needed_names:
+            if hasattr(fv, key):
                 val = getattr(fv, key)
-            except AttributeError:
-                continue
-            if callable(val):
-                continue
-            context[key] = val
+                if callable(val):
+                    continue
+                context[key] = val
 
-            if isinstance(val, (tuple, list, np.ndarray)) and len(val) == 3:
-                context[f"{key}_x"] = float(val[0])
-                context[f"{key}_y"] = float(val[1])
-                context[f"{key}_z"] = float(val[2])
+                if isinstance(val, (tuple, list, np.ndarray)) and len(val) == 3:
+                    context[f"{key}_x"] = float(val[0])
+                    context[f"{key}_y"] = float(val[1])
+                    context[f"{key}_z"] = float(val[2])
 
         return SafeExpressionEvaluator.evaluate(compiled_ast, context)
 

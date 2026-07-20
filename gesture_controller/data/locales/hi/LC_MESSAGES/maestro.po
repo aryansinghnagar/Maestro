@@ -1,0 +1,210 @@
+# Maestro - हिन्दी (Hindi)
+msgid ""
+msgstr ""
+"Project-Id-Version: Maestro 1.0\n"
+"Language: hi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Settings"
+msgstr "सेटिंग्स"
+
+msgid "Maestro Onboarding & Permissions"
+msgstr "Maestro सेटअप और अनुमतियाँ"
+
+msgid "Record Custom Gesture"
+msgstr "कस्टम जेस्चर रिकॉर्ड करें"
+
+msgid "Tremor Calibration"
+msgstr "कंपन अंशांकन"
+
+msgid "Camera: Connected"
+msgstr "कैमरा: कनेक्टेड"
+
+msgid "Camera: Disconnected"
+msgstr "कैमरा: डिस्कनेक्टेड"
+
+msgid "Pause Recognition"
+msgstr "पहचान रोकें"
+
+msgid "Resume Recognition"
+msgstr "पहचान फिर शुरू करें"
+
+msgid "Export Diagnostics"
+msgstr "डायग्नोस्टिक्स निर्यात करें"
+
+msgid "Quit Maestro"
+msgstr "Maestro बंद करें"
+
+msgid "General"
+msgstr "सामान्य"
+
+msgid "Sensitivity"
+msgstr "संवेदनशीलता"
+
+msgid "Gestures"
+msgstr "जेस्चर"
+
+msgid "HUD"
+msgstr "HUD"
+
+msgid "Accessibility"
+msgstr "पहुँच क्षमता"
+
+msgid "Camera Device"
+msgstr "कैमरा डिवाइस"
+
+msgid "Toggle Recognition Hotkey"
+msgstr "पहचान टॉगल हॉटकी"
+
+msgid "Language"
+msgstr "भाषा"
+
+msgid "Global Sensitivity"
+msgstr "वैश्विक संवेदनशीलता"
+
+msgid "Min Cutoff Frequency"
+msgstr "न्यूनतम कटऑफ आवृत्ति"
+
+msgid "Enable HUD"
+msgstr "HUD सक्षम करें"
+
+msgid "HUD Opacity"
+msgstr "HUD अपारदर्शिता"
+
+msgid "Show Joint Tracking Dots"
+msgstr "जोड़ ट्रैकिंग बिंदु दिखाएं"
+
+msgid "Show Gesture Progress Ring"
+msgstr "जेस्चर प्रगति रिंग दिखाएं"
+
+msgid "Voice Control"
+msgstr "वॉयस कंट्रोल"
+
+msgid "Enable Voice Control (offline, Vosk)"
+msgstr "वॉयस कंट्रोल सक्षम करें (ऑफ़लाइन, Vosk)"
+
+msgid "Wake Word:"
+msgstr "वेक वर्ड:"
+
+msgid "Download Voice Model (~50MB)"
+msgstr "वॉयस मॉडल डाउनलोड करें (~50MB)"
+
+msgid "Downloading..."
+msgstr "डाउनलोड हो रहा है..."
+
+msgid "Download Complete"
+msgstr "डाउनलोड पूर्ण"
+
+msgid "Tremor Compensation"
+msgstr "कंपन क्षतिपूर्ति"
+
+msgid "Enable Tremor Compensation"
+msgstr "कंपन क्षतिपूर्ति सक्षम करें"
+
+msgid "Run Tremor Calibration..."
+msgstr "कंपन अंशांकन चलाएं..."
+
+msgid "Visual & Contrast"
+msgstr "विज़ुअल और कंट्रास्ट"
+
+msgid "High Contrast Mode"
+msgstr "उच्च कंट्रास्ट मोड"
+
+msgid "Reduced Motion (disable HUD animations)"
+msgstr "गति कम करें (HUD एनिमेशन अक्षम करें)"
+
+msgid "Dwell Clicking"
+msgstr "ठहरकर क्लिक"
+
+msgid "Enable Dwell Clicking"
+msgstr "ठहरकर क्लिक सक्षम करें"
+
+msgid "Apply"
+msgstr "लागू करें"
+
+msgid "Cancel"
+msgstr "रद्द करें"
+
+msgid "OK"
+msgstr "ठीक है"
+
+msgid "Retry"
+msgstr "पुनः प्रयास करें"
+
+msgid "Close"
+msgstr "बंद करें"
+
+msgid "Next"
+msgstr "अगला"
+
+msgid "Back"
+msgstr "वापस"
+
+msgid "Finish"
+msgstr "समाप्त"
+
+msgid "Skip"
+msgstr "छोड़ें"
+
+msgid "Gesture Name"
+msgstr "जेस्चर का नाम"
+
+msgid "Type"
+msgstr "प्रकार"
+
+msgid "Action"
+msgstr "क्रिया"
+
+msgid "Record New Gesture"
+msgstr "नया जेस्चर रिकॉर्ड करें"
+
+msgid "Delete Selected"
+msgstr "चुने हुए को हटाएं"
+
+msgid "Welcome to Maestro"
+msgstr "Maestro में आपका स्वागत है"
+
+msgid "Camera Permission"
+msgstr "कैमरा अनुमति"
+
+msgid "Accessibility Permission"
+msgstr "पहुँच क्षमता अनुमति"
+
+msgid "Microphone Permission"
+msgstr "माइक्रोफ़ोन अनुमति"
+
+msgid "Setup Complete"
+msgstr "सेटअप पूर्ण"
+
+msgid "Hold your hand steady in front of the camera."
+msgstr "कैमरे के सामने अपना हाथ स्थिर रखें।"
+
+msgid "Start Calibration"
+msgstr "अंशांकन शुरू करें"
+
+msgid "Calibration Complete!"
+msgstr "अंशांकन पूर्ण!"
+
+msgid "No hand coordinates detected. Please hold your hand in front of the camera and try again."
+msgstr "हाथ के निर्देशांक नहीं मिले। कृपया कैमरे के सामने हाथ रखें और पुनः प्रयास करें।"
+
+msgid "Gesture recognized"
+msgstr "जेस्चर पहचाना गया"
+
+msgid "Recognition paused"
+msgstr "पहचान रोकी गई"
+
+msgid "Recognition resumed"
+msgstr "पहचान फिर शुरू हुई"
+
+msgid "Download Successful"
+msgstr "डाउनलोड सफल"
+
+msgid "Vosk speech model downloaded and set up successfully!"
+msgstr "Vosk स्पीच मॉडल सफलतापूर्वक डाउनलोड और सेटअप हो गया!"
+
+msgid "Download Failed"
+msgstr "डाउनलोड विफल"

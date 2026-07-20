@@ -118,30 +118,7 @@ class OverlayHUD(QWidget):
         painter.setPen(QPen(QColor(0, 255, 180, 220), 2))
         painter.setBrush(QBrush(QColor(0, 255, 180, 160)))
 
-        # Bones connection map
-        CONNECTIONS = [
-            (0, 1),
-            (1, 2),
-            (2, 3),
-            (3, 4),  # Thumb
-            (0, 5),
-            (5, 6),
-            (6, 7),
-            (7, 8),  # Index
-            (5, 9),
-            (9, 10),
-            (10, 11),
-            (11, 12),  # Middle
-            (9, 13),
-            (13, 14),
-            (14, 15),
-            (15, 16),  # Ring
-            (13, 17),
-            (17, 18),
-            (18, 19),
-            (19, 20),  # Pinky
-            (0, 17),  # Palm base
-        ]
+        from gesture_controller.models.hand_topology import CONNECTIONS
 
         # Convert normalized coordinates [0, 1] to pixel space
         points = []
@@ -182,6 +159,9 @@ class OverlayHUD(QWidget):
         if not self._config.get("hud", {}).get("show_progress_ring", True):
             return
 
+        from gesture_controller.gui.theme import detect_reduced_motion
+        reduced_motion = self._config.get("a11y", {}).get("reduced_motion", False) or detect_reduced_motion()
+
         w, h = self.width(), self.height()
         center_x = w - 100
         center_y = h - 100
@@ -196,7 +176,8 @@ class OverlayHUD(QWidget):
         painter.setPen(QPen(QColor(0, 255, 136, 230), 5))
         rect = QRectF(center_x - radius, center_y - radius, radius * 2, radius * 2)
         # Angle parameter is in 1/16th of a degree
-        angle_span = int(-360 * self._fsm_progress * 16)
+        progress = 1.0 if self._fsm_progress >= 0.95 else 0.0 if reduced_motion else self._fsm_progress
+        angle_span = int(-360 * progress * 16)
         painter.drawArc(rect, 90 * 16, angle_span)
 
         # Active gesture label below ring

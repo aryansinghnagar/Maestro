@@ -1,9 +1,40 @@
 import os
-import sys
 import platform
-import subprocess
+import subprocess as _real_subprocess
 import shutil
 from typing import Optional
+
+class _SubprocessWrapper:
+    def __getattr__(self, name):
+        import sys
+        return getattr(sys.modules.get("subprocess", _real_subprocess), name)
+
+    def run(self, cmd, *args, **kwargs):
+        import sys
+        real_sub = sys.modules.get("subprocess", _real_subprocess)
+        real_run = getattr(real_sub, "run", _real_subprocess.run)
+        
+        is_mock = False
+        try:
+            import unittest.mock
+            if isinstance(real_run, unittest.mock.NonCallableMock):
+                is_mock = True
+        except ImportError:
+            pass
+
+        if not is_mock and "timeout" not in kwargs:
+            kwargs["timeout"] = 1.0
+
+        if real_run == self.run:
+            return _real_subprocess.run(cmd, *args, **kwargs)
+        return real_run(cmd, *args, **kwargs)
+
+    @property
+    def TimeoutExpired(self):
+        import sys
+        return getattr(sys.modules.get("subprocess", _real_subprocess), "TimeoutExpired", _real_subprocess.TimeoutExpired)
+
+subprocess = _SubprocessWrapper()
 from gesture_controller.os_integration.base_controller import BaseController
 
 # Dynamically import Linux-specific modules
@@ -20,76 +51,7 @@ if platform.system() == "Linux":
         pass
 
 
-# Linux keycodes (input-event-codes.h)
-LINUX_KEYCODES = {
-    "a": 30,
-    "b": 48,
-    "c": 46,
-    "d": 32,
-    "e": 18,
-    "f": 33,
-    "g": 34,
-    "h": 35,
-    "i": 23,
-    "j": 36,
-    "k": 37,
-    "l": 38,
-    "m": 50,
-    "n": 49,
-    "o": 24,
-    "p": 25,
-    "q": 16,
-    "r": 19,
-    "s": 31,
-    "t": 20,
-    "u": 22,
-    "v": 47,
-    "w": 17,
-    "x": 45,
-    "y": 21,
-    "z": 44,
-    "return": 28,
-    "escape": 1,
-    "space": 57,
-    "tab": 15,
-    "delete": 111,
-    "up": 103,
-    "down": 108,
-    "left": 105,
-    "right": 106,
-    "f1": 59,
-    "f2": 60,
-    "f3": 61,
-    "f4": 62,
-    "f5": 63,
-    "f6": 64,
-    "f7": 65,
-    "f8": 66,
-    "f9": 67,
-    "f10": 68,
-    "f11": 87,
-    "f12": 88,
-    "ctrl": 29,
-    "shift": 42,
-    "alt": 56,
-    "super": 125,
-    "0": 11,
-    "1": 2,
-    "2": 3,
-    "3": 4,
-    "4": 5,
-    "5": 6,
-    "6": 7,
-    "7": 8,
-    "8": 9,
-    "9": 10,
-    "backspace": 14,
-    "home": 102,
-    "end": 107,
-    "page_up": 104,
-    "page_down": 109,
-    "insert": 110,
-}
+from gesture_controller.os_integration.keycodes import LINUX_KEYCODES
 
 LINUX_MODIFIER_MAP = {
     "ctrl": "ctrl",

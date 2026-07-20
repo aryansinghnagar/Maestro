@@ -1,6 +1,5 @@
 import subprocess
 import structlog
-from typing import Any
 
 logger = structlog.get_logger(__name__)
 

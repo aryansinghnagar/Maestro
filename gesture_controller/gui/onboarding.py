@@ -12,10 +12,10 @@ from PyQt6.QtWidgets import (
     QStackedWidget,
     QWidget,
     QProgressBar,
-    QApplication,
 )
-from PyQt6.QtGui import QFont, QColor, QPalette
+from PyQt6.QtGui import QFont, QPalette
 
+from gesture_controller.core.paths import onboarded_marker_path
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -23,13 +23,7 @@ logger = structlog.get_logger(__name__)
 
 # Config Directory Marker
 def get_onboarded_marker_path() -> Path:
-    if platform.system() == "Windows":
-        base_dir = Path(os.environ.get("APPDATA", "")) / "gesture_controller"
-    elif platform.system() == "Darwin":
-        base_dir = Path.home() / "Library" / "Application Support" / "gesture_controller"
-    else:
-        base_dir = Path.home() / ".config" / "gesture_controller"
-    return base_dir / ".onboarded"
+    return onboarded_marker_path()
 
 
 class OnboardingWizard(QDialog):
@@ -267,18 +261,29 @@ class OnboardingWizard(QDialog):
 
     def request_system_permissions(self) -> None:
         """Launch system preference panels or print manual installer setup instructions."""
+        import subprocess
         os_type = platform.system()
 
         if os_type == "Darwin":
             # Launch macOS System Preferences
             if not self.os_control_ok:
-                os.system(
-                    'open "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"'
-                )
+                try:
+                    subprocess.run(
+                        ["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"],
+                        timeout=5.0,
+                        check=False,
+                    )
+                except Exception as e:
+                    logger.error("Failed to launch accessibility preferences", error=str(e))
             if not self.camera_ok:
-                os.system(
-                    'open "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera"'
-                )
+                try:
+                    subprocess.run(
+                        ["open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera"],
+                        timeout=5.0,
+                        check=False,
+                    )
+                except Exception as e:
+                    logger.error("Failed to launch camera preferences", error=str(e))
         elif os_type == "Linux":
             # Linux: instruct user to run the udev installer script
             logger.info(

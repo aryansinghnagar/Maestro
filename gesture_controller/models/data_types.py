@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 import numpy as np
 
 
@@ -85,18 +84,6 @@ class GestureEvent:
     confidence: float
     hand: str
     timestamp: float
-    app_profile: Optional[str] = None
+    app_profile: str | None = None
     gesture_source: str = "fsm"
     metadata: dict[str, str | float | int | bool] = field(default_factory=dict)
-
-
-class CameraEvent:
-    DISCONNECTED = "camera_disconnected"
-    RECOVERED = "camera_recovered"
-    RECONNECTING = "camera_reconnecting"
-
-
-class SystemEvent:
-    CONFIG_CHANGED = "config_changed"
-    PAUSE_TOGGLED = "pause_toggled"
-    SHUTDOWN = "shutdown"
