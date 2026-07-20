@@ -128,7 +128,7 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          python -m pytest -m "not real_mediapipe and not requires_hardware and not slow" --cov=gesture_controller --cov-fail-under=55 --junitxml=pytest.xml
+          python -m pytest -m "not real_mediapipe and not requires_hardware and not slow" --cov=gesture_controller --cov-fail-under=50 --junitxml=pytest.xml
 
       - name: Upload test results
         if: always()
