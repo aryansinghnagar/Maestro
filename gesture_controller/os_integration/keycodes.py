@@ -1,0 +1,139 @@
+"""Unified key name → platform keycode mapping.
+
+Replaces 3 divergent keycode tables across:
+  action_dispatcher._normalize_key, windows_controller.VK_CODES,
+  linux_controller.LINUX_KEYCODES
+"""
+from __future__ import annotations
+
+# Canonical key names recognized by all controllers
+CANONICAL_KEYS: set[str] = {
+    "ctrl", "shift", "alt", "super", "cmd",
+    *(chr(c) for c in range(ord("a"), ord("z") + 1)),
+    *(str(d) for d in range(10)),
+    "up", "down", "left", "right",
+    "home", "end", "page_up", "page_down",
+    "insert", "delete", "backspace",
+    "enter", "return", "escape", "esc", "tab", "space",
+    "caps_lock", "num_lock", "scroll_lock", "print_screen", "pause",
+    *(f"f{i}" for i in range(1, 13)),
+    "play_pause", "next_track", "prev_track",
+    "volume_up", "volume_down", "volume_mute",
+    "menu", "win",
+}
+
+KEY_ALIASES: dict[str, str] = {
+    "arrowleft": "left", "arrowright": "right",
+    "arrowup": "up", "arrowdown": "down",
+    "win": "super", "windows": "super", "meta": "super",
+    "cmd": "super", "command": "super",
+    "control": "ctrl",
+    "enter": "return", "esc": "escape",
+    "pageup": "page_up", "pagedown": "page_down",
+    "prtscr": "print_screen", "printscreen": "print_screen",
+    "capslock": "caps_lock", "numlock": "num_lock",
+    "playpause": "play_pause",
+    "nexttrack": "next_track", "prevtrack": "prev_track",
+    "previous": "prev_track", "next": "next_track",
+    "volumeup": "volume_up", "volumedown": "volume_down",
+    "mute": "volume_mute",
+}
+
+# Linux evdev keycodes
+LINUX_KEYCODES: dict[str, int] = {
+    "escape": 1, "esc": 1, "1": 2, "2": 3, "3": 4, "4": 5, "5": 6, "6": 7, "7": 8, "8": 9, "9": 10, "0": 11,
+    "minus": 12, "equal": 13, "backspace": 14, "tab": 15,
+    "q": 16, "w": 17, "e": 18, "r": 19, "t": 20, "y": 21, "u": 22, "i": 23, "o": 24, "p": 25,
+    "leftbrace": 26, "rightbrace": 27, "return": 28, "leftctrl": 29,
+    "a": 30, "s": 31, "d": 32, "f": 33, "g": 34, "h": 35, "j": 36, "k": 37, "l": 38,
+    "semicolon": 39, "apostrophe": 40, "grave": 41,
+    "leftshift": 42, "backslash": 43, "z": 44, "x": 45, "c": 46, "v": 47, "b": 48, "n": 49, "m": 50,
+    "comma": 51, "dot": 52, "slash": 53, "rightshift": 54, "leftalt": 56, "space": 57,
+    "capslock": 58,
+    "f1": 59, "f2": 60, "f3": 61, "f4": 62, "f5": 63, "f6": 64,
+    "f7": 65, "f8": 66, "f9": 67, "f10": 68, "f11": 87, "f12": 88,
+    "numlock": 69, "scrolllock": 70,
+    "home": 102, "up": 103, "page_up": 104, "left": 105, "right": 106,
+    "end": 107, "down": 108, "page_down": 109, "insert": 110, "delete": 111,
+    "leftmeta": 125, "rightmeta": 126,
+    "ctrl": 29, "shift": 42, "alt": 56, "super": 125,
+    "play_pause": 164, "next_track": 163, "prev_track": 165,
+    "volume_up": 115, "volume_down": 114, "volume_mute": 113,
+}
+
+# Windows Virtual Key codes
+WIN_VK_CODES: dict[str, int] = {
+    "backspace": 0x08, "tab": 0x09, "return": 0x0D, "shift": 0x10,
+    "ctrl": 0x11, "alt": 0x12, "pause": 0x13, "caps_lock": 0x14,
+    "escape": 0x1B, "space": 0x20, "page_up": 0x21, "page_down": 0x22,
+    "end": 0x23, "home": 0x24,
+    "left": 0x25, "up": 0x26, "right": 0x27, "down": 0x28,
+    "print_screen": 0x2C, "insert": 0x2D, "delete": 0x2E,
+    "super": 0x5B, "win": 0x5B,
+    "f1": 0x70, "f2": 0x71, "f3": 0x72, "f4": 0x73, "f5": 0x74,
+    "f6": 0x75, "f7": 0x76, "f8": 0x77, "f9": 0x78, "f10": 0x79,
+    "f11": 0x7A, "f12": 0x7B,
+    "num_lock": 0x90, "scroll_lock": 0x91,
+    "volume_mute": 0xAD, "volume_down": 0xAE, "volume_up": 0xAF,
+    "play_pause": 0xB3, "prev_track": 0xB1, "next_track": 0xB0,
+}
+
+# macOS keycodes
+MAC_KEYCODES: dict[str, int] = {
+    "a": 0x00, "s": 0x01, "d": 0x02, "f": 0x03, "h": 0x04, "g": 0x05,
+    "z": 0x06, "x": 0x07, "c": 0x08, "v": 0x09, "b": 0x0B,
+    "q": 0x0C, "w": 0x0D, "e": 0x0E, "r": 0x0F, "y": 0x10, "t": 0x11,
+    "u": 0x20, "i": 0x22, "o": 0x1F, "p": 0x23,
+    "j": 0x26, "k": 0x28, "l": 0x25, "m": 0x2E, "n": 0x2D,
+    "0": 0x1D, "1": 0x12, "2": 0x13, "3": 0x14, "4": 0x15,
+    "5": 0x17, "6": 0x16, "7": 0x1A, "8": 0x1C, "9": 0x19,
+    "return": 0x24, "escape": 0x35, "space": 0x31, "tab": 0x30,
+    "delete": 0x33, "backspace": 0x33,
+    "up": 0x7E, "down": 0x7D, "left": 0x7B, "right": 0x7C,
+    "home": 0x73, "end": 0x77, "page_up": 0x74, "page_down": 0x79,
+    "f1": 0x7A, "f2": 0x78, "f3": 0x63, "f4": 0x76, "f5": 0x60,
+    "f6": 0x61, "f7": 0x62, "f8": 0x64, "f9": 0x65,
+    "f10": 0x6D, "f11": 0x67, "f12": 0x6F,
+    "super": 0x37, "cmd": 0x37,
+    "shift": 0x38, "ctrl": 0x3B, "alt": 0x3A, "opt": 0x3A,
+    "caps_lock": 0x39,
+}
+
+MAC_MODIFIER_FLAGS: dict[str, int] = {
+    "cmd": 1 << 20, "shift": 1 << 17, "ctrl": 1 << 18,
+    "alt": 1 << 19, "super": 1 << 20,
+}
+
+
+def normalize_key(key: str) -> str:
+    """Normalize a key name to canonical form."""
+    k = key.strip().lower()
+    return KEY_ALIASES.get(k, k)
+
+
+def normalize_key_combo(keys: list[str]) -> list[str]:
+    """Normalize a list of key names."""
+    return [normalize_key(k) for k in keys]
+
+
+def get_linux_keycode(key: str) -> int:
+    """Get Linux evdev keycode. Returns 0 if unknown."""
+    return LINUX_KEYCODES.get(normalize_key(key), 0)
+
+
+def get_windows_vkcode(key: str) -> int:
+    """Get Windows Virtual Key code. Returns 0 if unknown."""
+    k = normalize_key(key)
+    if len(k) == 1 and k.isalpha():
+        return ord(k.upper())
+    return WIN_VK_CODES.get(k, 0)
+
+
+def get_mac_keycode(key: str) -> int:
+    """Get macOS keycode. Returns 0 if unknown."""
+    return MAC_KEYCODES.get(normalize_key(key), 0)
+
+
+def get_mac_modifier_flag(key: str) -> int:
+    """Get macOS CGEvent modifier flag. Returns 0 if not a modifier."""
+    return MAC_MODIFIER_FLAGS.get(normalize_key(key), 0)

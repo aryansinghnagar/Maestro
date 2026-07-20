@@ -10,7 +10,9 @@ from gesture_controller.core.compliance import erase_data, export_data
 
 def _make_api_request(method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
     """Send authenticated HTTP request to the running Maestro daemon."""
-    url = f"http://127.0.0.1:8765{path}?token=maestro_secret_token"
+    from gesture_controller.core.integration_server import get_or_create_api_token
+    token = get_or_create_api_token()
+    url = f"http://127.0.0.1:8765{path}?token={token}"
     headers = {"Content-Type": "application/json"}
     data = json.dumps(payload).encode("utf-8") if payload else None
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
@@ -69,9 +71,66 @@ def main() -> None:
     import_g_parser = subparsers.add_parser("import-gesture", help="Import custom gesture template.")
     import_g_parser.add_argument("file_path", type=str)
 
+    # API token subcommands
+    subparsers.add_parser("token", help="Print the current API token.")
+    subparsers.add_parser("regenerate-token", help="Regenerate the API token.")
+    subparsers.add_parser("download-voice-model", help="Download the Vosk voice model (~50MB).")
+
+    # Performance & profiling subcommands (Sprint 11)
+    subparsers.add_parser("profile-start", help="Start a cProfile session on the running daemon.")
+    profile_stop_parser = subparsers.add_parser(
+        "profile-stop", help="Stop the cProfile session and print the top-30 cumulative report."
+    )
+    profile_stop_parser.add_argument(
+        "--output", "-o", type=str, default=None,
+        help="Optional path to write raw pstats dump (e.g. profile.pstats)."
+    )
+    subparsers.add_parser("metrics", help="Print Prometheus-format metrics from the running daemon.")
+
     args = parser.parse_args()
 
-    if args.command == "erase":
+    if args.command == "token":
+        from gesture_controller.core.integration_server import get_or_create_api_token
+        from gesture_controller.core.paths import api_token_path
+        tok = get_or_create_api_token()
+        print(f"API token: {tok}")
+        print(f"Token file: {api_token_path()}")
+    elif args.command == "regenerate-token":
+        response = input("This will invalidate the current token. Continue? [y/N]: ").strip().lower()
+        if response not in ("y", "yes"):
+            print("Aborted.")
+            sys.exit(0)
+        from gesture_controller.core.integration_server import get_or_create_api_token
+        from gesture_controller.core.paths import api_token_path
+        token_path = api_token_path()
+        try:
+            token_path.unlink(missing_ok=True)
+        except Exception as e:
+            print(f"Error unlinking token file: {e}", file=sys.stderr)
+        new_tok = get_or_create_api_token()
+        print(f"New API token: {new_tok}")
+    elif args.command == "download-voice-model":
+        import urllib.request
+        import zipfile
+        from gesture_controller.core.paths import user_data_dir
+
+        model_url = "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip"
+        model_dir = user_data_dir() / "models"
+        model_dir.mkdir(parents=True, exist_ok=True)
+        zip_path = model_dir / "vosk-model.zip"
+
+        print(f"Downloading Vosk model from {model_url}...")
+        try:
+            urllib.request.urlretrieve(model_url, zip_path)
+            print("Extracting...")
+            with zipfile.ZipFile(zip_path) as z:
+                z.extractall(model_dir)
+            zip_path.unlink()
+            print(f"Model extracted to {model_dir}")
+        except Exception as e:
+            print(f"Error downloading voice model: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif args.command == "erase":
         print("Erasing all Maestro configuration, logs, and custom templates...")
         erase_data()
         print("Data erasure complete.")
@@ -188,6 +247,28 @@ def main() -> None:
             else:
                 print(f"Error: File '{args.file_path}' not found.", file=sys.stderr)
                 sys.exit(1)
+    elif args.command == "profile-start":
+        from gesture_controller.core.profiler import start_profiling
+        start_profiling()
+        print("cProfile session started. Run 'maestro profile-stop' to get results.")
+    elif args.command == "profile-stop":
+        from gesture_controller.core.profiler import stop_profiling
+        output = Path(args.output) if getattr(args, "output", None) else None
+        report = stop_profiling(output_path=output)
+        print(report)
+        if output:
+            print(f"Raw stats written to: {output}")
+    elif args.command == "metrics":
+        import urllib.request
+        try:
+            from gesture_controller.core.integration_server import get_or_create_api_token
+            token = get_or_create_api_token()
+            url = f"http://127.0.0.1:8765/metrics?token={token}"
+            with urllib.request.urlopen(url, timeout=2.0) as resp:
+                print(resp.read().decode("utf-8"))
+        except Exception as exc:
+            print(f"Could not reach running daemon: {exc}", file=sys.stderr)
+            sys.exit(1)
     else:
         # Default behavior: run GUI app
         from gesture_controller.gui.app_entry import main as run_gui

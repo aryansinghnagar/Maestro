@@ -244,3 +244,14 @@ def test_updater_network_check_failure(temp_tuf_env, qapp: QApplication) -> None
     assert len(errors) == 1
     assert any(word in errors[0] for word in ["RepositoryError", "UnsignedMetadataError", "Signature", "signed by", "keys"])
 
+
+def test_tuf_threshold_3() -> None:
+    """Verify default BOOTSTRAP_ROOT has threshold=3 for root/targets."""
+    from gesture_controller.core.updater import BOOTSTRAP_ROOT
+    root_role = BOOTSTRAP_ROOT["signed"]["roles"]["root"]
+    targets_role = BOOTSTRAP_ROOT["signed"]["roles"]["targets"]
+    assert root_role["threshold"] == 3
+    assert targets_role["threshold"] == 3
+    assert len(root_role["keyids"]) >= 5
+    assert len(targets_role["keyids"]) >= 5
+

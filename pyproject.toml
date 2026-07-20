@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gesture-controller"
-version = "0.1.0"
+version = "1.0.0"
 description = "Cross-platform hand-gesture desktop controller"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -12,7 +12,7 @@ license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]
 keywords = ["gesture", "mediapipe", "accessibility", "input", "hand-tracking"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: End Users/Desktop",
     "Operating System :: Microsoft :: Windows :: Windows 10",
     "Operating System :: MacOS :: MacOS X",
@@ -34,10 +34,14 @@ dependencies = [
     "jsonschema>=4.17.0",
     "structlog>=23.1.0",
     "numba>=0.57.0",
-    "pyautogui>=0.9.54",
+    "onnxruntime>=1.16.0",
+    "tuf>=2.0.0",
     "psutil>=5.9.0",
     "watchdog>=3.0.0",
     "RestrictedPython>=6.0",
+    "vosk>=0.3.45",
+    "pyaudio>=0.2.13",
+    "wasmtime>=12.0.0",
     # Platform-specific — declared with markers so non-target platforms skip them
     "evdev>=1.6.0; sys_platform == 'linux'",
     "pyobjc-framework-Quartz>=9.0; sys_platform == 'darwin'",
@@ -145,11 +149,6 @@ omit = [
     "gesture_controller/cli/verify_install.py",
     "gesture_controller/gui/**",
     "gesture_controller/plugins/**",
-    "gesture_controller/main.py",
-    "gesture_controller/core/engine.py",
-    "gesture_controller/os_integration/linux_controller.py",
-    "gesture_controller/os_integration/macos_controller.py",
-    "gesture_controller/models/dtw_matcher.py",
 ]
 
 [tool.coverage.report]

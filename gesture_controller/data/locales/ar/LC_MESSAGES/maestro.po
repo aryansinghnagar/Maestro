@@ -1,0 +1,210 @@
+# Maestro - العربية (Arabic) - RTL
+msgid ""
+msgstr ""
+"Project-Id-Version: Maestro 1.0\n"
+"Language: ar\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=6; plural=(n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 ? 4 : 5);\n"
+
+msgid "Settings"
+msgstr "الإعدادات"
+
+msgid "Maestro Onboarding & Permissions"
+msgstr "إعداد Maestro والأذونات"
+
+msgid "Record Custom Gesture"
+msgstr "تسجيل إيماءة مخصصة"
+
+msgid "Tremor Calibration"
+msgstr "معايرة الارتجاف"
+
+msgid "Camera: Connected"
+msgstr "الكاميرا: متصلة"
+
+msgid "Camera: Disconnected"
+msgstr "الكاميرا: غير متصلة"
+
+msgid "Pause Recognition"
+msgstr "إيقاف التعرف مؤقتاً"
+
+msgid "Resume Recognition"
+msgstr "استئناف التعرف"
+
+msgid "Export Diagnostics"
+msgstr "تصدير التشخيصات"
+
+msgid "Quit Maestro"
+msgstr "إنهاء Maestro"
+
+msgid "General"
+msgstr "عام"
+
+msgid "Sensitivity"
+msgstr "الحساسية"
+
+msgid "Gestures"
+msgstr "الإيماءات"
+
+msgid "HUD"
+msgstr "HUD"
+
+msgid "Accessibility"
+msgstr "إمكانية الوصول"
+
+msgid "Camera Device"
+msgstr "جهاز الكاميرا"
+
+msgid "Toggle Recognition Hotkey"
+msgstr "مفتاح اختصار التعرف"
+
+msgid "Language"
+msgstr "اللغة"
+
+msgid "Global Sensitivity"
+msgstr "الحساسية العامة"
+
+msgid "Min Cutoff Frequency"
+msgstr "الحد الأدنى لتردد القطع"
+
+msgid "Enable HUD"
+msgstr "تفعيل HUD"
+
+msgid "HUD Opacity"
+msgstr "شفافية HUD"
+
+msgid "Show Joint Tracking Dots"
+msgstr "إظهار نقاط تتبع المفاصل"
+
+msgid "Show Gesture Progress Ring"
+msgstr "إظهار حلقة تقدم الإيماءة"
+
+msgid "Voice Control"
+msgstr "التحكم الصوتي"
+
+msgid "Enable Voice Control (offline, Vosk)"
+msgstr "تفعيل التحكم الصوتي (بدون إنترنت، Vosk)"
+
+msgid "Wake Word:"
+msgstr "كلمة التنشيط:"
+
+msgid "Download Voice Model (~50MB)"
+msgstr "تنزيل النموذج الصوتي (~50 ميجابايت)"
+
+msgid "Downloading..."
+msgstr "جارٍ التنزيل..."
+
+msgid "Download Complete"
+msgstr "اكتمل التنزيل"
+
+msgid "Tremor Compensation"
+msgstr "تعويض الارتجاف"
+
+msgid "Enable Tremor Compensation"
+msgstr "تفعيل تعويض الارتجاف"
+
+msgid "Run Tremor Calibration..."
+msgstr "تشغيل معايرة الارتجاف..."
+
+msgid "Visual & Contrast"
+msgstr "البصري والتباين"
+
+msgid "High Contrast Mode"
+msgstr "وضع التباين العالي"
+
+msgid "Reduced Motion (disable HUD animations)"
+msgstr "تقليل الحركة (تعطيل رسوم HUD المتحركة)"
+
+msgid "Dwell Clicking"
+msgstr "النقر بالتوقف"
+
+msgid "Enable Dwell Clicking"
+msgstr "تفعيل النقر بالتوقف"
+
+msgid "Apply"
+msgstr "تطبيق"
+
+msgid "Cancel"
+msgstr "إلغاء"
+
+msgid "OK"
+msgstr "موافق"
+
+msgid "Retry"
+msgstr "إعادة المحاولة"
+
+msgid "Close"
+msgstr "إغلاق"
+
+msgid "Next"
+msgstr "التالي"
+
+msgid "Back"
+msgstr "رجوع"
+
+msgid "Finish"
+msgstr "إنهاء"
+
+msgid "Skip"
+msgstr "تخطي"
+
+msgid "Gesture Name"
+msgstr "اسم الإيماءة"
+
+msgid "Type"
+msgstr "النوع"
+
+msgid "Action"
+msgstr "الإجراء"
+
+msgid "Record New Gesture"
+msgstr "تسجيل إيماءة جديدة"
+
+msgid "Delete Selected"
+msgstr "حذف المحدد"
+
+msgid "Welcome to Maestro"
+msgstr "مرحباً بك في Maestro"
+
+msgid "Camera Permission"
+msgstr "إذن الكاميرا"
+
+msgid "Accessibility Permission"
+msgstr "إذن إمكانية الوصول"
+
+msgid "Microphone Permission"
+msgstr "إذن الميكروفون"
+
+msgid "Setup Complete"
+msgstr "اكتمل الإعداد"
+
+msgid "Hold your hand steady in front of the camera."
+msgstr "أمسك يدك بثبات أمام الكاميرا."
+
+msgid "Start Calibration"
+msgstr "بدء المعايرة"
+
+msgid "Calibration Complete!"
+msgstr "اكتملت المعايرة!"
+
+msgid "No hand coordinates detected. Please hold your hand in front of the camera and try again."
+msgstr "لم يتم اكتشاف إحداثيات اليد. يرجى إمساك يدك أمام الكاميرا والمحاولة مرة أخرى."
+
+msgid "Gesture recognized"
+msgstr "تم التعرف على الإيماءة"
+
+msgid "Recognition paused"
+msgstr "التعرف متوقف مؤقتاً"
+
+msgid "Recognition resumed"
+msgstr "تم استئناف التعرف"
+
+msgid "Download Successful"
+msgstr "نجح التنزيل"
+
+msgid "Vosk speech model downloaded and set up successfully!"
+msgstr "تم تنزيل نموذج الكلام Vosk وإعداده بنجاح!"
+
+msgid "Download Failed"
+msgstr "فشل التنزيل"

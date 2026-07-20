@@ -43,7 +43,41 @@ def migrate_1_to_2(config: dict[str, Any]) -> dict[str, Any]:
     return config
 
 
-def migrate_config(config: dict[str, Any], target_version: str = "2.0") -> dict[str, Any]:
+@register_migration("2.0", "3.0")
+def migrate_2_to_3(config: dict[str, Any]) -> dict[str, Any]:
+    """Migration from version 2.0 to 3.0.
+    Renames/splits resolution, renames derivate_cutoff, and updates version.
+    """
+    logger.info("Migrating configuration schema from 2.0 to 3.0")
+    config["version"] = "3.0"
+
+    # camera.resolution -> camera.frame_width/frame_height
+    if "camera" in config and isinstance(config["camera"], dict):
+        if "resolution" in config["camera"]:
+            res = config["camera"].pop("resolution")
+            if isinstance(res, list) and len(res) == 2:
+                config["camera"]["frame_width"] = res[0]
+                config["camera"]["frame_height"] = res[1]
+            elif isinstance(res, dict) and "width" in res and "height" in res:
+                config["camera"]["frame_width"] = res["width"]
+                config["camera"]["frame_height"] = res["height"]
+
+    # filtering.one_euro.derivate_cutoff -> filtering.one_euro.derivative_cutoff
+    if "filtering" in config and isinstance(config["filtering"], dict):
+        if "one_euro" in config["filtering"] and isinstance(config["filtering"]["one_euro"], dict):
+            if "derivate_cutoff" in config["filtering"]["one_euro"]:
+                config["filtering"]["one_euro"]["derivative_cutoff"] = config["filtering"]["one_euro"].pop("derivate_cutoff")
+
+    # engine.use_onnx -> engine.inference_backend
+    if "engine" in config and isinstance(config["engine"], dict):
+        if "use_onnx" in config["engine"]:
+            use_onnx = config["engine"].pop("use_onnx")
+            config["engine"]["inference_backend"] = "onnx" if use_onnx else "auto"
+
+    return config
+
+
+def migrate_config(config: dict[str, Any], target_version: str = "3.0") -> dict[str, Any]:
     """Sequentially apply registered migrations to bring the config up to the target version."""
     current_version = config.get("version", "1.0")
     if not isinstance(current_version, str):

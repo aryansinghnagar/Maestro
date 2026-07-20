@@ -1,0 +1,218 @@
+# German translations for Maestro gesture control application.
+# Copyright (C) 2024 Maestro Project
+# This file is distributed under the same license as the Maestro package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Maestro 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-01-01 00:00+0000\n"
+"PO-Revision-Date: 2024-01-01 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Settings"
+msgstr "Einstellungen"
+
+msgid "Maestro Onboarding & Permissions"
+msgstr "Maestro Einrichtung & Berechtigungen"
+
+msgid "Record Custom Gesture"
+msgstr "Eigene Geste aufnehmen"
+
+msgid "Tremor Calibration"
+msgstr "Tremorkalibrierung"
+
+msgid "Camera: Connected"
+msgstr "Kamera: Verbunden"
+
+msgid "Camera: Disconnected"
+msgstr "Kamera: Getrennt"
+
+msgid "Pause Recognition"
+msgstr "Erkennung pausieren"
+
+msgid "Resume Recognition"
+msgstr "Erkennung fortsetzen"
+
+msgid "Export Diagnostics"
+msgstr "Diagnose exportieren"
+
+msgid "Quit Maestro"
+msgstr "Maestro beenden"
+
+msgid "General"
+msgstr "Allgemein"
+
+msgid "Sensitivity"
+msgstr "Empfindlichkeit"
+
+msgid "Gestures"
+msgstr "Gesten"
+
+msgid "HUD"
+msgstr "HUD"
+
+msgid "Accessibility"
+msgstr "Barrierefreiheit"
+
+msgid "Camera Device"
+msgstr "Kameragerät"
+
+msgid "Toggle Recognition Hotkey"
+msgstr "Tastenkürzel für Erkennung"
+
+msgid "Language"
+msgstr "Sprache"
+
+msgid "Global Sensitivity"
+msgstr "Globale Empfindlichkeit"
+
+msgid "Min Cutoff Frequency"
+msgstr "Mindest-Grenzfrequenz"
+
+msgid "Enable HUD"
+msgstr "HUD aktivieren"
+
+msgid "HUD Opacity"
+msgstr "HUD-Deckkraft"
+
+msgid "Show Joint Tracking Dots"
+msgstr "Gelenk-Tracking-Punkte anzeigen"
+
+msgid "Show Gesture Progress Ring"
+msgstr "Gestenfortschrittsring anzeigen"
+
+msgid "Voice Control"
+msgstr "Sprachsteuerung"
+
+msgid "Enable Voice Control (offline, Vosk)"
+msgstr "Sprachsteuerung aktivieren (offline, Vosk)"
+
+msgid "Wake Word:"
+msgstr "Aktivierungswort:"
+
+msgid "Download Voice Model (~50MB)"
+msgstr "Sprachmodell herunterladen (~50MB)"
+
+msgid "Downloading..."
+msgstr "Wird heruntergeladen..."
+
+msgid "Download Complete"
+msgstr "Download abgeschlossen"
+
+msgid "Tremor Compensation"
+msgstr "Tremorkompensation"
+
+msgid "Enable Tremor Compensation"
+msgstr "Tremorkompensation aktivieren"
+
+msgid "Run Tremor Calibration..."
+msgstr "Tremorkalibrierung starten..."
+
+msgid "Visual & Contrast"
+msgstr "Visuell & Kontrast"
+
+msgid "High Contrast Mode"
+msgstr "Hochkontrastmodus"
+
+msgid "Reduced Motion (disable HUD animations)"
+msgstr "Reduzierte Bewegung (HUD-Animationen deaktivieren)"
+
+msgid "Dwell Clicking"
+msgstr "Verweilklick"
+
+msgid "Enable Dwell Clicking"
+msgstr "Verweilklick aktivieren"
+
+msgid "Apply"
+msgstr "Anwenden"
+
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Retry"
+msgstr "Wiederholen"
+
+msgid "Close"
+msgstr "Schließen"
+
+msgid "Next"
+msgstr "Weiter"
+
+msgid "Back"
+msgstr "Zurück"
+
+msgid "Finish"
+msgstr "Fertigstellen"
+
+msgid "Skip"
+msgstr "Überspringen"
+
+msgid "Gesture Name"
+msgstr "Gestenname"
+
+msgid "Type"
+msgstr "Typ"
+
+msgid "Action"
+msgstr "Aktion"
+
+msgid "Record New Gesture"
+msgstr "Neue Geste aufnehmen"
+
+msgid "Delete Selected"
+msgstr "Ausgewählte löschen"
+
+msgid "Welcome to Maestro"
+msgstr "Willkommen bei Maestro"
+
+msgid "Camera Permission"
+msgstr "Kameraberechtigung"
+
+msgid "Accessibility Permission"
+msgstr "Barrierefreiheitsberechtigung"
+
+msgid "Microphone Permission"
+msgstr "Mikrofonberechtigung"
+
+msgid "Setup Complete"
+msgstr "Einrichtung abgeschlossen"
+
+msgid "Hold your hand steady in front of the camera."
+msgstr "Halten Sie Ihre Hand ruhig vor die Kamera."
+
+msgid "Start Calibration"
+msgstr "Kalibrierung starten"
+
+msgid "Calibration Complete!"
+msgstr "Kalibrierung abgeschlossen!"
+
+msgid "No hand coordinates detected. Please hold your hand in front of the camera and try again."
+msgstr "Keine Handkoordinaten erkannt. Bitte halten Sie die Hand vor die Kamera und versuchen Sie es erneut."
+
+msgid "Gesture recognized"
+msgstr "Geste erkannt"
+
+msgid "Recognition paused"
+msgstr "Erkennung pausiert"
+
+msgid "Recognition resumed"
+msgstr "Erkennung fortgesetzt"
+
+msgid "Download Successful"
+msgstr "Download erfolgreich"
+
+msgid "Vosk speech model downloaded and set up successfully!"
+msgstr "Das Vosk-Sprachmodell wurde erfolgreich heruntergeladen und eingerichtet!"
+
+msgid "Download Failed"
+msgstr "Download fehlgeschlagen"

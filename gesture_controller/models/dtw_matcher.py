@@ -10,6 +10,8 @@ from typing import Any, Sequence
 import structlog
 
 from gesture_controller.models.data_types import Hand, Landmark3D, GestureEvent
+from gesture_controller.vision.constants import DTW_BUFFER_FRAMES, DTW_FEATURE_DIMS, DTW_DEFAULT_THRESHOLD
+from gesture_controller.models.hand_normalization import normalize_landmarks
 
 logger = structlog.get_logger(__name__)
 
@@ -84,19 +86,11 @@ def dtw_distance_batch(
 def to_hand_frame(landmarks: Sequence[Landmark3D], handedness: str) -> list[Landmark3D]:
     """Normalize hand landmarks relative to the wrist origin and index finger scale."""
     arr = np.array([[l.x, l.y, l.z] for l in landmarks], dtype=np.float64)
-    wrist = arr[0]
-    mcp5 = arr[5]
-    pip6 = arr[6]
-    scale = float(np.linalg.norm(mcp5 - pip6))
-    if scale < 1e-6:
-        scale = 0.05
-    mirror = -1.0 if handedness == "Left" else 1.0
-    centered = (arr - wrist) / scale
-    centered[:, 0] *= mirror
+    centered = normalize_landmarks(arr, handedness)
     return [Landmark3D(x=float(row[0]), y=float(row[1]), z=float(row[2])) for row in centered]
 
 
-def normalize_sequence(sequence: list[np.ndarray], target_len: int = 60) -> np.ndarray:
+def normalize_sequence(sequence: list[np.ndarray], target_len: int = DTW_BUFFER_FRAMES) -> np.ndarray:
     """Resample landmark sequences to a fixed target length using linear interpolation."""
     seq_arr = np.array(sequence)
     L = len(seq_arr)
@@ -110,67 +104,13 @@ def normalize_sequence(sequence: list[np.ndarray], target_len: int = 60) -> np.n
     return resampled
 
 
-class DTWMatcher:
-    """Handles loading gesture templates and matching rolling buffer sequences using DTW."""
-
-    def __init__(self, templates: dict[str, np.ndarray] | None = None) -> None:
-        """
-        Args:
-            templates: Dict mapping gesture names to template arrays of shape (T, F).
-        """
-        self.templates = templates or {}
-        # Warm up the JIT compiler with dummy data to prevent first-frame lag
-        self._warmup()
-
-    def _warmup(self) -> None:
-        """Trigger JIT compilation on initialization to avoid first-run stutters."""
-        try:
-            s1 = np.zeros((10, 3), dtype=np.float64)
-            s2 = np.zeros((10, 3), dtype=np.float64)
-            fast_dtw_distance(s1, s2)
-        except Exception:
-            pass
-
-    def add_template(self, name: str, template: np.ndarray) -> None:
-        """Add or update a gesture template."""
-        self.templates[name] = template
-
-    def match(self, sequence: np.ndarray, threshold: float = 0.15) -> tuple[str, float]:
-        """Match sequence against all templates.
-
-        Args:
-            sequence: Input sequence of shape (T, F) to check.
-            threshold: Match rejection distance cutoff.
-
-        Returns:
-            Tuple of (gesture_name, score). If no match passes threshold, returns ("", inf).
-        """
-        best_name = ""
-        best_score = float("inf")
-
-        for name, template in self.templates.items():
-            try:
-                seq_f64 = sequence.astype(np.float64)
-                temp_f64 = template.astype(np.float64)
-                score = fast_dtw_distance(seq_f64, temp_f64)
-
-                if score < best_score:
-                    best_score = score
-                    best_name = name
-            except Exception:
-                continue
-
-        if best_score <= threshold:
-            return best_name, best_score
-        return "", best_score
-
 
 class CustomGestureMatcher:
     """Rolling window matcher for custom, user-defined gestures recorded by the GUI."""
 
     def __init__(self, config: dict[str, Any] | None = None) -> None:
         self._templates: dict[str, dict[str, Any]] = {}
-        self._buffer: np.ndarray = np.zeros((60, 63), dtype=np.float64)
+        self._buffer: np.ndarray = np.zeros((DTW_BUFFER_FRAMES, DTW_FEATURE_DIMS), dtype=np.float64)
         self._buffer_idx: int = 0
         self._buffer_full: bool = False
         self._frame_count: int = 0
@@ -184,21 +124,8 @@ class CustomGestureMatcher:
         self._precomputed_names: list[str] | None = None
 
         # Determine custom template directories
-        sys_name = platform.system()
-        if sys_name == "Windows":
-            self._template_dir = (
-                Path(os.environ.get("APPDATA", "")) / "gesture_controller" / "custom_templates"
-            )
-        elif sys_name == "Darwin":
-            self._template_dir = (
-                Path.home()
-                / "Library"
-                / "Application Support"
-                / "gesture_controller"
-                / "custom_templates"
-            )
-        else:
-            self._template_dir = Path.home() / ".config" / "gesture_controller" / "custom_templates"
+        from gesture_controller.core.paths import user_template_dir
+        self._template_dir = user_template_dir()
 
         self.load_templates(self._template_dir)
         self._warmup()
@@ -206,9 +133,9 @@ class CustomGestureMatcher:
     def _warmup(self) -> None:
         """JIT compiler pre-warmer."""
         try:
-            q = np.zeros((60, 63), dtype=np.float64)
-            t = np.zeros((1, 60, 63), dtype=np.float64)
-            th = np.array([0.15], dtype=np.float64)
+            q = np.zeros((DTW_BUFFER_FRAMES, DTW_FEATURE_DIMS), dtype=np.float64)
+            t = np.zeros((1, DTW_BUFFER_FRAMES, DTW_FEATURE_DIMS), dtype=np.float64)
+            th = np.array([DTW_DEFAULT_THRESHOLD], dtype=np.float64)
             dtw_distance_batch(q, t, th)
         except Exception:
             pass
@@ -259,9 +186,9 @@ class CustomGestureMatcher:
             dtype=np.float64,
         )
         self._buffer[self._buffer_idx] = flat
-        self._buffer_idx = (self._buffer_idx + 1) % 60
+        self._buffer_idx = (self._buffer_idx + 1) % DTW_BUFFER_FRAMES
         self._frame_count += 1
-        if self._frame_count >= 60:
+        if self._frame_count >= DTW_BUFFER_FRAMES:
             self._buffer_full = True
 
     def match(self, timestamp_s: float, correlation_id: str = "") -> GestureEvent | None:
@@ -336,7 +263,7 @@ class CustomGestureMatcher:
     def _rebuild_precomputed(self) -> None:
         names = list(self._templates.keys())
         if not names:
-            self._precomputed_templates = np.zeros((0, 60, 63), dtype=np.float64)
+            self._precomputed_templates = np.zeros((0, DTW_BUFFER_FRAMES, DTW_FEATURE_DIMS), dtype=np.float64)
             self._precomputed_thresholds = np.zeros((0,), dtype=np.float64)
             self._precomputed_names = []
             return

@@ -6,7 +6,7 @@ import onnxruntime as ort
 
 class PalmDetector:
     def __init__(
-        self, modelPath, nmsThreshold=0.3, scoreThreshold=0.5, topK=5000, backendId=0, targetId=0
+        self, modelPath, nmsThreshold=0.3, scoreThreshold=0.5, topK=5000, backendId=0, targetId=0, providers=None, sess_options=None
     ):
         self.model_path = modelPath
         self.nms_threshold = nmsThreshold
@@ -15,17 +15,18 @@ class PalmDetector:
         self.backend_id = backendId
         self.target_id = targetId
 
-        self.input_size = np.array([192, 192])  # wh
+        self.input_size = np.array([192, 192]) # wh
 
         # Initialize onnxruntime session
-        providers = ["CPUExecutionProvider"]
-        if "CUDAExecutionProvider" in ort.get_available_providers():
-            providers.insert(0, "CUDAExecutionProvider")
-        if "DirectMLExecutionProvider" in ort.get_available_providers():
-            providers.insert(0, "DirectMLExecutionProvider")
-        if "CoreMLExecutionProvider" in ort.get_available_providers():
-            providers.insert(0, "CoreMLExecutionProvider")
-        self.session = ort.InferenceSession(self.model_path, providers=providers)
+        if providers is None:
+            providers = ["CPUExecutionProvider"]
+            if "CUDAExecutionProvider" in ort.get_available_providers():
+                providers.insert(0, "CUDAExecutionProvider")
+            if "DirectMLExecutionProvider" in ort.get_available_providers():
+                providers.insert(0, "DirectMLExecutionProvider")
+            if "CoreMLExecutionProvider" in ort.get_available_providers():
+                providers.insert(0, "CoreMLExecutionProvider")
+        self.session = ort.InferenceSession(self.model_path, sess_options=sess_options, providers=providers)
 
         self.anchors = self._load_anchors()
 

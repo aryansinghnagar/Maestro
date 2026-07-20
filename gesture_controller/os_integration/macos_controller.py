@@ -1,6 +1,4 @@
-import sys
 import platform
-from typing import Optional
 from gesture_controller.os_integration.base_controller import BaseController
 
 # Dynamically import macOS modules if running on Darwin

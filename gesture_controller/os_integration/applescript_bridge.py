@@ -17,7 +17,13 @@ def run_applescript(script: str) -> str:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
-        out, err = p.communicate()
+        try:
+            out, err = p.communicate(timeout=2.0)
+        except subprocess.TimeoutExpired as e:
+            p.kill()
+            out, err = p.communicate()
+            raise RuntimeError(f"osascript execution timed out: {e}") from e
+            
         if p.returncode != 0:
             err_msg = err.decode("utf-8", errors="ignore").strip()
             raise RuntimeError(f"osascript error: {err_msg}")

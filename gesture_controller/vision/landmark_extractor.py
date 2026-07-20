@@ -77,26 +77,29 @@ class LandmarkExtractor:
             ),
         )
 
-        self._is_onnx = False
-        if config.get("engine", {}).get("use_onnx", False):
-            try:
-                from gesture_controller.vision.onnx_backend import ONNXHandLandmarker
+        backend_name = config.get("engine", {}).get("inference_backend", "mediapipe")
+        if config.get("engine", {}).get("use_onnx", False) and backend_name == "mediapipe":
+            backend_name = "auto"
 
-                self._landmarker = ONNXHandLandmarker(config)
-                self._is_onnx = True
-                logger.info("ONNX Runtime backend loaded successfully")
+        self._is_onnx = (backend_name != "mediapipe")
+        if self._is_onnx:
+            try:
+                from gesture_controller.vision.backends.factory import create_backend
+                self._landmarker = create_backend(config)
+                logger.info("ONNX Runtime backend loaded successfully using factory", backend=self._landmarker.name)
             except Exception as e:
                 logger.warning(
                     "ONNX Runtime initialization failed, falling back to MediaPipe Tasks API",
                     error=str(e),
                 )
                 self._landmarker = vision.HandLandmarker.create_from_options(self._options)
+                self._is_onnx = False
         else:
             self._landmarker = vision.HandLandmarker.create_from_options(self._options)
 
         from gesture_controller.vision.double_buffer import DoubleFrameBuffer
         self._db: DoubleFrameBuffer | None = None
-        logger.info("MediaPipe HandLandmarker Tasks API initialized in VIDEO mode")
+        logger.info("Inference backend initialized successfully")
 
     def extract(self, shm_name: str, timestamp_ms: int | None = None) -> list[Hand] | None:
         """Read frame from DoubleFrameBuffer, extract landmarks, return list[Hand].
@@ -141,8 +144,14 @@ class LandmarkExtractor:
         try:
             results = self._landmarker.detect_hands(mp_image, timestamp_ms)
         except Exception as e:
-            logger.error("MediaPipe HandLandmarker inference failed", error=str(e))
+            logger.error("HandLandmarker inference failed", error=str(e))
             return None
+
+        if results is None:
+            return None
+
+        if isinstance(results, list):
+            return results
 
         if not results.hand_landmarks:
             return None

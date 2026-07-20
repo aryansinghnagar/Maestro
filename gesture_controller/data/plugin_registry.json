@@ -1,0 +1,52 @@
+[
+  {
+    "name": "media-gestures",
+    "version": "1.0.0",
+    "description": "Built-in media control gestures for play/pause, volume up/down, and next/previous track.",
+    "author": "Maestro Project",
+    "permissions": ["os:input"],
+    "tags": ["media", "music", "spotify", "volume"],
+    "url": null,
+    "builtin": true
+  },
+  {
+    "name": "scroll-wheel",
+    "version": "1.0.0",
+    "description": "Smooth scroll control using hand tilt angle. Scroll documents, web pages and terminals hands-free.",
+    "author": "Maestro Project",
+    "permissions": ["os:input"],
+    "tags": ["scroll", "mouse", "wheel"],
+    "url": null,
+    "builtin": false
+  },
+  {
+    "name": "workspace-switcher",
+    "version": "1.0.0",
+    "description": "Switch between virtual desktops/workspaces using swipe gestures. Supports Windows (Task View), macOS Spaces, and Linux (EWMH).",
+    "author": "Maestro Project",
+    "permissions": ["os:input"],
+    "tags": ["desktop", "workspace", "virtual", "windows", "macos", "linux"],
+    "url": null,
+    "builtin": false
+  },
+  {
+    "name": "zoom-gesture",
+    "version": "1.0.0",
+    "description": "Pinch-to-zoom using two-hand distance: triggers Ctrl+Plus / Ctrl+Minus for browser and image zoom.",
+    "author": "Maestro Project",
+    "permissions": ["os:input"],
+    "tags": ["zoom", "pinch", "accessibility", "two-hand"],
+    "url": null,
+    "builtin": false
+  },
+  {
+    "name": "voice-annotation",
+    "version": "0.9.0",
+    "description": "Combine a gesture with a spoken label to annotate screenshots or PDFs hands-free.",
+    "author": "Community",
+    "permissions": ["os:input", "camera:read"],
+    "tags": ["voice", "annotation", "accessibility", "screenshot"],
+    "url": null,
+    "builtin": false
+  }
+]

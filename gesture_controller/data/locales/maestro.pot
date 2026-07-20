@@ -1,0 +1,232 @@
+# Maestro Gesture Controller - Translation Template
+# Copyright (C) 2024 Maestro Project
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Maestro 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-07-18 00:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# --- Window Titles ---
+msgid "Settings"
+msgstr ""
+
+msgid "Maestro Onboarding & Permissions"
+msgstr ""
+
+msgid "Record Custom Gesture"
+msgstr ""
+
+msgid "Tremor Calibration"
+msgstr ""
+
+# --- Tray Menu ---
+msgid "Camera: Connected"
+msgstr ""
+
+msgid "Camera: Disconnected"
+msgstr ""
+
+msgid "Pause Recognition"
+msgstr ""
+
+msgid "Resume Recognition"
+msgstr ""
+
+msgid "Settings"
+msgstr ""
+
+msgid "Export Diagnostics"
+msgstr ""
+
+msgid "Quit Maestro"
+msgstr ""
+
+# --- Settings Tabs ---
+msgid "General"
+msgstr ""
+
+msgid "Sensitivity"
+msgstr ""
+
+msgid "Gestures"
+msgstr ""
+
+msgid "HUD"
+msgstr ""
+
+msgid "Accessibility"
+msgstr ""
+
+# --- General Tab ---
+msgid "Camera Device"
+msgstr ""
+
+msgid "Toggle Recognition Hotkey"
+msgstr ""
+
+msgid "Language"
+msgstr ""
+
+# --- Sensitivity Tab ---
+msgid "Global Sensitivity"
+msgstr ""
+
+msgid "Min Cutoff Frequency"
+msgstr ""
+
+# --- HUD Tab ---
+msgid "Enable HUD"
+msgstr ""
+
+msgid "HUD Opacity"
+msgstr ""
+
+msgid "Show Joint Tracking Dots"
+msgstr ""
+
+msgid "Show Gesture Progress Ring"
+msgstr ""
+
+# --- Accessibility Tab ---
+msgid "Voice Control"
+msgstr ""
+
+msgid "Enable Voice Control (offline, Vosk)"
+msgstr ""
+
+msgid "Wake Word:"
+msgstr ""
+
+msgid "Download Voice Model (~50MB)"
+msgstr ""
+
+msgid "Downloading..."
+msgstr ""
+
+msgid "Download Complete"
+msgstr ""
+
+msgid "Tremor Compensation"
+msgstr ""
+
+msgid "Enable Tremor Compensation"
+msgstr ""
+
+msgid "Run Tremor Calibration..."
+msgstr ""
+
+msgid "Visual & Contrast"
+msgstr ""
+
+msgid "High Contrast Mode"
+msgstr ""
+
+msgid "Reduced Motion (disable HUD animations)"
+msgstr ""
+
+msgid "Dwell Clicking"
+msgstr ""
+
+msgid "Enable Dwell Clicking"
+msgstr ""
+
+# --- Buttons ---
+msgid "Apply"
+msgstr ""
+
+msgid "Cancel"
+msgstr ""
+
+msgid "OK"
+msgstr ""
+
+msgid "Retry"
+msgstr ""
+
+msgid "Close"
+msgstr ""
+
+msgid "Next"
+msgstr ""
+
+msgid "Back"
+msgstr ""
+
+msgid "Finish"
+msgstr ""
+
+msgid "Skip"
+msgstr ""
+
+# --- Gestures Tab ---
+msgid "Gesture Name"
+msgstr ""
+
+msgid "Type"
+msgstr ""
+
+msgid "Action"
+msgstr ""
+
+msgid "Record New Gesture"
+msgstr ""
+
+msgid "Delete Selected"
+msgstr ""
+
+# --- Onboarding ---
+msgid "Welcome to Maestro"
+msgstr ""
+
+msgid "Camera Permission"
+msgstr ""
+
+msgid "Accessibility Permission"
+msgstr ""
+
+msgid "Microphone Permission"
+msgstr ""
+
+msgid "Setup Complete"
+msgstr ""
+
+# --- Tremor Calibrator ---
+msgid "Hold your hand steady in front of the camera."
+msgstr ""
+
+msgid "Start Calibration"
+msgstr ""
+
+msgid "Calibration Complete!"
+msgstr ""
+
+msgid "No hand coordinates detected. Please hold your hand in front of the camera and try again."
+msgstr ""
+
+# --- Notifications / Messages ---
+msgid "Gesture recognized"
+msgstr ""
+
+msgid "Recognition paused"
+msgstr ""
+
+msgid "Recognition resumed"
+msgstr ""
+
+msgid "Download Successful"
+msgstr ""
+
+msgid "Vosk speech model downloaded and set up successfully!"
+msgstr ""
+
+msgid "Download Failed"
+msgstr ""

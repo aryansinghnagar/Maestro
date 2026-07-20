@@ -19,7 +19,7 @@ def test_onnx_backend_fallback_on_missing_files() -> None:
 
     with (
         patch(
-            "gesture_controller.vision.onnx_backend.ONNXHandLandmarker",
+            "gesture_controller.vision.backends.factory.create_backend",
             side_effect=FileNotFoundError("ONNX models not found"),
         ),
         patch("mediapipe.tasks.python.vision.HandLandmarker.create_from_options") as mock_mp,

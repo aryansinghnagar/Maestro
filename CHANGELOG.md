@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-07-20
+
+### Added
+- **GUI Crash Report & Diagnostics Viewer**: Added a PyQt6 `CrashReportViewerDialog` allowing users to view recorded stack traces, scrub sensitive PII, and export sanitized diagnostic archives (`.zip`).
+- **Vision Engine Test Hardening**: Expanded unit coverage across `HandPoseEstimator`, `PalmDetector`, and `BaseONNXBackend` for crop padding, anchor calculations, and fallback mechanisms.
+- **Hardened Voice Command Engine**: Added `VoiceCommandRegistry` supporting custom phrase-to-gesture mapping, configurable wake-word gates (`maestro`), and post-wake cooldown windows.
+- **End-to-End Integration Suite**: Built integration tests for UI settings persistence, dynamic plugin lifecycle events, and network update flows.
+- **Cross-Platform Installers**: Updated PyInstaller build specs, Windows NSIS script (`windows_installer.nsi`), and Linux udev rules (`99-gesture-controller-uinput.rules`).
+- **Comprehensive Documentation**: Built complete Material MkDocs user guides, architecture decision records (ADRs 001-030), and API reference guides.
+
 ## [1.1.0] - 2026-07-07
 
 ### Added

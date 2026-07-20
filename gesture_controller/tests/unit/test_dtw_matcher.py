@@ -6,7 +6,6 @@ from unittest.mock import MagicMock
 
 from gesture_controller.models.data_types import Hand, Landmark3D
 from gesture_controller.models.dtw_matcher import (
-    DTWMatcher,
     CustomGestureMatcher,
     fast_dtw_distance,
     dtw_distance_batch,

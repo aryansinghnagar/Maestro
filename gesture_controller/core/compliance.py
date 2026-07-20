@@ -9,26 +9,17 @@ import structlog
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from gesture_controller.core.paths import user_config_dir, user_data_dir
+
 logger = structlog.get_logger(__name__)
 
 
 def get_user_data_dirs() -> List[Path]:
     """Get list of platform-specific data and config directories for Maestro."""
-    dirs = []
-    
-    # 1. Config directory (cross-platform equivalent)
-    if platform.system() == "Windows":
-        base_config = Path(os.environ.get("APPDATA", "")) / "gesture_controller"
-    elif platform.system() == "Darwin":
-        base_config = Path.home() / "Library" / "Application Support" / "gesture_controller"
-    else:
-        base_config = Path.home() / ".config" / "gesture_controller"
-    dirs.append(base_config)
-    
-    # 2. Local share directory (Linux specific)
-    if platform.system() == "Linux":
-        dirs.append(Path.home() / ".local" / "share" / "gesture_controller")
-        
+    dirs = [user_config_dir()]
+    data_dir = user_data_dir()
+    if data_dir not in dirs:
+        dirs.append(data_dir)
     return dirs
 
 
@@ -175,13 +166,22 @@ def get_plugins_metadata(plugins_dir: Path) -> List[Dict[str, Any]]:
 
 
 def export_data(output_zip_path: Path) -> None:
-    """Create a sanitized/redacted ZIP archive of Maestro configuration and data."""
+    """Create a sanitized/redacted ZIP archive of Maestro configuration and data.
+
+    The archive contains:
+    - ``config.yaml`` (redacted)
+    - ``logs/`` directory (redacted)
+    - ``templates/`` directory (verbatim)
+    - ``plugins/plugins_list.json`` (metadata only, no source)
+    - ``system_info.json`` (platform + package versions, no PII)
+    - ``crash_reports/`` (up to 10 most recent crash reports)
+    """
     target_dirs = get_user_data_dirs()
     if not target_dirs:
         raise RuntimeError("Could not determine config directory")
-        
+
     config_dir = target_dirs[0]
-    
+
     with zipfile.ZipFile(output_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
         # 1. Sanitize and write config.yaml
         config_path = config_dir / "config.yaml"
@@ -192,7 +192,7 @@ def export_data(output_zip_path: Path) -> None:
                 zipf.writestr("config.yaml", sanitized_config)
             except Exception as e:
                 logger.error("Failed to export sanitized config", error=str(e))
-                
+
         # 2. Redact and write logs
         logs_dir = config_dir / "logs"
         if logs_dir.exists():
@@ -204,14 +204,14 @@ def export_data(output_zip_path: Path) -> None:
                         zipf.writestr(f"logs/{log_file.name}", redacted_logs)
                     except Exception as e:
                         logger.error("Failed to export redacted logs", path=str(log_file), error=str(e))
-                        
+
         # 3. Write custom templates (no sensitive data)
         templates_dir = config_dir / "templates"
         if templates_dir.exists():
             for t_file in templates_dir.glob("**/*"):
                 if t_file.is_file():
                     zipf.write(t_file, arcname=f"templates/{t_file.relative_to(templates_dir)}")
-                    
+
         # 4. Write plugins metadata list (not actual source code)
         plugins_dir = config_dir / "plugins"
         if plugins_dir.exists():
@@ -220,3 +220,27 @@ def export_data(output_zip_path: Path) -> None:
                 zipf.writestr("plugins/plugins_list.json", json.dumps(plugins_list, indent=2))
             except Exception as e:
                 logger.error("Failed to export plugins list", error=str(e))
+
+        # 5. System info (Sprint 14) — platform / package versions, no PII
+        try:
+            from gesture_controller.core.crash_reporter import gather_system_info
+            sys_info = gather_system_info()
+            zipf.writestr("system_info.json", json.dumps(sys_info, indent=2, default=str))
+        except Exception as e:
+            logger.warning("Could not collect system info for export", error=str(e))
+
+        # 6. Crash reports (Sprint 14) — up to 10 most recent
+        try:
+            from gesture_controller.core.paths import user_data_dir
+            crash_dir = user_data_dir() / "crash_reports"
+            if crash_dir.exists():
+                reports = sorted(
+                    crash_dir.glob("crash_*.json"),
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
+                )[:10]
+                for rpt in reports:
+                    zipf.writestr(f"crash_reports/{rpt.name}", rpt.read_text(encoding="utf-8"))
+        except Exception as e:
+            logger.warning("Could not include crash reports in export", error=str(e))
+
