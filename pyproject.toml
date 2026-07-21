@@ -117,14 +117,8 @@ module = [
     "onnxruntime.*",
     "vosk.*",
     "pyaudio.*",
-    "win32security.*",
-    "win32api.*",
-    "win32con.*",
     "tuf.*",
     "securesystemslib.*",
-    "dbus.*",
-    "gi.*",
-    "mpris.*",
 ]
 ignore_missing_imports = true
 
