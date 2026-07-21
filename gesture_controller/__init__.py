@@ -5,7 +5,7 @@ Gesture Controller package.
 from __future__ import annotations
 from typing import Any
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 # Apply Windows ctypes patch for MediaPipe on Python 3.14+.
 # Gate behind env var so tests and non-MediaPipe consumers can opt out.
