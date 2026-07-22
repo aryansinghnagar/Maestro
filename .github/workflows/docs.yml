@@ -13,12 +13,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Install Docs Dependencies
+      - uses: astral-sh/setup-uv@v5
+      - name: Build and Deploy MkDocs
         run: |
-          python -m pip install --upgrade pip
-          pip install mkdocs-material "mkdocstrings[python]" mkdocs-git-revision-date-localized-plugin mkdocs-minify-plugin mkdocs-tagging-plugin
-      - name: Deploy MkDocs to GitHub Pages
-        run: mkdocs gh-deploy --force
+          uv tool run --with mkdocs-material --with "mkdocstrings[python]" --with mkdocs-git-revision-date-localized-plugin --with mkdocs-minify-plugin --with mkdocs-tagging-plugin mkdocs gh-deploy --force
