@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1](https://github.com/aryansinghnagar/Maestro/compare/v1.1.0...v1.1.1) (2026-07-22)
+
+
+### Documentation
+
+* add comprehensive testing and risk mitigation guide ([34f7c32](https://github.com/aryansinghnagar/Maestro/commit/34f7c3205cbe36f12f5b0fd27ae6144f801a07dc))
+* place TESTING.md at project root ([f1e096b](https://github.com/aryansinghnagar/Maestro/commit/f1e096b4838bbbe78219320fd0cacfe7e26841c0))
+
 ## [1.1.0](https://github.com/aryansinghnagar/Maestro/compare/v1.0.0...v1.1.0) (2026-07-21)
 
 
