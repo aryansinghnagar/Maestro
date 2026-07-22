@@ -3,7 +3,7 @@ name: Deploy Docs
 on:
   push:
     branches: [main]
-    paths: ['docs/**', 'mkdocs.yml', 'gesture_controller/**']
+    paths: ['docs/**', 'mkdocs.yml', 'gesture_controller/**', '.github/workflows/docs.yml']
 permissions:
   contents: write
 jobs:
