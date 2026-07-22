@@ -16,15 +16,15 @@ jobs:
 
       - uses: astral-sh/setup-uv@v5
 
-      - name: Install Docs Dependencies
+      - name: Create venv and Install Docs Dependencies
         run: |
-          uv venv
-          uv pip install mkdocs-material "mkdocstrings[python]" mkdocs-git-revision-date-localized-plugin mkdocs-minify-plugin mkdocs-tagging-plugin
+          uv venv .venv
+          uv pip install --python .venv mkdocs-material "mkdocstrings[python]" mkdocs-git-revision-date-localized-plugin mkdocs-minify-plugin mkdocs-tagging-plugin
 
       - name: Build MkDocs Site
         env:
           QT_QPA_PLATFORM: offscreen
-        run: uv run mkdocs build
+        run: uv run --python .venv mkdocs build
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
