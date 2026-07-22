@@ -18,6 +18,6 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       - name: Install Docs Dependencies
-        run: pip install -e .[docs]
+        run: pip install mkdocs-material "mkdocstrings[python]" mkdocs-git-revision-date-localized-plugin mkdocs-minify-plugin mkdocs-tagging-plugin
       - name: Deploy MkDocs to GitHub Pages
         run: mkdocs gh-deploy --force
