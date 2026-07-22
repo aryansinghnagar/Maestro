@@ -14,14 +14,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v5
 
       - name: Install Docs Dependencies
-        run: |
-          python -m pip install --no-cache-dir mkdocs-material "mkdocstrings[python]" mkdocs-git-revision-date-localized-plugin mkdocs-minify-plugin mkdocs-tagging-plugin
+        run: uv pip install --system mkdocs-material "mkdocstrings[python]" mkdocs-git-revision-date-localized-plugin mkdocs-minify-plugin mkdocs-tagging-plugin
 
       - name: Build MkDocs Site
         env:
