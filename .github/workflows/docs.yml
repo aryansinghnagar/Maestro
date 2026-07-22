@@ -14,12 +14,13 @@ jobs:
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v5
-      - name: Configure Git User
+      - name: Configure Git Credentials & Remote
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
       - name: Build and Deploy MkDocs
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           uv tool run --with mkdocs-material --with "mkdocstrings[python]" --with mkdocs-git-revision-date-localized-plugin --with mkdocs-minify-plugin --with mkdocs-tagging-plugin mkdocs gh-deploy --force
