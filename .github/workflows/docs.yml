@@ -3,20 +3,16 @@ name: Deploy Docs
 on:
   push:
     branches: [main]
-    paths: ['docs/**', 'mkdocs.yml', 'gesture_controller/**', '.github/workflows/docs.yml']
+    paths: ['docs/**', 'mkdocs.yml', 'gesture_controller/**', '.github/workflows/docs.yml', 'pyproject.toml']
 permissions:
   contents: write
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      VIRTUAL_ENV: ${{ github.workspace }}/.venv
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v5
-        with: { enable-cache: false }
-      - run: uv sync
-      - run: uv pip install mkdocs-material "mkdocstrings[python]" mkdocs-git-revision-date-localized-plugin mkdocs-minify-plugin mkdocs-tagging-plugin
+      - run: uv sync --extra docs
       - run: uv run mkdocs gh-deploy --force

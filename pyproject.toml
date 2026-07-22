@@ -71,6 +71,13 @@ voice = [
     "vosk>=0.3.45",
     "pyaudio>=0.2.13; sys_platform == 'win32'",
 ]
+docs = [
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.24.0",
+    "mkdocs-git-revision-date-localized-plugin>=1.2.0",
+    "mkdocs-minify-plugin>=0.7.0",
+    "mkdocs-tagging-plugin>=1.8.0",
+]
 
 [project.scripts]
 maestro = "gesture_controller.cli.cli:main"
