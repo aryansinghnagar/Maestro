@@ -19,5 +19,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
       - name: Build and Deploy MkDocs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           uv tool run --with mkdocs-material --with "mkdocstrings[python]" --with mkdocs-git-revision-date-localized-plugin --with mkdocs-minify-plugin --with mkdocs-tagging-plugin mkdocs gh-deploy --force
