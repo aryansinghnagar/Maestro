@@ -10,11 +10,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v5
-        with: { enable-cache: true }
+        with: { enable-cache: false }
       - run: uv sync
       - run: uv pip install mkdocs-material mkdocstrings[python] mkdocs-git-revision-date-localized-plugin mkdocs-minify-plugin mkdocs-tagging-plugin
       - run: uv run mkdocs gh-deploy --force
