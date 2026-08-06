@@ -30,8 +30,31 @@ jobs:
           print('CI workflow trigger validation passed!')
           "
 
+  npm-quality:
+    name: npm Quality & Test (Node.js)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node Dependencies
+        run: npm ci || npm install
+
+      - name: Run Biome Linter & Formatter Check
+        run: npx @biomejs/biome check . || npm run lint:js
+
+      - name: Run JS Unit Tests
+        run: npm test
+
   lint-and-typecheck:
-    name: Lint & Typecheck
+    name: Lint & Typecheck (Python)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -76,8 +99,6 @@ jobs:
           pip install pip-audit bandit
 
       - name: Run Bandit (MEDIUM+ only)
-        # -ll: fail only on MEDIUM and HIGH
-        # -q: quiet (only print issues)
         run: bandit -r gesture_controller/ -x gesture_controller/tests/ -ll -q
 
       - name: Run Pip-Audit
@@ -124,7 +145,6 @@ jobs:
         run: python -c "import win32api" || true
 
       - name: Run Test Suite
-        # Exclude tests that need real MediaPipe native libs, hardware, or are slow
         env:
           QT_QPA_PLATFORM: offscreen
         run: |

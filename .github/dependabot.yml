@@ -1,13 +1,29 @@
+# .github/dependabot.yml
 version: 2
 updates:
+  # Daily security and version tracking for Python (pip / pyproject.toml)
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "daily"
     open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps(pip)"
 
+  # Daily security and version tracking for Node.js (npm / package.json)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps(npm)"
+
+  # Daily tracking for GitHub Actions workflow dependencies
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "daily"
     open-pull-requests-limit: 10
+    commit-message:
+      prefix: "ci(actions)"
