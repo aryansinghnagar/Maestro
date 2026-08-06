@@ -1,0 +1,21 @@
+{
+  "name": "maestro",
+  "version": "1.1.0",
+  "description": "Cross-platform hand-gesture desktop controller (dual-stack npm/pip ecosystem)",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test docs/javascripts/tests/*.test.js",
+    "lint:js": "npx @biomejs/biome check docs/javascripts/ || node --check docs/javascripts/extra.js",
+    "format:js": "npx @biomejs/biome format --write docs/javascripts/",
+    "commitlint": "commitlint --edit"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.7",
+    "@commitlint/cli": "^19.7.1",
+    "@commitlint/config-conventional": "^19.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
