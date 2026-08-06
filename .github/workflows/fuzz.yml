@@ -5,6 +5,9 @@ on:
     - cron: '0 2 * * *'  # Runs nightly at 2:00 AM UTC
   workflow_dispatch:      # Allows manual trigger
 
+permissions:
+  contents: read
+
 jobs:
   fuzz:
     name: Run Fuzzing Targets
