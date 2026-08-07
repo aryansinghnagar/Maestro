@@ -113,7 +113,8 @@ def main() -> None:
         from gesture_controller.core.paths import api_token_path
 
         tok = get_or_create_api_token()
-        print(f"API token: {tok}")
+        masked_tok = f"{tok[:4]}...{tok[-4:]}" if len(tok) > 8 else "********"
+        print(f"API token (masked): {masked_tok}")
         print(f"Token file: {api_token_path()}")
     elif args.command == "regenerate-token":
         response = (
@@ -131,7 +132,8 @@ def main() -> None:
         except Exception as e:
             print(f"Error unlinking token file: {e}", file=sys.stderr)
         new_tok = get_or_create_api_token()
-        print(f"New API token: {new_tok}")
+        masked_tok = f"{new_tok[:4]}...{new_tok[-4:]}" if len(new_tok) > 8 else "********"
+        print(f"New API token (masked): {masked_tok}")
     elif args.command == "download-voice-model":
         import urllib.request
         import zipfile
