@@ -44,6 +44,7 @@ class OneEuroFilter:
         self._tremor_history_x_arr = np.zeros(self._tremor_history_len, dtype=np.float64)
         self._tremor_history_t_arr = np.zeros(self._tremor_history_len, dtype=np.float64)
         self._tremor_sorted_x = np.zeros(self._tremor_history_len, dtype=np.float64)
+        self._tremor_sorted_t = np.zeros(self._tremor_history_len, dtype=np.float64)
         self._tremor_index = 0
         self._tremor_filled = False
 
@@ -103,16 +104,15 @@ class OneEuroFilter:
             )
 
             # Times
-            sorted_t = np.zeros(self._tremor_history_len, dtype=np.float64)
             np.copyto(
-                sorted_t[: self._tremor_history_len - self._tremor_index],
+                self._tremor_sorted_t[: self._tremor_history_len - self._tremor_index],
                 self._tremor_history_t_arr[self._tremor_index :],
             )
-            sorted_t[self._tremor_history_len - self._tremor_index :] = self._tremor_history_t_arr[
+            self._tremor_sorted_t[self._tremor_history_len - self._tremor_index :] = self._tremor_history_t_arr[
                 : self._tremor_index
             ]
 
-            dt = np.mean(np.diff(sorted_t))
+            dt = np.mean(np.diff(self._tremor_sorted_t))
             if dt > 0:
                 x_detrend = self._tremor_sorted_x - np.mean(self._tremor_sorted_x)
                 fft = np.fft.rfft(x_detrend)

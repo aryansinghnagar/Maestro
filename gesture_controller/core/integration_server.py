@@ -16,7 +16,7 @@ logger = structlog.get_logger(__name__)
 def calculate_ws_accept(key: str) -> str:
     """Calculate the WebSocket accept key according to RFC 6455."""
     guid = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-    accept_hash = hashlib.sha1((key.strip() + guid).encode("utf-8")).digest()  # nosec B324
+    accept_hash = hashlib.sha1((key.strip() + guid).encode("utf-8"), usedforsecurity=False).digest()
     return base64.b64encode(accept_hash).decode("utf-8")
 
 
