@@ -198,7 +198,7 @@ class TestActionDispatcherResolveAction:
         controller.get_foreground_app.return_value = "chrome.exe"
         event = _make_event(gesture="SwipeLeft", action="KeyPress:ArrowLeft")
         bus.publish("gesture_triggered", event)
-        time.sleep(0.05)
+        time.sleep(0.2)
         # normalize_key("ArrowLeft") → "left" per keycodes.py
         controller.key_combo.assert_called_once_with(["left"])
 
@@ -211,7 +211,7 @@ class TestActionDispatcherResolveAction:
         controller.get_foreground_app.return_value = "notepad.exe"
         event = _make_event(gesture="SwipeLeft", action="KeyPress:ArrowLeft")
         bus.publish("gesture_triggered", event)
-        time.sleep(0.05)
+        time.sleep(0.2)
         controller.key_combo.assert_called_once_with(["alt", "left"])
         assert event.app_profile == "_default"
 
@@ -225,7 +225,7 @@ class TestActionDispatcherResolveAction:
         controller.get_foreground_app.return_value = "vlc.exe"
         event = _make_event(gesture="SwipeRight", action="KeyPress:ArrowRight")
         bus.publish("gesture_triggered", event)
-        time.sleep(0.05)
+        time.sleep(0.2)
         controller.media_next.assert_called_once()
         assert event.app_profile == "vlc.exe"
 
@@ -236,7 +236,7 @@ class TestActionDispatcherResolveAction:
         controller.get_foreground_app.return_value = "unknown.exe"
         event = _make_event(gesture="Fist", action="OS:MinimizeActiveWindow")
         bus.publish("gesture_triggered", event)
-        time.sleep(0.05)
+        time.sleep(0.2)
         controller.minimize_active_window.assert_called_once()
 
     def test_gesture_not_in_per_app_profile_falls_to_default(self) -> None:
@@ -249,7 +249,7 @@ class TestActionDispatcherResolveAction:
         controller.get_foreground_app.return_value = "chrome.exe"
         event = _make_event(gesture="SwipeUp", action="OS:ShowDesktop")
         bus.publish("gesture_triggered", event)
-        time.sleep(0.05)
+        time.sleep(0.2)
         controller.show_desktop.assert_called_once()
         assert event.app_profile == "_default"
 

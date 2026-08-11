@@ -14,6 +14,31 @@ FRAME_CHANNELS = 3
 FRAME_SIZE = FRAME_WIDTH * FRAME_HEIGHT * FRAME_CHANNELS
 
 
+class VideoCaptureContext:
+    """Context Manager wrapper for cv2.VideoCapture to guarantee resource release."""
+
+    def __init__(self, device_id: int | str = 0, api_preference: int = cv2.CAP_ANY) -> None:
+        self.device_id = device_id
+        self.api_preference = api_preference
+        self.cap: cv2.VideoCapture | None = None
+
+    def __enter__(self) -> cv2.VideoCapture:
+        self.cap = cv2.VideoCapture(self.device_id, self.api_preference)
+        return self.cap
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.release()
+
+    def release(self) -> None:
+        if self.cap is not None:
+            try:
+                if self.cap.isOpened():
+                    self.cap.release()
+            except Exception as e:
+                logger.debug("Error releasing VideoCaptureContext", error=str(e))
+            self.cap = None
+
+
 class CameraStream:
     """Process A: Captures frames from webcam and writes to SharedMemory."""
 
