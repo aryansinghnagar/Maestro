@@ -26,7 +26,6 @@ def test_rate_limiter_global() -> None:
     current_time = 100.0
 
     def mock_time() -> float:
-        nonlocal current_time
         return current_time
 
     with patch("time.monotonic", mock_time):
@@ -43,7 +42,6 @@ def test_rate_limiter_burst() -> None:
     current_time = 100.0
 
     def mock_time() -> float:
-        nonlocal current_time
         return current_time
 
     with patch("time.monotonic", mock_time):
@@ -58,7 +56,6 @@ def test_rate_limiter_per_gesture() -> None:
     current_time = 100.0
 
     def mock_time() -> float:
-        nonlocal current_time
         return current_time
 
     with patch("time.monotonic", mock_time):

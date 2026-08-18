@@ -14,6 +14,8 @@ from unittest.mock import MagicMock, patch, call
 import numpy as np
 import pytest
 
+from gesture_controller.gui.dwell_clicker import DwellClicker
+
 # ---------------------------------------------------------------------------
 # DwellClicker
 # ---------------------------------------------------------------------------
@@ -22,8 +24,7 @@ import pytest
 class TestDwellClicker:
     """Unit tests for DwellClicker.update_cursor logic (no Qt event loop needed)."""
 
-    def _make_clicker(self, enabled: bool = True, duration_ms: int = 500) -> "DwellClicker":
-        from gesture_controller.gui.dwell_clicker import DwellClicker
+    def _make_clicker(self, enabled: bool = True, duration_ms: int = 500) -> DwellClicker:
 
         config = MagicMock()
         config.get.side_effect = lambda key, default=None: {

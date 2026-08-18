@@ -127,6 +127,7 @@ class CustomGestureMatcher:
         self._precomputed_templates: np.ndarray | None = None
         self._precomputed_thresholds: np.ndarray | None = None
         self._precomputed_names: list[str] | None = None
+        self._last_handedness: str = "Right"
 
         # Determine custom template directories
         from gesture_controller.core.paths import user_template_dir
@@ -176,6 +177,7 @@ class CustomGestureMatcher:
         self.clear_buffer()
         self._last_match_monotonic = 0.0
         self._last_matched_name = None
+        self._last_handedness = "Right"
 
     def clear_buffer(self) -> None:
         """Clear the rolling buffer state."""
@@ -186,6 +188,7 @@ class CustomGestureMatcher:
 
     def update_buffer(self, hand: Hand) -> None:
         """Push current frame to landmark-centric circular rolling buffer."""
+        self._last_handedness = hand.handedness or "Right"
         normalized = to_hand_frame(hand.landmarks, hand.handedness)
         flat = np.array(
             [l.x for l in normalized] + [l.y for l in normalized] + [l.z for l in normalized],
@@ -259,7 +262,7 @@ class CustomGestureMatcher:
                 gesture_type="custom",
                 action=self._templates[name]["action"],
                 confidence=confidence,
-                hand="Right",  # TODO: plumb real handedness
+                hand=self._last_handedness,
                 timestamp=timestamp_s,
                 gesture_source="dtw",
                 metadata={"correlation_id": correlation_id},

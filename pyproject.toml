@@ -126,13 +126,16 @@ module = [
     "pyaudio.*",
     "tuf.*",
     "securesystemslib.*",
+    "RestrictedPython.*",
+    "wasmtime.*",
 ]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = [
     "gesture_controller.gui.*",
-    "gesture_controller.os_integration.*",
+    "gesture_controller.os_integration.linux_controller",
+    "gesture_controller.os_integration.macos_controller",
     "gesture_controller.plugins.*",
 ]
 ignore_errors = true

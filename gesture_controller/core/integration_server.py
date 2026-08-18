@@ -195,7 +195,15 @@ class IntegrationServer:
             # Read full POST body if needed
             body = ""
             if method == "POST":
-                content_length = int(headers.get("content-length", 0))
+                try:
+                    content_length = int(headers.get("content-length", 0))
+                    if content_length < 0:
+                        raise ValueError("Negative content-length")
+                except (ValueError, TypeError):
+                    self._send_http_response(conn, 400, {"error": "Invalid Content-Length header"})
+                    conn.close()
+                    return
+
                 if content_length > 1_048_576:
                     self._send_http_response(conn, 400, {"error": "Payload Too Large"})
                     conn.close()
@@ -257,7 +265,6 @@ class IntegrationServer:
                     "# TYPE maestro_frame_stage_mean_ms gauge",
                 ]
                 for stage, stats in sorted(stage_stats.items()):
-                    safe = stage.replace(" ", "_").replace("-", "_")
                     lines_out.append(
                         f'maestro_frame_stage_mean_ms{{stage="{stage}"}} {stats["mean_ms"]:.3f}'
                     )

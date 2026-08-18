@@ -17,3 +17,5 @@ gesture_controller/data/custom_templates/*.json
 site/
 
 .aider*
+.agents/
+.hypothesis/

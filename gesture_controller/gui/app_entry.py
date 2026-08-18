@@ -157,8 +157,9 @@ class GestureControllerApp:
 
         # ── Initialize Update Checker ──────────────────────────────────────
         from gesture_controller.core.updater import UpdateCheckerThread
+        from gesture_controller import __version__
 
-        self._updater_thread = UpdateCheckerThread(current_version="0.1.0", parent=self._app)
+        self._updater_thread = UpdateCheckerThread(current_version=__version__, parent=self._app)
         self._updater_thread.update_available.connect(self._on_update_available)
         self._updater_thread.start()
 
@@ -259,13 +260,11 @@ class GestureControllerApp:
         self._settings.activateWindow()
 
     def _export_diagnostics(self) -> None:
-        """Export system logs, user configurations, custom gesture templates, and plugins to a ZIP archive."""
+        """Show the Crash Report & Diagnostics Viewer dialog (Sprint 18) or fallback to ZIP export."""
         from PyQt6.QtWidgets import QFileDialog, QMessageBox
         from pathlib import Path
         from gesture_controller.core.compliance import export_data
 
-    def _export_diagnostics(self) -> None:
-        """Show the Crash Report & Diagnostics Viewer dialog (Sprint 18)."""
         try:
             from gesture_controller.gui.crash_report_dialog import CrashReportViewerDialog
 
