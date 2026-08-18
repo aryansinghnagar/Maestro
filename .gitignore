@@ -19,3 +19,4 @@ site/
 .aider*
 .agents/
 .hypothesis/
+node_modules/
