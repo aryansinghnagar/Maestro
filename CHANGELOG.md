@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0](https://github.com/aryansinghnagar/Maestro/compare/v1.1.0...v1.2.0) (2026-08-18)
+
+
+### Features
+
+* **v2.0:** implement Sprint 1 OpenCV context managers, sandbox hardening & fuzzing targets ([6592335](https://github.com/aryansinghnagar/Maestro/commit/65923352cfd4b0d8f2ebf5492a22a2a05db83e16))
+
+
+### Bug Fixes
+
+* **cli:** use masked_val in token print statements to resolve CodeQL taint analysis ([64383a4](https://github.com/aryansinghnagar/Maestro/commit/64383a4065a615c32d5ec6510c6b9ed86a6094ca))
+* **security:** resolve code scanning alerts for token redacting & workflow permissions ([397c48f](https://github.com/aryansinghnagar/Maestro/commit/397c48fb99c3e0d84aa6a2ab74b2d6815a97b6e4))
+
+
+### Dependencies
+
+* **npm:** bump @biomejs/biome from 2.5.7 to 2.5.8 ([#27](https://github.com/aryansinghnagar/Maestro/issues/27)) ([d9d57e5](https://github.com/aryansinghnagar/Maestro/commit/d9d57e53018f16dae317420e9c0ae2369b658f91))
+* **npm:** bump @commitlint/cli and @commitlint/config-conventional to 21.2.2 ([c2d647b](https://github.com/aryansinghnagar/Maestro/commit/c2d647b08c399102b498d258020d697c8f4726e1))
+* **npm:** bump @commitlint/cli from 19.8.1 to 21.2.1 ([d2709c2](https://github.com/aryansinghnagar/Maestro/commit/d2709c200beebfa4814cda639bf8468a165bc26b))
+* **npm:** bump @commitlint/config-conventional from 19.8.1 to 21.2.0 ([b281c97](https://github.com/aryansinghnagar/Maestro/commit/b281c97fe9212b1e13b7234ae9810dc0db3eba76))
+
+
+### Documentation
+
+* add comprehensive testing and risk mitigation guide ([34f7c32](https://github.com/aryansinghnagar/Maestro/commit/34f7c3205cbe36f12f5b0fd27ae6144f801a07dc))
+* place TESTING.md at project root ([f1e096b](https://github.com/aryansinghnagar/Maestro/commit/f1e096b4838bbbe78219320fd0cacfe7e26841c0))
+
 ## [1.1.0](https://github.com/aryansinghnagar/Maestro/compare/v1.0.0...v1.1.0) (2026-07-21)
 
 
