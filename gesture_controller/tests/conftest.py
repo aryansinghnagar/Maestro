@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import sys
 
@@ -21,6 +23,7 @@ import pytest
 import numpy as np
 from multiprocessing import shared_memory
 from gesture_controller.models.data_types import Hand, Landmark3D
+from PyQt6.QtWidgets import QApplication
 
 failed_reports = []
 collected_warnings = []

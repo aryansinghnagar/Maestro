@@ -6,33 +6,21 @@
 
 | Version | Supported |
 |---|---|
-| 0.2.x | ✅ |
-| 0.1.x | ⚠️ (security fixes only) |
-| < 0.1 | ❌ |
+| 1.1.x | ✅ (Active) |
+| 1.0.x | ⚠️ (Security fixes only) |
+| < 1.0 | ❌ |
 
 ## Reporting a Vulnerability
 
 **Do NOT open a public GitHub issue for security vulnerabilities.**
 
-Instead, email `security@aryansinghnagar.dev`. Please include:
+Instead, email `security@aryansinghnagar.dev` or report via [GitHub Security Advisories](https://github.com/aryansinghnagar/Maestro/security/advisories/new). Please include:
 
 1. Description of the vulnerability
 2. Steps to reproduce
-3. Affected versions
+3. Affected versions and operating systems
 4. Potential impact
-5. Suggested fix (optional)
-
-### PGP encryption (optional)
-
-For sensitive reports, encrypt with our PGP key:
-
-```
------BEGIN PGP PUBLIC KEY BLOCK-----
-[KEY BLOCK HERE — generate and add]
------END PGP PUBLIC KEY BLOCK-----
-```
-
-Fingerprint: `[ADD FINGERPRINT]`
+5. Suggested remediation (optional)
 
 ### Response timeline
 
@@ -95,10 +83,9 @@ All OS input injections are logged to `audit.log` with:
 - [x] WebSocket CSWSH fix (Origin validation)
 - [x] SHM chmod 0600
 - [x] Audit log
-- [ ] Config signing (planned for v0.3)
-- [ ] Sigstore-signed releases (planned for v0.2)
-- [ ] SBOM generation (planned for v0.2)
-- [ ] eBPF input filter on Linux (planned for v0.3)
+- [x] SBOM generation (CycloneDX v1.5 format in packaging/sbom.cdx.json)
+- [ ] Sigstore-signed releases (OIDC release pipeline)
+- [ ] Config signing (planned for v2.0)
 
 ## Known Security Considerations
 

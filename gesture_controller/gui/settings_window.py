@@ -867,12 +867,7 @@ class SettingsWindow(QDialog):
             QLineEdit,
             QListWidget,
             QListWidgetItem,
-            QPushButton,
-            QHBoxLayout,
-            QLabel,
-            QFileDialog,
         )
-        from PyQt6.QtCore import Qt
 
         layout = QVBoxLayout(self._tab_plugins)
         layout.setContentsMargins(16, 16, 16, 16)
@@ -1020,9 +1015,6 @@ class SettingsWindow(QDialog):
                 self._populate_plugin_list()
 
     def _on_plugin_install_file(self) -> None:
-        from PyQt6.QtWidgets import QFileDialog, QMessageBox
-        from pathlib import Path
-
         path_str, _ = QFileDialog.getOpenFileName(
             self, "Select Plugin File", "", "Python Plugins (*.py);;All Files (*)"
         )

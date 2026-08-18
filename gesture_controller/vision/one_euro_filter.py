@@ -108,9 +108,9 @@ class OneEuroFilter:
                 self._tremor_sorted_t[: self._tremor_history_len - self._tremor_index],
                 self._tremor_history_t_arr[self._tremor_index :],
             )
-            self._tremor_sorted_t[self._tremor_history_len - self._tremor_index :] = self._tremor_history_t_arr[
-                : self._tremor_index
-            ]
+            self._tremor_sorted_t[self._tremor_history_len - self._tremor_index :] = (
+                self._tremor_history_t_arr[: self._tremor_index]
+            )
 
             dt = np.mean(np.diff(self._tremor_sorted_t))
             if dt > 0:

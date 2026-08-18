@@ -45,6 +45,10 @@ class _SubprocessWrapper:
 
 
 subprocess = _SubprocessWrapper()
+import structlog
+
+logger = structlog.get_logger(__name__)
+
 from gesture_controller.os_integration.base_controller import BaseController
 
 # Dynamically import Linux-specific modules
