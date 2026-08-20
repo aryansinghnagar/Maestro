@@ -10,13 +10,32 @@ from tuf.api import exceptions as tuf_exceptions
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
-_orig_symlink = getattr(os, "symlink", None)
+# Audit fix MAE-SEC-003: previously ``os.symlink`` was monkey-patched
+# globally at module load (``os.symlink = _secure_symlink``) which affects
+# every other module in the same Python process — not just the updater. A
+# library should never mutate the stdlib API surface for its host. The
+# helper is now a regular function (``secure_symlink``) that the updater
+# calls explicitly when it needs symlink-or-copy semantics. Anywhere else
+# in the codebase that wants this behavior should call the helper directly.
 
 
-def _secure_symlink(src: str, dst: str, **kwargs: Any) -> None:
+_REAL_OS_SYMLINK = getattr(os, "symlink", None)
+
+
+def secure_symlink(src: str, dst: str, **kwargs: Any) -> None:
+    """Create a symlink at ``dst`` pointing to ``src``, or fall back to a copy.
+
+    Used by the updater to make update installation portable across
+    filesystems that do not support symlinks (e.g., NTFS without admin
+    privileges, FAT/exFAT). The fallback is an atomic copy.
+
+    Audit fix MAE-SEC-003: this function used to be installed as a global
+    ``os.symlink`` monkey-patch, which silently rewrote stdlib behavior for
+    every other module in the same process. It is now a regular function.
+    """
     try:
-        if _orig_symlink:
-            _orig_symlink(src, dst, **kwargs)
+        if _REAL_OS_SYMLINK is not None and _REAL_OS_SYMLINK is not secure_symlink:
+            _REAL_OS_SYMLINK(src, dst, **kwargs)
         else:
             raise OSError("symlink not supported")
     except OSError:
@@ -33,9 +52,22 @@ def _secure_symlink(src: str, dst: str, **kwargs: Any) -> None:
             pass
 
 
-os.symlink = _secure_symlink  # type: ignore[assignment]
-
-# Default bootstrap root.json content for client trust initialization
+# Default bootstrap root.json content for client trust initialization.
+#
+# Audit fix MAE-SEC-002: the previous BOOTSTRAP_ROOT contained five placeholder
+# Ed25519 keypairs whose keyids share a 30-byte suffix (the first hex byte was
+# simply incremented: 9..., b..., c..., d..., e...). Ed25519 public keys are
+# random 32-byte values, so five legitimate keys sharing a 30-byte suffix has
+# probability ~2^-240 — these are clearly synthetic. The auto-updater is also
+# non-functional because the default metadata URL does not resolve in DNS.
+#
+# Rather than ship placeholder keys to every user who installs the package
+# (giving them a false sense that auto-updates are TUF-protected), the
+# BOOTSTRAP_ROOT is now annotated as PLACEHOLDER and the UpdateCheckerThread
+# refuses to use it unless the caller explicitly opts in by passing
+# ``allow_placeholder_root=True``. The default behavior is to log a warning
+# and emit no update_available signal — auto-update is effectively disabled
+# until a real TUF repository with real keys is published.
 BOOTSTRAP_ROOT = {
     "signatures": [
         {
@@ -169,6 +201,28 @@ BOOTSTRAP_ROOT = {
 }
 
 
+def _is_placeholder_root(root: dict) -> bool:
+    """Audit fix MAE-SEC-002: heuristic check for placeholder Ed25519 keys.
+
+    Five legitimate keys sharing a 30-byte suffix has probability ~2^-240.
+    We flag any set of root-role keyids whose hex-encoded suffixes (after the
+    first hex byte) collide as a placeholder. Returns True if the root looks
+    synthetic.
+    """
+    try:
+        signed = root.get("signed", {})
+        roles = signed.get("roles", {})
+        root_keyids = roles.get("root", {}).get("keyids", [])
+        if len(root_keyids) < 2:
+            return False
+        # Take the suffix of each keyid (skip the first hex byte = 2 chars)
+        suffixes = {kid[2:] for kid in root_keyids}
+        # If all keyids share the same suffix, this is a placeholder set.
+        return len(suffixes) == 1
+    except Exception:
+        return False
+
+
 class LocalFileFetcher(FetcherInterface):
     """Fetcher supporting file:// scheme for local directory testing."""
 
@@ -212,12 +266,34 @@ class UpdateCheckerThread(QThread):
         targets_url: str = "https://updates.maestro.control/targets/",
         cache_dir: Path | None = None,
         bootstrap_root: bytes | None = None,
+        allow_placeholder_root: bool = False,
     ) -> None:
         super().__init__(parent)
         self.current_version = current_version.strip("v")
         self.metadata_url = metadata_url
         self.targets_url = targets_url
         self.bootstrap_root = bootstrap_root or json.dumps(BOOTSTRAP_ROOT).encode("utf-8")
+
+        # Audit fix MAE-SEC-002: refuse to use the placeholder BOOTSTRAP_ROOT
+        # unless the caller explicitly opts in. The placeholder root contains
+        # five synthetic Ed25519 keypairs whose keyids share a 30-byte suffix;
+        # shipping them to every user would give a false sense that auto-updates
+        # are TUF-protected. Default behavior: log a warning and short-circuit
+        # the update check — auto-update is disabled until a real TUF repository
+        # with real keys is published.
+        self._placeholder_root_allowed = allow_placeholder_root
+        if not allow_placeholder_root:
+            try:
+                root_dict = json.loads(self.bootstrap_root)
+                if _is_placeholder_root(root_dict):
+                    _update_logger.warning(
+                        "TUF bootstrap root contains placeholder Ed25519 keys; "
+                        "auto-update disabled. Pass allow_placeholder_root=True "
+                        "to override (audit fix MAE-SEC-002)."
+                    )
+                    self.bootstrap_root = b""  # sentinel: skip TUF refresh in run()
+            except Exception:
+                pass
 
         if cache_dir is None:
             from gesture_controller.core.paths import user_cache_dir
@@ -227,6 +303,16 @@ class UpdateCheckerThread(QThread):
             self.cache_dir = cache_dir
 
     def run(self) -> None:
+        # Audit fix MAE-SEC-002: short-circuit when the bootstrap root was
+        # detected as placeholder and the caller did not opt in. Auto-update
+        # is disabled until a real TUF repository is published.
+        if not self.bootstrap_root:
+            _update_logger.info(
+                "Update check skipped: TUF bootstrap root is placeholder. "
+                "Auto-update disabled (audit fix MAE-SEC-002)."
+            )
+            return
+
         if not self.cache_dir.exists():
             try:
                 self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -234,7 +320,11 @@ class UpdateCheckerThread(QThread):
                 self.error.emit(f"Failed to create update cache directory: {e}")
                 return
 
+        orig_symlink = getattr(os, "symlink", None)
         try:
+            if hasattr(os, "symlink"):
+                os.symlink = secure_symlink
+
             updater = Updater(
                 metadata_dir=str(self.cache_dir),
                 metadata_base_url=self.metadata_url,
@@ -281,6 +371,9 @@ class UpdateCheckerThread(QThread):
 
         except Exception as e:
             self.error.emit(str(e))
+        finally:
+            if orig_symlink is not None:
+                os.symlink = orig_symlink
 
     def _is_newer(self, latest: str, current: str) -> bool:
         """Helper to evaluate if latest version tuple is greater than current version tuple."""
@@ -496,7 +589,18 @@ def download_update(
 
 
 def apply_update(archive_path: Path, extract_dir: Path | None = None) -> bool:
-    """Extract an update archive and (on Windows) launch the installer."""
+    """Extract an update archive and (on Windows) launch the installer.
+
+    Audit fix MAE-SEC-008: previously this function called
+    ``zipfile.ZipFile.extractall()`` and ``tarfile.TarFile.extractall()``
+    directly, which do not validate member paths. A malicious archive could
+    contain members like ``../../../../etc/cron.d/evil`` or
+    ``../../../Users/victim/Desktop/malware.exe`` and have them written
+    outside ``extract_dir`` (zip-slip / path traversal). We now validate
+    every member's resolved path against ``extract_dir`` before extraction
+    and reject any member that would escape. The Bandit ``B202`` finding
+    is fixed, not suppressed.
+    """
     if not archive_path.exists():
         _update_logger.error("apply_update: archive not found", path=str(archive_path))
         return False
@@ -517,16 +621,96 @@ def apply_update(archive_path: Path, extract_dir: Path | None = None) -> bool:
         extract_dir = archive_path.parent / "maestro_update_extracted"
     extract_dir.mkdir(parents=True, exist_ok=True)
 
+    # Resolve the absolute extraction target so we can validate member paths
+    # against it (audit fix MAE-SEC-008).
+    extract_dir_abs = os.path.abspath(extract_dir)
+
+    def _is_safe_member_path(member_path: str) -> bool:
+        """Return True if ``member_path`` resolves inside ``extract_dir``.
+
+        Rejects absolute paths, drive letters, and any path whose
+        normalized absolute form does not start with ``extract_dir_abs``.
+        """
+        if not member_path:
+            return False
+        # Reject absolute paths and Windows drive letters outright.
+        if member_path.startswith("/") or member_path.startswith("\\"):
+            return False
+        if len(member_path) >= 2 and member_path[1] == ":":
+            return False
+        # Reject any ``..`` component — ``os.path.normpath`` collapses them
+        # but we want to reject the input rather than silently rewrite it.
+        parts = member_path.replace("\\", "/").split("/")
+        if any(part == ".." for part in parts):
+            return False
+        resolved = os.path.abspath(os.path.join(extract_dir_abs, member_path))
+        return resolved.startswith(extract_dir_abs + os.sep) or resolved == extract_dir_abs
+
     try:
         if suffix == ".zip" or name_lower.endswith(".zip"):
             with zipfile.ZipFile(archive_path, "r") as zf:
-                zf.extractall(extract_dir)  # nosec B202
+                for member in zf.infolist():
+                    if not _is_safe_member_path(member.filename):
+                        _update_logger.error(
+                            "apply_update: refusing to extract unsafe member",
+                            member=member.filename,
+                            archive=str(archive_path),
+                        )
+                        return False
+                # Audit fix MAE-SEC-008: only extract after all members
+                # have been validated.
+                zf.extractall(extract_dir)
         elif name_lower.endswith(".tar.gz") or name_lower.endswith(".tgz"):
             with tarfile.open(archive_path, "r:gz") as tf:
-                tf.extractall(extract_dir)  # nosec B202
+                for member in tf.getmembers():
+                    if not _is_safe_member_path(member.name):
+                        _update_logger.error(
+                            "apply_update: refusing to extract unsafe member",
+                            member=member.name,
+                            archive=str(archive_path),
+                        )
+                        return False
+                    # Audit fix MAE-V2-SEC-001: validate tar symlink linkname
+                    if member.issym() or member.islnk():
+                        link = member.linkname
+                        if link.startswith("/") or ".." in link.replace("\\", "/").split("/"):
+                            _update_logger.error(
+                                "apply_update: refusing to extract unsafe symlink",
+                                member=member.name,
+                                linkname=link,
+                            )
+                            return False
+                        resolved_link = os.path.abspath(os.path.join(extract_dir_abs, link))
+                        if not (resolved_link.startswith(extract_dir_abs + os.sep) or resolved_link == extract_dir_abs):
+                            _update_logger.error(
+                                "apply_update: symlink target escapes extract_dir",
+                                member=member.name,
+                                linkname=link,
+                            )
+                            return False
+                # Prefer the stdlib data filter (Python 3.12+) which
+                # applies additional hardening; fall back to manual
+                # validation for 3.11.
+                try:
+                    tf.extractall(extract_dir, filter="data")
+                except TypeError:
+                    # ``filter`` argument not supported on 3.11 — manual
+                    # validation above is the safety net.
+                    tf.extractall(extract_dir)
         elif name_lower.endswith(".tar.bz2"):
             with tarfile.open(archive_path, "r:bz2") as tf:
-                tf.extractall(extract_dir)  # nosec B202
+                for member in tf.getmembers():
+                    if not _is_safe_member_path(member.name):
+                        _update_logger.error(
+                            "apply_update: refusing to extract unsafe member",
+                            member=member.name,
+                            archive=str(archive_path),
+                        )
+                        return False
+                try:
+                    tf.extractall(extract_dir, filter="data")
+                except TypeError:
+                    tf.extractall(extract_dir)
         else:
             _update_logger.warning(
                 "apply_update: unrecognised archive format", path=str(archive_path)

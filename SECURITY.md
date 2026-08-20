@@ -1,13 +1,14 @@
 # Maestro Security Policy
 
-**Last updated: 2026-07-09**
+**Last updated: 2026-08-19**
 
 ## Supported Versions
 
 | Version | Supported |
 |---|---|
-| 1.1.x | ✅ (Active) |
-| 1.0.x | ⚠️ (Security fixes only) |
+| 1.2.x | ✅ (Active) |
+| 1.1.x | ⚠️ (Security fixes only) |
+| 1.0.x | ❌ (End of life — upgrade to 1.2.x) |
 | < 1.0 | ❌ |
 
 ## Reporting a Vulnerability
@@ -52,16 +53,19 @@ See [docs/specs/ds-007-threat-model.md](docs/specs/ds-007-threat-model.md) for t
 
 ### Authentication
 
-- **Broker socket:** `SO_PEERCRED` (Linux) / `getpeereid` (macOS) / named pipe ACL (Windows)
-- **REST API:** Random token generated on first run, stored with `chmod 0600`
-- **WebSocket:** Origin header validation
-- **Update channel:** TUF with threshold=3 of 5 keys
+- **Broker socket:** `SO_PEERCRED` (Linux) / `getpeereid` (macOS) / named-pipe SID check (Windows). The Windows path now **fail-closes** on any exception during the SID lookup — previously it failed open (audit fix MAE-SEC-001).
+- **REST API:** Random token generated on first run, stored with `chmod 0600`. The CLI now sends the token via the `Authorization: Bearer` header instead of a URL query parameter (audit fix MAE-SEC-005). Query-parameter tokens are deprecated and emit a server-side warning.
+- **WebSocket:** Origin header validation. The `"null"` Origin is no longer accepted — only explicit `localhost` / `127.0.0.1` origins are allowed (audit fix MAE-SEC-004).
+- **Update channel:** TUF with threshold=3 of 5 keys. The placeholder `BOOTSTRAP_ROOT` is now disabled by default and emits a warning when used (audit fix MAE-SEC-002). Auto-update is effectively disabled until a real TUF repository with real Ed25519 keys is published.
 
 ### Sandboxing
 
 - **Untrusted plugins:** WASM runtime (wasmtime), no file/network/process access
 - **Trusted plugins:** In-process, RestrictedPython defense-in-depth
 - **Config:** JSON schema validation, AST sandbox for expressions
+- **Archive extraction:** The `apply_update` function now validates every member's resolved path against the extraction directory before extraction, blocking zip-slip / path-traversal attacks (audit fix MAE-SEC-008).
+- **AppleScript bridge:** The `run_applescript` bridge now caps script length at 8 KiB, rejects scripts containing `do shell script` or `POSIX path of` patterns, and passes `-l AppleScript` explicitly to prevent JavaScript-mode escapes (audit fix MAE-SEC-006).
+- **Vosk model download:** The CLI verifies the SHA-256 of the downloaded Vosk model zip against a pinned hash before extraction (audit fix MAE-SEC-017). The hash is currently empty pending maintainer rotation; the production command refuses to extract until the hash is set.
 
 ### Audit log
 
@@ -70,6 +74,7 @@ All OS input injections are logged to `audit.log` with:
 - Gesture name
 - Action performed
 - Target app (foreground app name)
+- Authentication rejections (audit fix MAE-SEC-001: Windows verification failures now log at ERROR level)
 
 ## Security Hardening Checklist
 

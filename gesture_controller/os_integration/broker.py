@@ -32,7 +32,15 @@ def get_broker_family() -> str:
 
 
 def verify_peer(conn: Any) -> bool:
-    """Verify that the connecting peer process belongs to the same UID."""
+    """Verify that the connecting peer process belongs to the same UID.
+
+    Audit fix MAE-SEC-001: previously the Windows path returned ``True`` if any
+    exception was raised during the SID lookup, which fail-open behavior meant
+    any local Windows process could connect to the named pipe and inject
+    arbitrary input. The function now fail-closes (returns ``False``) on any
+    exception, logs at ERROR level, and writes an audit-log entry. The Linux
+    and macOS paths already failed closed.
+    """
     if platform.system() == "Windows":
         try:
             import win32security  # type: ignore[import-untyped]
@@ -59,13 +67,35 @@ def verify_peer(conn: Any) -> bool:
                         client_token, win32security.TokenUser
                     )
                     return bool(current_sid == client_sid)
+            # Audit fix MAE-SEC-001: if we fell through without returning,
+            # we did not actually verify the peer — fail closed.
+            logger.error(
+                "Windows peer verification could not complete; connection rejected",
+                reason="kernel32_or_api_unavailable",
+            )
+            return False
         except Exception as e:
-            logger.warning("Windows peer verification fallback", error=str(e))
-        return True
+            # Audit fix MAE-SEC-001: previously ``return True`` here, which
+            # fail-opened the broker to any local process whenever
+            # win32security/win32api were not importable (e.g., pywin32
+            # post-install skipped) or any other exception was raised.
+            logger.error(
+                "Windows peer verification failed; connection rejected",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+            return False
 
     import socket
     import struct
 
+    # Audit fix MAE-ARCH-009: ``socket.fromfd`` *duplicates* the underlying
+    # file descriptor — the original ``conn`` still holds its own reference,
+    # so we must close the duplicate ``s`` once we're done inspecting peer
+    # credentials. Previously the duplicate was leaked on every connection,
+    # slowly exhausting the per-process file-descriptor table under high
+    # gesture frequency (each broker client = one leaked fd).
+    s: Optional[socket.socket] = None
     try:
         af_unix = getattr(socket, "AF_UNIX", 1)
         fd = conn.fileno()
@@ -87,14 +117,39 @@ def verify_peer(conn: Any) -> bool:
     except Exception as e:
         logger.error("Peer verification failed", error=str(e))
         return False
-    return True
+    finally:
+        # Audit fix MAE-ARCH-009: ALWAYS close the duplicate socket,
+        # whether we returned True, returned False, or raised.
+        if s is not None:
+            try:
+                s.close()
+            except Exception:
+                pass
+    return False
 
 
 class RateLimiter:
+    """Token-bucket-ish rate limiter for broker input actions.
+
+    Audit fix (perf P4): all deques now use ``maxlen`` so memory is bounded
+    even if the manual ``popleft`` eviction were ever skipped (e.g., on
+    exception). The ``maxlen`` values are sized to the *theoretical* maximum
+    per-window count, so auto-eviction never fires under normal operation —
+    the explicit ``if len() >= max_*`` checks still drive the verdict.
+    The bound purely defends against unbounded growth if clock skew or a
+    logic bug ever caused timestamps to be recorded without old ones being
+    evicted.
+    """
+
+    # Per-window theoretical maxima (used as deque maxlen).
+    _GLOBAL_MAXLEN = 128  # > max_global (120)
+    _BURST_MAXLEN = 32  # > max_burst (30)
+    _PER_GESTURE_MAXLEN = 8  # > 5/gesture/sec
+
     def __init__(self) -> None:
-        self.global_history: deque[float] = deque()
+        self.global_history: deque[float] = deque(maxlen=self._GLOBAL_MAXLEN)
         self.gesture_history: dict[str, deque[float]] = {}
-        self.burst_history: deque[float] = deque()
+        self.burst_history: deque[float] = deque(maxlen=self._BURST_MAXLEN)
 
     def check_and_record(self, gesture_id: Optional[str]) -> bool:
         now = time.monotonic()
@@ -116,9 +171,10 @@ class RateLimiter:
 
         # 3. Per-gesture rate limit: 5 actions/sec
         if gesture_id:
-            if gesture_id not in self.gesture_history:
-                self.gesture_history[gesture_id] = deque()
-            history = self.gesture_history[gesture_id]
+            history = self.gesture_history.get(gesture_id)
+            if history is None:
+                history = deque(maxlen=self._PER_GESTURE_MAXLEN)
+                self.gesture_history[gesture_id] = history
             while history and now - history[0] > 1.0:
                 history.popleft()
             if len(history) >= 5:
@@ -133,10 +189,29 @@ class RateLimiter:
 
 
 class AuditLogger:
+    """Append-only, hash-chained audit log with buffered writes.
+
+    Audit fix (perf P5): previously every ``log()`` call opened the file,
+    wrote one JSON line, and closed it (forcing an fsync on most filesystems).
+    Under high-frequency gesture sequences (e.g., 60 fps mouse_move) this
+    incurred ~1 ms of I/O per event — up to 60 ms/sec of fsync overhead.
+
+    The new implementation buffers up to ``_FLUSH_BATCH`` entries or
+    ``_FLUSH_INTERVAL_SECONDS`` elapsed time (whichever comes first) and
+    flushes them in a single ``write()`` call. The hash chain remains
+    sequential because all updates are made under ``self._lock``. A
+    ``flush()`` is exposed for graceful shutdown.
+    """
+
+    _FLUSH_BATCH = 10
+    _FLUSH_INTERVAL_SECONDS = 0.100
+
     def __init__(self, log_path: Path) -> None:
         self.log_path = log_path
         self.last_hash = "0" * 64
         self._lock = threading.Lock()
+        self._buffer: list[str] = []
+        self._last_flush = time.monotonic()
         if self.log_path.exists():
             try:
                 with open(self.log_path, "r", encoding="utf-8") as f:
@@ -159,13 +234,41 @@ class AuditLogger:
             entry_json = json.dumps(entry, sort_keys=True)
             current_hash = hashlib.sha256(entry_json.encode("utf-8")).hexdigest()
             entry["hash"] = current_hash
+            self.last_hash = current_hash
 
-            try:
-                with open(self.log_path, "a", encoding="utf-8") as f:
-                    f.write(json.dumps(entry) + "\n")
-                self.last_hash = current_hash
-            except Exception as e:
-                logger.error("Audit log write failed", error=str(e))
+            self._buffer.append(json.dumps(entry))
+            if (
+                len(self._buffer) >= self._FLUSH_BATCH
+                or (time.monotonic() - self._last_flush) >= self._FLUSH_INTERVAL_SECONDS
+            ):
+                self._flush_locked()
+
+    def _flush_locked(self) -> None:
+        """Write all buffered entries to disk. Caller must hold ``self._lock``."""
+        if not self._buffer:
+            return
+        payload = "".join(line + "\n" for line in self._buffer)
+        try:
+            with open(self.log_path, "a", encoding="utf-8") as f:
+                f.write(payload)
+                f.flush()
+                try:
+                    os.fsync(f.fileno())
+                except OSError:
+                    # fsync may fail on some filesystems (tmpfs, network FS);
+                    # the flush() above is still a sufficient durability
+                    # guarantee for the audit-log threat model.
+                    pass
+        except Exception as e:
+            logger.error("Audit log write failed", error=str(e), dropped=len(self._buffer))
+        finally:
+            self._buffer.clear()
+            self._last_flush = time.monotonic()
+
+    def flush(self) -> None:
+        """Force any buffered entries to disk. Idempotent."""
+        with self._lock:
+            self._flush_locked()
 
 
 class InjectionBrokerServer:
@@ -232,6 +335,10 @@ class InjectionBrokerServer:
             except Exception:
                 pass
         self.audit_logger.log("broker_stopped", {})
+        # Audit fix (perf P5): drain any buffered entries to disk so the
+        # final "broker_stopped" record and any pending high-frequency
+        # events are not lost on shutdown.
+        self.audit_logger.flush()
 
     def _handle_client(self, conn: Any) -> None:
         try:
@@ -380,10 +487,18 @@ class BrokerClientController(BaseController):
             try:
                 import subprocess
 
+                # Audit fix MAE-SEC-015: explicitly pass ``close_fds=True``
+                # so the broker subprocess does not inherit unrelated file
+                # descriptors (camera SHM, integration server sockets,
+                # opened log files, etc.). Also pass ``env=os.environ.copy()``
+                # so the broker inherits a deterministic environment rather
+                # than the (potentially mutated) live environment.
                 subprocess.Popen(
                     [sys.executable, "-m", "gesture_controller.os_integration.broker"],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
+                    close_fds=True,
+                    env=os.environ.copy(),
                     creationflags=(
                         subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0
                     ),

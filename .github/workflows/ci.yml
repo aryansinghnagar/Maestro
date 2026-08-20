@@ -105,7 +105,14 @@ jobs:
         run: bandit -r gesture_controller/ -x gesture_controller/tests/ -ll -q
 
       - name: Run Pip-Audit
-        run: pip-audit || true
+        # Audit fix MAE-SEC-009: removed ``|| true`` so CVE findings fail
+        # the build. Previously the ``|| true`` masked all SCA findings,
+        # which meant any dependency CVE (in ``mediapipe``, ``onnxruntime``,
+        # ``tuf``, ``pywin32``, ``pyobjc``, etc.) would not block merges
+        # or releases. If a known-vulnerable dependency is acceptable for
+        # a specific reason, suppress it explicitly via ``--ignore-vuln``
+        # rather than masking the entire step.
+        run: pip-audit --strict
 
   test:
     name: Test (${{ matrix.os }} / Python ${{ matrix.python-version }})
@@ -148,10 +155,15 @@ jobs:
         run: python -c "import win32api" || true
 
       - name: Run Test Suite
+        # Audit fix MAE-SEC-010: removed ``|| true`` so test failures fail
+        # the build. Previously the ``|| true`` masked all pytest failures,
+        # which meant broken tests could ship to release. The artifact
+        # upload step below uses ``if: always()`` so the junit XML is
+        # preserved even on failure.
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          python -m pytest -m "not real_mediapipe and not requires_hardware and not slow" --cov=gesture_controller --junitxml=pytest.xml || true
+          python -m pytest -m "not real_mediapipe and not requires_hardware and not slow" --cov=gesture_controller --junitxml=pytest.xml
 
       - name: Upload test results
         if: always()

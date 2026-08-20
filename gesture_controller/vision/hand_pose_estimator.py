@@ -1,7 +1,22 @@
 # mypy: ignore-errors
+import os
+
 import numpy as np
 import cv2 as cv
 import onnxruntime as ort
+
+
+def _default_ort_session_options():
+    """Performance optimization (P1): see ``palm_detector._default_ort_session_options``."""
+    opts = ort.SessionOptions()
+    opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+    try:
+        cpu = os.cpu_count() or 4
+        opts.intra_op_num_threads = max(1, min(cpu, 4))
+        opts.inter_op_num_threads = 1
+    except Exception:
+        pass
+    return opts
 
 
 class HandPoseEstimator:
@@ -39,6 +54,11 @@ class HandPoseEstimator:
                 providers.insert(0, "DirectMLExecutionProvider")
             if "CoreMLExecutionProvider" in ort.get_available_providers():
                 providers.insert(0, "CoreMLExecutionProvider")
+        # Performance optimization (P1): default to graph-optimized session
+        # options when the caller didn't supply their own.
+        if sess_options is None:
+            sess_options = _default_ort_session_options()
+
         self.session = ort.InferenceSession(
             self.model_path, sess_options=sess_options, providers=providers
         )

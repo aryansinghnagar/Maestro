@@ -57,7 +57,11 @@ class FramePipeline:
                     )
 
         self._camera_process = self._create_camera_process(
-            self._config._config, self._shm_name, self._frame_ready_event
+            # Audit fix MAE-ARCH-001 (C4): public accessor for the merged
+            # config dict rather than reaching into ``self._config._config``.
+            self._config.as_dict(),
+            self._shm_name,
+            self._frame_ready_event,
         )
         logger.info("Camera Stream process spawned", shm_name=self._shm_name)
 
