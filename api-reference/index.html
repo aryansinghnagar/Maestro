@@ -5080,7 +5080,7 @@ and asynchronous worker queue dispatch for telemetry or UI events.</p>
 
 
 <a href="#gesture_controller.core.config_manager.ConfigManager" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">ConfigManager</span><span class="p">(</span><span class="n">config_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">ConfigManager</span><span class="p">(</span><span class="n">config_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">event_bus</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">enable_watch</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -5088,6 +5088,11 @@ and asynchronous worker queue dispatch for telemetry or UI events.</p>
 
 
         <p>Manages system configuration loading, schema validation, and merging user overrides.</p>
+<p>Performance optimization (P6): optional file-watch support allows
+subsystems to subscribe to live config changes via the EventBus.
+A <code>config_reloaded</code> event is emitted whenever the user-config file
+changes on disk (subject to a 0.5s debounce so multi-event atomic
+saves don't trigger redundant reloads).</p>
 
 
 
@@ -5144,6 +5149,71 @@ and asynchronous worker queue dispatch for telemetry or UI events.</p>
     <div class="doc doc-contents ">
 
         <p>Set configuration value using dot notation.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="gesture_controller.core.config_manager.ConfigManager.as_dict" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">as_dict</span>
+
+
+<a href="#gesture_controller.core.config_manager.ConfigManager.as_dict" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">as_dict</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Return the live, merged configuration dict.</p>
+<p>Audit fix MAE-ARCH-001: public accessor replacing cross-module
+access to the private <code>_config</code> attribute.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="gesture_controller.core.config_manager.ConfigManager.start_watching" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">start_watching</span>
+
+
+<a href="#gesture_controller.core.config_manager.ConfigManager.start_watching" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">start_watching</span><span class="p">(</span><span class="n">config_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Begin watching the user-config file for on-disk changes.</p>
+<p>No-op if a watcher is already running. Safe to call multiple times.
+Requires <code>watchdog</code> to be importable; logs and returns silently
+if it is not (e.g., on a read-only filesystem).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="gesture_controller.core.config_manager.ConfigManager.stop_watching" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">stop_watching</span>
+
+
+<a href="#gesture_controller.core.config_manager.ConfigManager.stop_watching" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">stop_watching</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Stop the file-watch thread and release watchdog resources.</p>
 
 
     </div>
@@ -6149,7 +6219,7 @@ the user says the wake word.</p>
   </span>
 
 <a href="#gesture_controller.vision.palm_detector.PalmDetector.session" class="headerlink" title="Permanent link">&para;</a></h4>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">session</span> <span class="o">=</span> <span class="n">ort</span><span class="o">.</span><span class="n">InferenceSession</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_path</span><span class="p">,</span> <span class="n">sess_options</span><span class="o">=</span><span class="n">sess_options</span><span class="p">,</span> <span class="n">providers</span><span class="o">=</span><span class="n">providers</span><span class="p">)</span>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">session</span> <span class="o">=</span> <span class="n">ort</span><span class="o">.</span><span class="n">InferenceSession</span><span class="p">(</span><span class="n">model_bytes</span><span class="p">,</span> <span class="n">sess_options</span><span class="o">=</span><span class="n">sess_options</span><span class="p">,</span> <span class="n">providers</span><span class="o">=</span><span class="n">providers</span><span class="p">)</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -7409,6 +7479,14 @@ the user says the wake word.</p>
 
 
         <p>Finite State Machine for identifying single static, dynamic, or continuous gestures.</p>
+<p>Performance optimization (P3): the per-frame <code>evaluate()</code> previously
+used a chain of if-else branches keyed on <code>(gesture_type, current_state)</code>
+pairs to decide whether to run continuous-action evaluation, scroll
+scaling, etc. That string-compare chain is now replaced by a dispatch
+dict (<code>_state_dispatch</code>) populated at construction time, reducing
+per-frame decision latency from O(branches) to O(1) for the dispatch
+step. Transition evaluation remains O(transitions_per_state) — those
+are user-defined predicates and cannot be hashed.</p>
 
 
 
@@ -8672,6 +8750,16 @@ during which NO custom gesture can trigger.</p>
 
 
 
+        <p>Token-bucket-ish rate limiter for broker input actions.</p>
+<p>Audit fix (perf P4): all deques now use <code>maxlen</code> so memory is bounded
+even if the manual <code>popleft</code> eviction were ever skipped (e.g., on
+exception). The <code>maxlen</code> values are sized to the <em>theoretical</em> maximum
+per-window count, so auto-eviction never fires under normal operation —
+the explicit <code>if len() &gt;= max_*</code> checks still drive the verdict.
+The bound purely defends against unbounded growth if clock skew or a
+logic bug ever caused timestamps to be recorded without old ones being
+evicted.</p>
+
 
 
 
@@ -8703,7 +8791,7 @@ during which NO custom gesture can trigger.</p>
   </span>
 
 <a href="#gesture_controller.os_integration.broker.RateLimiter.global_history" class="headerlink" title="Permanent link">&para;</a></h4>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">global_history</span><span class="p">:</span> <span class="n">deque</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">global_history</span><span class="p">:</span> <span class="n">deque</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_GLOBAL_MAXLEN</span><span class="p">)</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -8747,7 +8835,7 @@ during which NO custom gesture can trigger.</p>
   </span>
 
 <a href="#gesture_controller.os_integration.broker.RateLimiter.burst_history" class="headerlink" title="Permanent link">&para;</a></h4>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">burst_history</span><span class="p">:</span> <span class="n">deque</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">deque</span><span class="p">()</span>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">burst_history</span><span class="p">:</span> <span class="n">deque</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_BURST_MAXLEN</span><span class="p">)</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -8800,6 +8888,17 @@ during which NO custom gesture can trigger.</p>
     <div class="doc doc-contents ">
 
 
+
+        <p>Append-only, hash-chained audit log with buffered writes.</p>
+<p>Audit fix (perf P5): previously every <code>log()</code> call opened the file,
+wrote one JSON line, and closed it (forcing an fsync on most filesystems).
+Under high-frequency gesture sequences (e.g., 60 fps mouse_move) this
+incurred ~1 ms of I/O per event — up to 60 ms/sec of fsync overhead.</p>
+<p>The new implementation buffers up to <code>_FLUSH_BATCH</code> entries or
+<code>_FLUSH_INTERVAL_SECONDS</code> elapsed time (whichever comes first) and
+flushes them in a single <code>write()</code> call. The hash chain remains
+sequential because all updates are made under <code>self._lock</code>. A
+<code>flush()</code> is exposed for graceful shutdown.</p>
 
 
 
@@ -8878,6 +8977,26 @@ during which NO custom gesture can trigger.</p>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="gesture_controller.os_integration.broker.AuditLogger.flush" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">flush</span>
+
+
+<a href="#gesture_controller.os_integration.broker.AuditLogger.flush" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">flush</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Force any buffered entries to disk. Idempotent.</p>
 
 
     </div>
@@ -9661,6 +9780,12 @@ during which NO custom gesture can trigger.</p>
     <div class="doc doc-contents ">
 
         <p>Verify that the connecting peer process belongs to the same UID.</p>
+<p>Audit fix MAE-SEC-001: previously the Windows path returned <code>True</code> if any
+exception was raised during the SID lookup, which fail-open behavior meant
+any local Windows process could connect to the named pipe and inject
+arbitrary input. The function now fail-closes (returns <code>False</code>) on any
+exception, logs at ERROR level, and writes an audit-log entry. The Linux
+and macOS paths already failed closed.</p>
 
 
     </div>
