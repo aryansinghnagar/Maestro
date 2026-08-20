@@ -2,10 +2,33 @@ import os
 import platform
 import subprocess as _real_subprocess
 import shutil
+import threading
 from typing import Optional
 
 
 class _SubprocessWrapper:
+    """Audit fix MAE-ARCH-007: thread-local recursion guard.
+
+    Previously the wrapper detected recursion by comparing
+    ``real_run == self.run`` — i.e., by identity of the bound method. That
+    check only fires when ``sys.modules['subprocess']`` has been *replaced
+    wholesale* by this wrapper instance. It does NOT protect against the
+    more common case where code calls ``subprocess.run`` *while inside* a
+    ``subprocess.run`` callback (e.g., a ``preexec_fn`` shim that itself
+    invokes the wrapper) — the inner call would re-enter ``self.run``,
+    observe the same ``real_run`` reference, and recurse.
+
+    A ``threading.local()`` flag is set on entry to ``run`` and cleared on
+    exit. If ``run`` is re-entered on the same thread, the guard short-
+    circuits straight to ``_real_subprocess.run``, breaking the cycle
+    deterministically without depending on module identity. The flag is
+    per-thread so two parallel ``subprocess.run`` calls on different
+    threads do not interfere with each other.
+    """
+
+    def __init__(self) -> None:
+        self._reentry_guard = threading.local()
+
     def __getattr__(self, name):
         import sys
 
@@ -29,9 +52,18 @@ class _SubprocessWrapper:
         if not is_mock and "timeout" not in kwargs:
             kwargs["timeout"] = 1.0
 
-        if real_run == self.run:
+        # Audit fix MAE-ARCH-007: thread-local re-entry guard. If we are
+        # already inside this method on the current thread, go straight to
+        # the real implementation to avoid infinite recursion.
+        already_inside = getattr(self._reentry_guard, "inside", False)
+        if already_inside or real_run == self.run or is_mock:
             return _real_subprocess.run(cmd, *args, **kwargs)
-        return real_run(cmd, *args, **kwargs)
+
+        self._reentry_guard.inside = True
+        try:
+            return real_run(cmd, *args, **kwargs)
+        finally:
+            self._reentry_guard.inside = False
 
     @property
     def TimeoutExpired(self):
@@ -101,7 +133,9 @@ class LinuxController(BaseController):
             raise ImportError("evdev/fcntl modules not loaded")
 
         o_nonblock = getattr(os, "O_NONBLOCK", 2048)
-        fd = os.open("/dev/uinput", os.O_WRONLY | o_nonblock)
+        # Audit fix MAE-SEC-014: add O_CLOEXEC so the fd is closed on exec()
+        o_cloexec = getattr(os, "O_CLOEXEC", 0o2000000)
+        fd = os.open("/dev/uinput", os.O_WRONLY | o_nonblock | o_cloexec)
 
         try:
             UI_SET_EVBIT = 0x40045564

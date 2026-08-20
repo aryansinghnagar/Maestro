@@ -422,6 +422,9 @@ class TestAuditLoggerAdditional:
         al = AuditLogger(tmp_path / "audit.log")
         for i in range(5):
             al.log("event", {"i": i})
+        # Audit fix (perf P5): AuditLogger now batches writes (10 entries
+        # or 100 ms). Drain the buffer before reading from disk.
+        al.flush()
         lines = (tmp_path / "audit.log").read_text().splitlines()
         assert len(lines) == 5
 
@@ -430,6 +433,9 @@ class TestAuditLoggerAdditional:
         log_path = tmp_path / "audit.log"
         al1 = AuditLogger(log_path)
         al1.log("first", {"v": 1})
+        # Audit fix (perf P5): drain so the entry reaches disk before
+        # re-opening the logger.
+        al1.flush()
         last_hash_after_first = al1.last_hash
 
         # Re-open — should read the last hash from disk
@@ -437,6 +443,8 @@ class TestAuditLoggerAdditional:
         assert al2.last_hash == last_hash_after_first
 
         al2.log("second", {"v": 2})
+        # Audit fix (perf P5): drain so the second entry reaches disk.
+        al2.flush()
         lines = log_path.read_text().splitlines()
         entry2 = json.loads(lines[1])
         assert entry2["prev_hash"] == last_hash_after_first
@@ -453,6 +461,10 @@ class TestAuditLoggerAdditional:
         for t in threads:
             t.join()
 
+        # Audit fix (perf P5): drain any entries still buffered after
+        # the burst (20 entries > _FLUSH_BATCH=10 so most are already
+        # flushed, but the trailing entries may still be in-buffer).
+        al.flush()
         lines = log_path.read_text().splitlines()
         assert len(lines) == 20
         for line in lines:
@@ -467,6 +479,8 @@ class TestAuditLoggerAdditional:
         al.log("alpha", {"x": 1})
         al.log("beta", {"x": 2})
 
+        # Audit fix (perf P5): drain buffered entries before reading.
+        al.flush()
         lines = log_path.read_text().splitlines()
         for line in lines:
             entry = json.loads(line)

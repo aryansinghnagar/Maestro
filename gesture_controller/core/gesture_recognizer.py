@@ -46,7 +46,9 @@ class GestureRecognizer:
         combined_gestures = predefined_list + plugin_gestures
         gestures_config["gestures"] = combined_gestures
 
-        merged_config = self._config._config.copy()
+        # Audit fix MAE-ARCH-001 (C4): use the public ``as_dict()`` accessor
+        # rather than reaching across encapsulation into ``self._config._config``.
+        merged_config = self._config.as_dict().copy()
         merged_config.update(gestures_config)
 
         if self._fsm_manager is None:
@@ -55,7 +57,8 @@ class GestureRecognizer:
             self._fsm_manager.reload_gestures(merged_config)
 
     def _init_custom_gesture_matcher(self) -> None:
-        self._custom_matcher = CustomGestureMatcher(self._config._config)
+        # Audit fix MAE-ARCH-001 (C4): public accessor for the merged config.
+        self._custom_matcher = CustomGestureMatcher(self._config.as_dict())
         original_load = self._custom_matcher.load_templates
 
         def wrapped_load(*args: Any, **kwargs: Any) -> Any:
@@ -77,7 +80,8 @@ class GestureRecognizer:
         assert self._fsm_manager is not None
         matcher = self._custom_matchers.get(track_id)
         if matcher is None:
-            matcher = CustomGestureMatcher(self._config._config)
+            # Audit fix MAE-ARCH-001 (C4): public accessor for the merged config.
+            matcher = CustomGestureMatcher(self._config.as_dict())
             self._custom_matchers[track_id] = matcher
 
         matcher.update_buffer(hand)

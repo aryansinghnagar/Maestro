@@ -75,6 +75,10 @@ def test_audit_logger_tamper_evident() -> None:
     logger.log("test_event_1", {"data": "val1"})
     logger.log("test_event_2", {"data": "val2"})
     logger.log("test_event_3", {"data": "val3"})
+    # Audit fix (perf P5): the AuditLogger now batches writes (10 entries
+    # or 100 ms, whichever comes first). Explicitly drain the buffer before
+    # reading from disk so the test observes the durable state.
+    logger.flush()
 
     # Parse and verify the hash chain
     with open(log_path, "r", encoding="utf-8") as f:

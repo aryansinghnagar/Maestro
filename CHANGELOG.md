@@ -5,6 +5,92 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- **audit remediation — 2026-08-19.** Win32 broker `verify_peer` now
+  fail-closes on any exception during the SID lookup (was fail-open;
+  audit fix MAE-SEC-001, CVSS 7.8). Any `ImportError`, `AttributeError`,
+  or `OSError` raised during the Windows named-pipe authentication path
+  now causes the connection to be rejected with an `ERROR` log and an
+  `auth_rejected` audit entry.
+- **audit remediation — 2026-08-19.** TUF `BOOTSTRAP_ROOT` is now
+  detected as placeholder and the `UpdateCheckerThread` refuses to use
+  it unless the caller explicitly passes `allow_placeholder_root=True`
+  (audit fix MAE-SEC-002, CVSS 7.5). The previous placeholder Ed25519
+  keys (whose keyids shared a 30-byte suffix — probability ~2^-240 of
+  being legitimate) gave users a false sense that auto-updates were
+  TUF-protected. Auto-update is now effectively disabled until a real
+  TUF repository with real keys is published.
+- **audit remediation — 2026-08-19.** `os.symlink` is no longer
+  monkey-patched globally at module import (audit fix MAE-SEC-003).
+  The updater's `_secure_symlink` helper is now a regular function
+  `secure_symlink` that the updater calls explicitly. Previously
+  importing `gesture_controller.core.updater` would silently rewrite
+  `os.symlink` for every other module in the same Python process.
+- **audit remediation — 2026-08-19.** WebSocket handshake no longer
+  accepts `"null"` as a valid Origin header (audit fix MAE-SEC-004,
+  CVSS 5.0). The `"null"` Origin is sent by sandboxed iframes,
+  `file://` pages, redirects across origins, and some privacy tools —
+  opening a cross-site WebSocket hijacking (CSWSH) vector. Only
+  explicit `localhost` and `127.0.0.1` origins are now allowed
+  (HTTPS variants added defensively).
+- **audit remediation — 2026-08-19.** CLI now sends the API token
+  via the `Authorization: Bearer` header instead of a URL query
+  parameter (audit fix MAE-SEC-005, CVSS 5.3). The `?token=...` path
+  leaked via shell history (`~/.bash_history`), process listings
+  (`ps aux`), and browser `Referer` headers. The server still accepts
+  the query parameter for backward compatibility but emits a
+  deprecation warning when it sees one.
+- **audit remediation — 2026-08-19.** `run_applescript` bridge now
+  caps script length at 8 KiB, rejects scripts containing
+  `do shell script` or `POSIX path of` patterns, and passes
+  `-l AppleScript` explicitly to prevent JavaScript-mode escapes
+  (audit fix MAE-SEC-006, CVSS 7.8). The `maestro run-applescript`
+  CLI command is also gated behind `--i-understand-the-risk` so the
+  command cannot be invoked casually.
+- **audit remediation — 2026-08-19.** `apply_update` now validates
+  every archive member's resolved path against the extraction
+  directory before extraction (audit fix MAE-SEC-008, CVSS 7.5).
+  The previous `extractall()` calls (annotated `# nosec B202`) admitted
+  zip-slip / path-traversal attacks where a malicious archive could
+  write outside the extract directory (e.g., to `~/.bashrc`,
+  `~/Library/LaunchAgents/`, or `~/.config/autostart/`). The Bandit
+  `B202` finding is now fixed, not suppressed.
+- **audit remediation — 2026-08-19.** `pip-audit` and `pytest` CI
+  steps no longer mask failures with `|| true` (audit fixes
+  MAE-SEC-009 and MAE-SEC-010, CVSS 5.5). Dependency CVEs and test
+  failures now fail the build. `pip-audit` now runs with `--strict`.
+- **audit remediation — 2026-08-19.** `BrokerClientController`
+  subprocess spawn now passes `close_fds=True` and an explicit
+  `env=os.environ.copy()` (audit fix MAE-SEC-015). The broker
+  subprocess no longer inherits unrelated file descriptors (camera
+  SHM, integration-server sockets, opened log files).
+- **audit remediation — 2026-08-19.** Vosk model download now has
+  SHA-256 verification scaffolding (audit fix MAE-SEC-017). The
+  production `download-voice-model` command refuses to extract until
+  the maintainer pins the real hash; the `download-voice-model-dev`
+  command allows skipping the check for development. The zip members
+  are also validated for path-traversal before extraction.
+- **audit remediation — 2026-08-19.** SBOM (`packaging/sbom.cdx.json`)
+  now declares the correct license (AGPL-3.0-only, was MIT) and the
+  correct version (1.2.0, was 1.0.0) (audit fix MAE-OSS-003).
+- **audit remediation — 2026-08-19.** `SECURITY.md` supported-versions
+  table updated to reflect the current 1.2.x active release (was
+  listing 1.1.x as Active) (audit fix MAE-OSS-002).
+
+### Added
+
+- `AUDIT_REMEDIATION.md` at the repo root, documenting every fix
+  applied in response to the deep forensic audit. Each entry
+  cross-references the finding ID (MAE-*), the file touched, and the
+  rationale.
+- `gesture_controller/tests/unit/test_audit_remediation.py` with
+  regression tests for MAE-SEC-001, MAE-SEC-002, MAE-SEC-003,
+  MAE-SEC-004, MAE-SEC-005, MAE-SEC-006, MAE-SEC-008, MAE-SEC-009,
+  MAE-SEC-010, and MAE-SEC-017.
+
 ## [1.2.0](https://github.com/aryansinghnagar/Maestro/compare/v1.1.0...v1.2.0) (2026-08-18)
 
 

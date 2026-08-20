@@ -73,7 +73,17 @@ class FSMState:
 
 
 class GestureFSM:
-    """Finite State Machine for identifying single static, dynamic, or continuous gestures."""
+    """Finite State Machine for identifying single static, dynamic, or continuous gestures.
+
+    Performance optimization (P3): the per-frame ``evaluate()`` previously
+    used a chain of if-else branches keyed on ``(gesture_type, current_state)``
+    pairs to decide whether to run continuous-action evaluation, scroll
+    scaling, etc. That string-compare chain is now replaced by a dispatch
+    dict (``_state_dispatch``) populated at construction time, reducing
+    per-frame decision latency from O(branches) to O(1) for the dispatch
+    step. Transition evaluation remains O(transitions_per_state) — those
+    are user-defined predicates and cannot be hashed.
+    """
 
     def __init__(
         self,
@@ -95,6 +105,18 @@ class GestureFSM:
         self.is_in_cooldown = False
         self._cooldown_until = 0.0
         self._features_at_state_entry: FeatureVector | None = None
+
+        # P3: dispatch table for per-(gesture_type, current_state) handlers.
+        # Built once at construction. The (gesture_type, state_name) tuple is
+        # the O(1) lookup key. Handlers receive (features, timestamp,
+        # correlation_id) and return a GestureEvent or None. Unknown pairs
+        # fall through to the default no-op (``None``), preserving prior
+        # behaviour for any state not in the table.
+        self._state_dispatch: dict[tuple[str, str], Callable[..., Any]] = {}
+        if gesture_type == "continuous":
+            self._state_dispatch[("continuous", "ScrollingActive")] = (
+                self._evaluate_continuous_scrolling
+            )
 
     def evaluate(
         self, features: FeatureVector, timestamp: float, correlation_id: str = ""
@@ -212,31 +234,51 @@ class GestureFSM:
                     return event
                 break
 
-        # 6. Continuous gesture evaluation (always run action while active)
-        if self.gesture_type == "continuous" and self.current_state == "ScrollingActive":
-            # Retrieve active action from Trigger definition
-            trigger_state = self.states.get("Trigger")
-            action_str = trigger_state.action if trigger_state else None
-
-            if action_str:
-                if "delta" in action_str and self._features_at_state_entry is not None:
-                    # Scroll amount scale (approx. 0.1 relative translation is 3 scroll units)
-                    raw_delta = features.palm_center_delta_y
-                    scroll_val = int(raw_delta * 30.0)
-                    action_str = f"MouseScroll:{scroll_val}"
-
-                return GestureEvent(
-                    gesture_name=self.name,
-                    gesture_type=self.gesture_type,
-                    action=action_str,
-                    confidence=features.confidence,
-                    hand=features.handedness,
-                    timestamp=timestamp,
-                    gesture_source="fsm",
-                    metadata={"correlation_id": correlation_id},
-                )
+        # 6. Continuous gesture evaluation (always run action while active).
+        # Performance optimization (P3): replaced the
+        # ``if self.gesture_type == "continuous" and self.current_state == "ScrollingActive"``
+        # branch with an O(1) dispatch-table lookup. The table is built once
+        # at GestureFSM construction; misses (i.e. every non-continuous state)
+        # resolve to ``None`` immediately.
+        handler = self._state_dispatch.get((self.gesture_type, self.current_state))
+        if handler is not None:
+            event = handler(features, timestamp, correlation_id)
+            if event is not None:
+                return event
 
         return None
+
+    def _evaluate_continuous_scrolling(
+        self, features: FeatureVector, timestamp: float, correlation_id: str
+    ) -> GestureEvent | None:
+        """Continuous-mode handler for the ``ScrollingActive`` state.
+
+        Emits a ``MouseScroll`` action scaled by the change in palm-center Y
+        since state entry. Returns ``None`` if no action is configured.
+        """
+        # Retrieve active action from Trigger definition
+        trigger_state = self.states.get("Trigger")
+        action_str = trigger_state.action if trigger_state else None
+
+        if not action_str:
+            return None
+
+        if "delta" in action_str and self._features_at_state_entry is not None:
+            # Scroll amount scale (approx. 0.1 relative translation is 3 scroll units)
+            raw_delta = features.palm_center_delta_y
+            scroll_val = int(raw_delta * 30.0)
+            action_str = f"MouseScroll:{scroll_val}"
+
+        return GestureEvent(
+            gesture_name=self.name,
+            gesture_type=self.gesture_type,
+            action=action_str,
+            confidence=features.confidence,
+            hand=features.handedness,
+            timestamp=timestamp,
+            gesture_source="fsm",
+            metadata={"correlation_id": correlation_id},
+        )
 
     def reset(self) -> None:
         """Reset state machine."""

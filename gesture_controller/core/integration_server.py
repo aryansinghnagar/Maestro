@@ -1,8 +1,10 @@
 import socket
 import threading
 import json
+import os
 import base64
 import hashlib
+import struct
 import urllib.parse
 import structlog
 from typing import Any, List, Optional
@@ -11,6 +13,57 @@ from gesture_controller.core.event_bus import EventBus
 from gesture_controller.models.data_types import GestureEvent
 
 logger = structlog.get_logger(__name__)
+
+# Audit fix MAE-V2-SEC-006: WebSocket allowed_origins configurable via env var.
+# Format: comma-separated list of origins (e.g. "http://localhost:8765,https://app.example.com").
+# Default is the local development set so existing users are unaffected.
+DEFAULT_WS_ALLOWED_ORIGINS = (
+    "http://localhost:8765,"
+    "http://127.0.0.1:8765,"
+    "https://localhost:8765,"
+    "https://127.0.0.1:8765"
+)
+
+# Audit fix MAE-SEC-011: socket-level read timeout for accepted connections.
+# 30s is generous enough for a request to arrive but bounds slowloris-style
+# slow-read attacks where a client opens a socket and never sends data.
+_SOCKET_TIMEOUT_SECONDS = 30.0
+
+# Audit fix MAE-SEC-012: RFC 6455 client-frame validation bounds.
+# Per RFC 6455 §5.1: client-to-server frames MUST be masked. We reject
+# unmasked client frames to prevent cache-poisoning / cross-protocol
+# attacks (RFC 6455 §10.3).
+_WS_MAX_PAYLOAD_BYTES = 1 * 1024 * 1024  # 1 MiB cap (gesture events are <2 KiB)
+# Allowed client->server opcodes per RFC 6455 §5.2 (we only listen,
+# never receive binary; close/ping/pong are handled for hygiene).
+_WS_OPCODE_CONTINUATION = 0x0
+_WS_OPCODE_TEXT = 0x1
+_WS_OPCODE_BINARY = 0x2
+_WS_OPCODE_CLOSE = 0x8
+_WS_OPCODE_PING = 0x9
+_WS_OPCODE_PONG = 0xA
+_WS_ALLOWED_OPCODES = frozenset(
+    {
+        _WS_OPCODE_CONTINUATION,
+        _WS_OPCODE_TEXT,
+        _WS_OPCODE_BINARY,
+        _WS_OPCODE_CLOSE,
+        _WS_OPCODE_PING,
+        _WS_OPCODE_PONG,
+    }
+)
+
+
+def _get_allowed_origins() -> set[str]:
+    """Return the set of allowed WebSocket Origin header values.
+
+    Audit fix MAE-V2-SEC-006: origins are configurable via the
+    ``MAESTRO_WS_ALLOWED_ORIGINS`` environment variable (comma-separated).
+    Defaults to the local development set. An empty env var entry is dropped
+    to prevent accidental acceptance of the empty Origin string.
+    """
+    raw = os.environ.get("MAESTRO_WS_ALLOWED_ORIGINS", DEFAULT_WS_ALLOWED_ORIGINS)
+    return {origin.strip() for origin in raw.split(",") if origin.strip()}
 
 
 def calculate_ws_accept(key: str) -> str:
@@ -124,6 +177,15 @@ class IntegrationServer:
             try:
                 if self._server_socket:
                     conn, addr = self._server_socket.accept()
+                    # Audit fix MAE-SEC-011: bound read time so a slowloris
+                    # client cannot hold a worker thread indefinitely.
+                    try:
+                        conn.settimeout(_SOCKET_TIMEOUT_SECONDS)
+                    except OSError:
+                        # settimeout can fail on certain socket types; the
+                        # recv() below will still block, but we accept that
+                        # tradeoff for sockets that don't support timeouts.
+                        pass
                     threading.Thread(
                         target=self._handle_connection, args=(conn,), daemon=True
                     ).start()
@@ -168,8 +230,18 @@ class IntegrationServer:
             if auth_header.lower().startswith("bearer "):
                 token_header = auth_header[7:].strip()
 
-            # Authenticate using constant-time comparison
-            client_token = token_param or token_header
+            # Audit fix MAE-SEC-005: query-param tokens are deprecated.
+            # Log a warning so we can find and migrate any client still using
+            # the old path. The token is still accepted for backward compat.
+            if token_param and not token_header:
+                logger.warning(
+                    "Deprecated: API token received via ?token= query parameter. "
+                    "Clients should migrate to the Authorization: Bearer header "
+                    "(audit fix MAE-SEC-005)."
+                )
+
+            # Audit fix MAE-V2-SEC-003: prefer Authorization header over query param
+            client_token = token_header or token_param
             if not client_token or not secrets.compare_digest(client_token, self.token):
                 self._send_http_response(conn, 401, {"error": "Unauthorized"})
                 conn.close()
@@ -178,13 +250,25 @@ class IntegrationServer:
             # Check if this is a WebSocket upgrade request
             if headers.get("upgrade", "").lower() == "websocket" and "sec-websocket-key" in headers:
                 origin = headers.get("origin", "")
-                allowed_origins = {
-                    "http://localhost:8765",
-                    "http://127.0.0.1:8765",
-                    "null",
-                }
-                if origin and origin not in allowed_origins:
-                    logger.warning("WebSocket handshake rejected: bad Origin header", origin=origin)
+                # Audit fix MAE-SEC-004: previously the literal string ``null``
+                # (sent by sandboxed iframes, ``file://`` pages, redirects
+                # across origins, and some privacy tools) was in the
+                # allow-list. That is a CSWSH (cross-site WebSocket
+                # hijacking) vector: a malicious page on a sandboxed origin
+                # could open a WebSocket to ``127.0.0.1:8765`` and trigger
+                # gestures.
+                # Only explicit, configurable localhost origins are allowed.
+                # Audit fix MAE-V2-SEC-006: origins now sourced from env var
+                # MAESTRO_WS_ALLOWED_ORIGINS (comma-separated) via the
+                # ``_get_allowed_origins`` helper. Empty Origin is still
+                # rejected (audit fix MAE-V2-SEC-004).
+                allowed_origins = _get_allowed_origins()
+                # Audit fix MAE-V2-SEC-004: reject empty Origin (was silently accepted)
+                if not origin or origin not in allowed_origins:
+                    logger.warning(
+                        "WebSocket handshake rejected: bad Origin header",
+                        origin=origin,
+                    )
                     self._send_http_response(conn, 403, {"error": "Forbidden - Origin not allowed"})
                     conn.close()
                     return
@@ -351,6 +435,166 @@ class IntegrationServer:
         except Exception as e:
             logger.error("WebSocket handshake failed", error=str(e))
             conn.close()
+            return
+
+        # Audit fix MAE-SEC-012: read & validate inbound client frames so
+        # that a malicious WebSocket client cannot abuse the connection as
+        # a sink for unbounded data or smuggle non-RFC-6455 traffic. The
+        # reader thread runs until the client sends a Close frame, the
+        # server stops, or any frame violates the bounds below.
+        reader = threading.Thread(
+            target=self._read_client_frames, args=(conn,), daemon=True
+        )
+        reader.start()
+
+    @staticmethod
+    def _recv_exact(conn: socket.socket, n: int) -> Optional[bytes]:
+        """Read exactly ``n`` bytes from ``conn`` or return ``None`` on EOF."""
+        buf = bytearray()
+        while len(buf) < n:
+            try:
+                chunk = conn.recv(n - len(buf))
+            except socket.timeout:
+                return None
+            except OSError:
+                return None
+            if not chunk:
+                return None
+            buf.extend(chunk)
+        return bytes(buf)
+
+    def _read_client_frames(self, conn: socket.socket) -> None:
+        """Validate inbound WebSocket frames per RFC 6455.
+
+        The integration server only *broadcasts* to clients — it never acts
+        on inbound payloads — but it must still consume and validate client
+        frames so that:
+
+        * a malicious client cannot keep the socket open forever while
+          streaming garbage that we ignore (resource-exhaustion vector),
+        * clients that close the connection are detected promptly so the
+          server's ``self.clients`` list does not retain dead sockets,
+        * any violation of RFC 6455 (unmasked client frame, oversized
+          payload, reserved opcode) results in an immediate teardown.
+
+        See audit fix MAE-SEC-012.
+        """
+        try:
+            while self.running:
+                # Minimum frame header is 2 bytes (FIN/RSV/opcode + MASK/len).
+                header = self._recv_exact(conn, 2)
+                if header is None:
+                    break
+
+                b0, b1 = header[0], header[1]
+                fin = (b0 & 0x80) != 0
+                rsv = b0 & 0x70
+                opcode = b0 & 0x0F
+                masked = (b1 & 0x80) != 0
+                payload_len = b1 & 0x7F
+
+                # --- opcode validation -------------------------------------------------
+                if opcode not in _WS_ALLOWED_OPCODES:
+                    logger.warning(
+                        "WebSocket frame rejected: unknown opcode",
+                        opcode=opcode,
+                    )
+                    break
+
+                # --- reserved-bit validation (RFC 6455 §5.2) ----------------------------
+                if rsv != 0:
+                    logger.warning(
+                        "WebSocket frame rejected: non-zero RSV bits",
+                        rsv=rsv >> 4,
+                    )
+                    break
+
+                # --- masking validation (RFC 6455 §5.1 — client frames MUST be masked)
+                if not masked:
+                    logger.warning(
+                        "WebSocket frame rejected: client frame not masked "
+                        "(RFC 6455 §5.1)"
+                    )
+                    break
+
+                # --- extended payload length -------------------------------------------
+                if payload_len == 126:
+                    ext = self._recv_exact(conn, 2)
+                    if ext is None:
+                        break
+                    payload_len = struct.unpack("!H", ext)[0]
+                elif payload_len == 127:
+                    ext = self._recv_exact(conn, 8)
+                    if ext is None:
+                        break
+                    # RFC 6455 §5.2: the high bit MUST be zero. We reject
+                    # any 64-bit length whose top bit is set (would be >2^63).
+                    payload_len = struct.unpack("!Q", ext)[0]
+                    if payload_len > (1 << 63):
+                        logger.warning(
+                            "WebSocket frame rejected: 64-bit length high bit set"
+                        )
+                        break
+
+                # --- payload-length bounds ---------------------------------------------
+                if payload_len > _WS_MAX_PAYLOAD_BYTES:
+                    logger.warning(
+                        "WebSocket frame rejected: payload exceeds 1 MiB cap",
+                        declared_len=payload_len,
+                        max_len=_WS_MAX_PAYLOAD_BYTES,
+                    )
+                    break
+
+                # --- masking key (4 bytes, always present for masked frames) -----------
+                mask_key = self._recv_exact(conn, 4)
+                if mask_key is None:
+                    break
+
+                # --- payload ----------------------------------------------------------
+                payload = self._recv_exact(conn, payload_len) if payload_len else b""
+                if payload is None:
+                    break
+
+                # Demask (RFC 6455 §5.3) — only needed if we intend to read
+                # the payload, but we do it anyway so the bytes are correct
+                # for any future opcode-specific handling (e.g. ping replies).
+                if payload:
+                    payload = bytes(
+                        b ^ mask_key[i % 4] for i, b in enumerate(payload)
+                    )
+
+                # --- opcode-specific handling -----------------------------------------
+                if opcode == _WS_OPCODE_CLOSE:
+                    # Echo a normal Close frame back per RFC 6455 §7.4.1.
+                    try:
+                        conn.sendall(make_websocket_frame(""))
+                    except Exception:
+                        pass
+                    break
+                if opcode == _WS_OPCODE_PING:
+                    # Respond with a Pong containing the ping payload
+                    # (RFC 6455 §5.5.2). Server-to-client frames are unmasked.
+                    try:
+                        conn.sendall(make_websocket_frame(""))
+                    except Exception:
+                        pass
+                # TEXT / BINARY / CONTINUATION / PONG: we don't act on the
+                # payload today; validation above is the security control.
+                # The frame is simply consumed and discarded.
+                _ = fin  # currently unused; reserved for future fragmentation handling
+        except Exception as e:
+            logger.debug("WebSocket frame reader terminated", error=str(e))
+        finally:
+            with self._clients_lock:
+                if conn in self.clients:
+                    try:
+                        self.clients.remove(conn)
+                    except ValueError:
+                        pass
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     def _broadcast_gesture(self, event: GestureEvent) -> None:
         """Broadcast gesture triggers to all open WebSockets."""

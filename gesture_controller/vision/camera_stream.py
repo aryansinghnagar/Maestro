@@ -136,8 +136,20 @@ class CameraStream:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = cv2.flip(frame, 1)  # Mirror
 
-            # Write to DoubleFrameBuffer
-            db.write(frame.tobytes())
+            # Write to DoubleFrameBuffer.
+            # Performance optimization (P2): pass a flat byte view of the
+            # numpy array directly instead of calling ``frame.tobytes()``.
+            # ``memoryview(frame).cast('B')`` is zero-copy on the caller
+            # side and the SHM-side assignment uses a single ``memcpy``
+            # into the shared segment. Previously ``tobytes()`` allocated
+            # ~921 KB per frame (27 MB/sec at 30 FPS) just to be
+            # immediately copied again into SHM.
+            #
+            # Note: ``memoryview(frame).cast('B')`` requires a C-contiguous
+            # array (cv2 ops always return one). ``frame.data`` would also
+            # be zero-copy but its ``len()`` is the first-dim shape (480),
+            # not the byte count, which DoubleFrameBuffer.write() needs.
+            db.write(memoryview(frame).cast("B"))
             self.frame_ready_event.set()
 
         db.close()
