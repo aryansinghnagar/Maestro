@@ -1,18 +1,19 @@
 import time
-import numpy as np
-from gesture_controller.vision.one_euro_filter import OneEuroFilter
-from gesture_controller.models.feature_engineering import compute_features
-from gesture_controller.core.state_machine import GestureFSMManager
-from gesture_controller.models.dtw_matcher import CustomGestureMatcher
-from gesture_controller.models.data_types import Hand, Landmark3D, FeatureVector
-from gesture_controller.core.event_bus import EventBus
-from pathlib import Path
 from typing import Any
 
+import numpy as np
 
-def run_profile() -> None:
-    print("=== Maestro Latency Profiling Harness ===")
+from gesture_controller.core.event_bus import EventBus
+from gesture_controller.core.state_machine import GestureFSMManager
+from gesture_controller.models.data_types import Hand, Landmark3D
+from gesture_controller.models.dtw_matcher import CustomGestureMatcher
+from gesture_controller.models.feature_engineering import compute_features
+from gesture_controller.vision.one_euro_filter import OneEuroFilter
 
+
+def _create_test_environment() -> (
+    tuple[dict[str, Any], OneEuroFilter, GestureFSMManager, CustomGestureMatcher, Hand, np.ndarray]
+):
     config = {
         "engine": {"global_cooldown_ms": 200.0, "max_hands": 2},
         "config": {"default_thresholds": {"pinch_distance": 0.05, "swipe_velocity": 0.5}},
@@ -37,7 +38,6 @@ def run_profile() -> None:
     fsm_manager = GestureFSMManager(config, event_bus)
     custom_matcher = CustomGestureMatcher(config)
 
-    # Pre-populate matcher with a dummy template to ensure match logic is executed
     custom_matcher._templates["dummy"] = {
         "template": np.zeros((60, 63), dtype=np.float64),
         "threshold": 0.15,
@@ -49,17 +49,24 @@ def run_profile() -> None:
     hand = Hand(landmarks=landmarks, handedness="Right", confidence=0.9)
     lm_array = np.zeros((21, 3), dtype=np.float64)
 
+    return config, filter_instance, fsm_manager, custom_matcher, hand, lm_array
+
+
+def run_profile() -> None:
+    print("=== Maestro Latency Profiling Harness ===")
+    _, filter_instance, fsm_manager, custom_matcher, hand, lm_array = _create_test_environment()
+    landmarks = hand.landmarks
     iterations = 1000
 
-    # Benchmark: np.array allocation
+    # Section 1: Evaluate numpy array allocation
     alloc_times = []
     for _ in range(iterations):
         t0 = time.perf_counter()
-        _arr = np.array([[l.x, l.y, l.z] for l in landmarks], dtype=np.float64)
+        _arr = np.array([[lm.x, lm.y, lm.z] for lm in landmarks], dtype=np.float64)
         t1 = time.perf_counter()
         alloc_times.append((t1 - t0) * 1e6)
 
-    # Benchmark: OneEuroFilter.filter
+    # Section 2: Evaluate One-Euro filter smoothing
     filter_times = []
     for i in range(iterations):
         t0 = time.perf_counter()
@@ -69,17 +76,17 @@ def run_profile() -> None:
         t1 = time.perf_counter()
         filter_times.append((t1 - t0) * 1e6)
 
-    # Benchmark: compute_features
+    # Section 3: Evaluate invariant feature engineering
     vel = np.zeros((21, 3), dtype=np.float64)
     acc = np.zeros((21, 3), dtype=np.float64)
     feat_times = []
     for i in range(iterations):
         t0 = time.perf_counter()
-        features = compute_features(hand, vel, acc, float(i) / 30.0, i)
+        _features = compute_features(hand, vel, acc, float(i) / 30.0, i)
         t1 = time.perf_counter()
         feat_times.append((t1 - t0) * 1e6)
 
-    # Benchmark: FSM evaluate
+    # Section 4: Evaluate FSM state machine transitions
     fsm_times = []
     feat_vector = compute_features(hand, vel, acc, 0.0, 0)
     for i in range(iterations):
@@ -89,7 +96,7 @@ def run_profile() -> None:
         t1 = time.perf_counter()
         fsm_times.append((t1 - t0) * 1e6)
 
-    # Benchmark: CustomGestureMatcher.match
+    # Section 5: Evaluate custom gesture dynamic time warping
     match_times = []
     for i in range(iterations):
         t0 = time.perf_counter()
@@ -106,9 +113,7 @@ def run_profile() -> None:
 
     print(f"\nProfiling results over {iterations} iterations:")
     print("-" * 65)
-    print(
-        f"| {'Component':<30} | {'P50 (\u00b5s)':<8} | {'P95 (\u00b5s)':<8} | {'P99 (\u00b5s)':<8} |"
-    )
+    print(f"| {'Component':<30} | {'P50 (us)':<8} | {'P95 (us)':<8} | {'P99 (us)':<8} |")
     print("-" * 65)
     print_stats("np.array allocation", alloc_times)
     print_stats("OneEuroFilter.filter()", filter_times)

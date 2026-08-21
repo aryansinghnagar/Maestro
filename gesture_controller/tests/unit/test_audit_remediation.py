@@ -21,7 +21,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # --- MAE-SEC-001 ----------------------------------------------------------
 
 
@@ -148,9 +147,7 @@ def test_websocket_null_origin_not_allowed():
     # We can't easily spin up the full IntegrationServer in a unit test,
     # but we can verify the allowed_origins set directly by inspecting
     # the source. This is a regression guard.
-    source = Path(
-        "gesture_controller/core/integration_server.py"
-    ).read_text(encoding="utf-8")
+    source = Path("gesture_controller/core/integration_server.py").read_text(encoding="utf-8")
     if platform.system() == "Windows":
         source = source.replace("\\", "/")
     # The literal string '"null"' as an allowed origin must not appear
@@ -174,15 +171,14 @@ def test_cli_uses_authorization_header_not_query_param():
     # The _make_api_request function should NOT embed the token in the URL.
     # We check that the URL line does not contain ``?token=``.
     for line in source.splitlines():
-        if "url = f\"http://127.0.0.1:8765" in line:
+        if 'url = f"http://127.0.0.1:8765' in line:
             assert "?token=" not in line, (
                 "CLI must not embed the API token in the URL query string "
                 "(audit fix MAE-SEC-005)."
             )
     # And the Authorization header must be set.
     assert "Authorization" in source or "Bearer" in source, (
-        "CLI must send the token via the Authorization: Bearer header "
-        "(audit fix MAE-SEC-005)."
+        "CLI must send the token via the Authorization: Bearer header " "(audit fix MAE-SEC-005)."
     )
 
 
@@ -253,15 +249,13 @@ def test_apply_update_rejects_zip_slip(tmp_path):
 
     # The apply_update call must refuse to extract and return False.
     result = apply_update(zip_path, extract_dir=extract_dir)
-    assert result is False, (
-        "apply_update must reject zip-slip members (audit fix MAE-SEC-008)."
-    )
+    assert result is False, "apply_update must reject zip-slip members (audit fix MAE-SEC-008)."
 
     # The traversal target must not have been written.
     cron_evil = tmp_path.parent.parent / "etc" / "cron.d" / "evil"
-    assert not cron_evil.exists(), (
-        "Path-traversal member must not have been written outside extract_dir."
-    )
+    assert (
+        not cron_evil.exists()
+    ), "Path-traversal member must not have been written outside extract_dir."
 
 
 def test_apply_update_rejects_absolute_path(tmp_path):
@@ -304,12 +298,10 @@ def test_ci_does_not_mask_pip_audit():
     ci = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
     # The pip-audit step must not be masked with ``|| true``.
     # Find the "Run Pip-Audit" step and verify the line below does not mask.
-    assert "pip-audit --strict" in ci, (
-        "pip-audit should run with --strict (audit fix MAE-SEC-009)."
-    )
-    assert "pip-audit || true" not in ci, (
-        "pip-audit must NOT be masked with || true (audit fix MAE-SEC-009)."
-    )
+    assert "pip-audit --strict" in ci, "pip-audit should run with --strict (audit fix MAE-SEC-009)."
+    assert (
+        "pip-audit || true" not in ci
+    ), "pip-audit must NOT be masked with || true (audit fix MAE-SEC-009)."
 
 
 def test_ci_does_not_mask_pytest():
@@ -321,9 +313,9 @@ def test_ci_does_not_mask_pytest():
         None,
     )
     assert pytest_line is not None
-    assert "|| true" not in pytest_line, (
-        "pytest must NOT be masked with || true (audit fix MAE-SEC-010)."
-    )
+    assert (
+        "|| true" not in pytest_line
+    ), "pytest must NOT be masked with || true (audit fix MAE-SEC-010)."
 
 
 # --- MAE-SEC-017 ----------------------------------------------------------
@@ -352,6 +344,5 @@ def test_vosk_download_refuses_unverified(tmp_path, monkeypatch, capsys):
 
     captured = capsys.readouterr()
     assert "SHA-256" in captured.err or "SHA-256" in captured.out, (
-        "The 'not pinned' error message must mention SHA-256 "
-        "(audit fix MAE-SEC-017)."
+        "The 'not pinned' error message must mention SHA-256 " "(audit fix MAE-SEC-017)."
     )

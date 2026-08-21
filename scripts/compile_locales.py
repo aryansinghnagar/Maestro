@@ -4,6 +4,7 @@
 Run this script after adding or modifying any .po translation files:
     python scripts/compile_locales.py
 """
+
 import subprocess
 import sys
 from pathlib import Path
@@ -19,13 +20,13 @@ def compile_po(po_path: Path) -> bool:
             ["msgfmt", "-o", str(mo_path), str(po_path)],
             capture_output=True,
             text=True,
+            check=False,
         )
         if result.returncode == 0:
             print(f"  ✓  {po_path.parent.parent.name}: {po_path.name} → {mo_path.name}")
             return True
-        else:
-            print(f"  ✗  {po_path}: {result.stderr.strip()}")
-            return False
+        print(f"  ✗  {po_path}: {result.stderr.strip()}")
+        return False
     except FileNotFoundError:
         # msgfmt not found — try python-only approach via babel or skip
         print(

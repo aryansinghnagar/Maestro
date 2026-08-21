@@ -227,12 +227,12 @@ class ConfigManager:
         manager = self
 
         class _Handler(FileSystemEventHandler):
-            def on_modified(self, event):  # type: ignore[override]
+            def on_modified(self, event: Any) -> None:
                 if event.is_directory:
                     return
                 manager._on_config_file_changed(Path(event.src_path))
 
-            def on_created(self, event):  # type: ignore[override]
+            def on_created(self, event: Any) -> None:
                 if event.is_directory:
                     return
                 manager._on_config_file_changed(Path(event.src_path))

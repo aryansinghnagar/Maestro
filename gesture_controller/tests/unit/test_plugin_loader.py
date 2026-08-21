@@ -274,6 +274,6 @@ import pyautogui
         mock_spec = MagicMock()
         mock_spec.loader = MagicMock()
         mock_spec_func.return_value = mock_spec
-        with patch.dict("sys.modules", {}):
+        with patch.dict("sys.modules", {"pyautogui": MagicMock()}):
             plugin = loader._load_plugin(plugin_path)
             assert plugin is not None

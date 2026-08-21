@@ -124,12 +124,12 @@ Address review feedback by pushing new commits (don't force-push after review). 
 
 ### Testing
 
-- Test files in `tests/unit/`, `tests/integration/`, `tests/e2e/`
+- Test files in `gesture_controller/tests/unit/`, `gesture_controller/tests/integration/`, `gesture_controller/tests/e2e/`, `gesture_controller/tests/replay/`, `gesture_controller/tests/benchmarks/`, `gesture_controller/tests/fuzz/`
 - Test functions: `test_<thing>_<condition>()`
-- Use `pytest` fixtures for setup
+- Use `pytest` fixtures for setup (`conftest.py`)
 - Property-based tests for algorithms (`hypothesis`)
-- Mock external dependencies (`pytest-mock`)
-- No real hardware in CI (`@pytest.mark.requires_hardware`)
+- Mock external dependencies (`pytest-mock` / `unittest.mock`)
+- No real hardware in CI (`@pytest.mark.requires_hardware`, `@pytest.mark.real_mediapipe`)
 
 ### Architecture
 

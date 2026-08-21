@@ -103,3 +103,22 @@ def test_full_pipeline_gui_flow(qapp: QApplication) -> None:
         if hasattr(app, "_bridge"):
             app._bridge.deleteLater()
         qapp.processEvents()
+
+
+def test_gesture_engine_custom_matcher_property() -> None:
+    """Verify that GestureEngine cleanly exposes custom_matcher to consumers."""
+    with (
+        patch("gesture_controller.core.frame_pipeline.FramePipeline.start"),
+        patch("gesture_controller.vision.landmark_extractor.LandmarkExtractor"),
+        patch("gesture_controller.os_integration.action_dispatcher.ActionDispatcher"),
+        patch("gesture_controller.plugins.plugin_loader.PluginLoader.discover_all"),
+    ):
+        from gesture_controller.core.engine import GestureEngine
+
+        engine = GestureEngine()
+        try:
+            assert engine.custom_matcher is not None
+            assert engine._custom_matcher is not None
+            assert engine.custom_matcher is engine._gesture_recognizer.custom_matcher
+        finally:
+            engine.shutdown()

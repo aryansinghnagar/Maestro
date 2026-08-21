@@ -1,14 +1,115 @@
 import json
 import os
+import platform
 import shutil
+import subprocess
 from pathlib import Path
-from PyQt6.QtCore import QThread, pyqtSignal
 from typing import Any
-
-from tuf.ngclient import Updater, FetcherInterface  # type: ignore[attr-defined]
-from tuf.api import exceptions as tuf_exceptions
 from urllib.parse import urlparse
 from urllib.request import url2pathname
+
+from PyQt6.QtCore import QThread, pyqtSignal
+from tuf.api import exceptions as tuf_exceptions
+from tuf.ngclient import FetcherInterface, Updater  # type: ignore[attr-defined]
+
+
+def verify_windows_executable_signature(file_path: Path) -> bool:
+    """Verify that a Windows executable has a valid, untampered Authenticode signature.
+
+    Audit fix MAE-SEC-007: prevents unverified, unsigned, or modified update
+    binaries from being executed with elevated installer privileges.
+    """
+    if platform.system() != "Windows":
+        return True
+
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class GUID(ctypes.Structure):
+            _fields_ = [
+                ("Data1", wintypes.DWORD),
+                ("Data2", wintypes.WORD),
+                ("Data3", wintypes.WORD),
+                ("Data4", wintypes.BYTE * 8),
+            ]
+
+        class WINTRUST_FILE_INFO(ctypes.Structure):
+            _fields_ = [
+                ("cbStruct", wintypes.DWORD),
+                ("pcwszFilePath", wintypes.LPCWSTR),
+                ("hFile", wintypes.HANDLE),
+                ("pgKnownSubject", ctypes.c_void_p),
+            ]
+
+        class WINTRUST_DATA(ctypes.Structure):
+            _fields_ = [
+                ("cbStruct", wintypes.DWORD),
+                ("pPolicyCallbackData", ctypes.c_void_p),
+                ("pSIPClientData", ctypes.c_void_p),
+                ("dwUIChoice", wintypes.DWORD),
+                ("fdwRevocationChecks", wintypes.DWORD),
+                ("dwUnionChoice", wintypes.DWORD),
+                ("pFile", ctypes.POINTER(WINTRUST_FILE_INFO)),
+                ("dwStateAction", wintypes.DWORD),
+                ("hWVTStateData", wintypes.HANDLE),
+                ("pwszURLReference", wintypes.LPCWSTR),
+                ("dwProvFlags", wintypes.DWORD),
+                ("dwUIContext", wintypes.DWORD),
+                ("pSignatureSettings", ctypes.c_void_p),
+            ]
+
+        # WINTRUST_ACTION_GENERIC_VERIFY_V2: {00AAC56B-CD44-11d0-8CC2-00C04FC295EE}
+        action_guid = GUID(
+            0x00AAC56B,
+            0xCD44,
+            0x11D0,
+            (wintypes.BYTE * 8)(0x8C, 0xC2, 0x00, 0xC0, 0x4F, 0xC2, 0x95, 0xEE),
+        )
+
+        file_info = WINTRUST_FILE_INFO(
+            cbStruct=ctypes.sizeof(WINTRUST_FILE_INFO),
+            pcwszFilePath=str(file_path.resolve()),
+            hFile=None,
+            pgKnownSubject=None,
+        )
+
+        wintrust_data = WINTRUST_DATA(
+            cbStruct=ctypes.sizeof(WINTRUST_DATA),
+            pPolicyCallbackData=None,
+            pSIPClientData=None,
+            dwUIChoice=2,  # WTD_UI_NONE
+            fdwRevocationChecks=0,  # WTD_REVOKE_NONE
+            dwUnionChoice=1,  # WTD_CHOICE_FILE
+            pFile=ctypes.pointer(file_info),
+            dwStateAction=0,
+            hWVTStateData=None,
+            pwszURLReference=None,
+            dwProvFlags=0x40 | 0x100,  # WTD_CACHE_ONLY_URL_RETRIEVAL | WTD_SAFER_FLAG
+            dwUIContext=0,
+            pSignatureSettings=None,
+        )
+
+        wintrust = getattr(ctypes.windll, "wintrust", None)
+        if not wintrust or not hasattr(wintrust, "WinVerifyTrust"):
+            _update_logger.error("wintrust.dll unavailable; failing closed on signature check")
+            return False
+
+        ret = wintrust.WinVerifyTrust(
+            wintypes.HWND(0), ctypes.byref(action_guid), ctypes.byref(wintrust_data)
+        )
+        if ret == 0:
+            return True
+        _update_logger.error(
+            "Windows executable signature verification failed",
+            path=str(file_path),
+            error_code=hex(ret & 0xFFFFFFFF),
+        )
+        return False
+    except Exception as e:
+        _update_logger.error("WinVerifyTrust signature check encountered an error", error=str(e))
+        return False
+
 
 # Audit fix MAE-SEC-003: previously ``os.symlink`` was monkey-patched
 # globally at module load (``os.symlink = _secure_symlink``) which affects
@@ -201,7 +302,7 @@ BOOTSTRAP_ROOT = {
 }
 
 
-def _is_placeholder_root(root: dict) -> bool:
+def _is_placeholder_root(root: dict[str, Any]) -> bool:
     """Audit fix MAE-SEC-002: heuristic check for placeholder Ed25519 keys.
 
     Five legitimate keys sharing a 30-byte suffix has probability ~2^-240.
@@ -323,7 +424,7 @@ class UpdateCheckerThread(QThread):
         orig_symlink = getattr(os, "symlink", None)
         try:
             if hasattr(os, "symlink"):
-                os.symlink = secure_symlink
+                os.symlink = secure_symlink  # type: ignore[assignment]
 
             updater = Updater(
                 metadata_dir=str(self.cache_dir),
@@ -588,18 +689,18 @@ def download_update(
     return file_path
 
 
-def apply_update(archive_path: Path, extract_dir: Path | None = None) -> bool:
+def apply_update(
+    archive_path: Path,
+    extract_dir: Path | None = None,
+    allow_unsigned: bool = False,
+) -> bool:
     """Extract an update archive and (on Windows) launch the installer.
 
-    Audit fix MAE-SEC-008: previously this function called
-    ``zipfile.ZipFile.extractall()`` and ``tarfile.TarFile.extractall()``
-    directly, which do not validate member paths. A malicious archive could
-    contain members like ``../../../../etc/cron.d/evil`` or
-    ``../../../Users/victim/Desktop/malware.exe`` and have them written
-    outside ``extract_dir`` (zip-slip / path traversal). We now validate
-    every member's resolved path against ``extract_dir`` before extraction
-    and reject any member that would escape. The Bandit ``B202`` finding
-    is fixed, not suppressed.
+    Audit fix MAE-SEC-007: .exe installer updates are verified with
+    WinVerifyTrust to assert valid digital signatures before execution.
+
+    Audit fix MAE-SEC-008: archive member paths are validated before
+    extraction to prevent path traversal (zip-slip).
     """
     if not archive_path.exists():
         _update_logger.error("apply_update: archive not found", path=str(archive_path))
@@ -609,8 +710,14 @@ def apply_update(archive_path: Path, extract_dir: Path | None = None) -> bool:
     name_lower = archive_path.name.lower()
 
     if suffix == ".exe":
+        if not allow_unsigned and not verify_windows_executable_signature(archive_path):
+            _update_logger.error(
+                "apply_update: refusing to execute unsigned or unverified installer (MAE-SEC-007)",
+                path=str(archive_path),
+            )
+            return False
         try:
-            subprocess.Popen([str(archive_path), "/S"])
+            subprocess.Popen([str(archive_path), "/S"], close_fds=True)
             _update_logger.info("Windows installer launched", path=str(archive_path))
             return True
         except Exception as exc:
@@ -649,11 +756,11 @@ def apply_update(archive_path: Path, extract_dir: Path | None = None) -> bool:
     try:
         if suffix == ".zip" or name_lower.endswith(".zip"):
             with zipfile.ZipFile(archive_path, "r") as zf:
-                for member in zf.infolist():
-                    if not _is_safe_member_path(member.filename):
+                for zmember in zf.infolist():
+                    if not _is_safe_member_path(zmember.filename):
                         _update_logger.error(
                             "apply_update: refusing to extract unsafe member",
-                            member=member.filename,
+                            member=zmember.filename,
                             archive=str(archive_path),
                         )
                         return False
@@ -662,29 +769,32 @@ def apply_update(archive_path: Path, extract_dir: Path | None = None) -> bool:
                 zf.extractall(extract_dir)
         elif name_lower.endswith(".tar.gz") or name_lower.endswith(".tgz"):
             with tarfile.open(archive_path, "r:gz") as tf:
-                for member in tf.getmembers():
-                    if not _is_safe_member_path(member.name):
+                for tmember in tf.getmembers():
+                    if not _is_safe_member_path(tmember.name):
                         _update_logger.error(
                             "apply_update: refusing to extract unsafe member",
-                            member=member.name,
+                            member=tmember.name,
                             archive=str(archive_path),
                         )
                         return False
                     # Audit fix MAE-V2-SEC-001: validate tar symlink linkname
-                    if member.issym() or member.islnk():
-                        link = member.linkname
+                    if tmember.issym() or tmember.islnk():
+                        link = tmember.linkname
                         if link.startswith("/") or ".." in link.replace("\\", "/").split("/"):
                             _update_logger.error(
                                 "apply_update: refusing to extract unsafe symlink",
-                                member=member.name,
+                                member=tmember.name,
                                 linkname=link,
                             )
                             return False
                         resolved_link = os.path.abspath(os.path.join(extract_dir_abs, link))
-                        if not (resolved_link.startswith(extract_dir_abs + os.sep) or resolved_link == extract_dir_abs):
+                        if not (
+                            resolved_link.startswith(extract_dir_abs + os.sep)
+                            or resolved_link == extract_dir_abs
+                        ):
                             _update_logger.error(
                                 "apply_update: symlink target escapes extract_dir",
-                                member=member.name,
+                                member=tmember.name,
                                 linkname=link,
                             )
                             return False
@@ -699,11 +809,11 @@ def apply_update(archive_path: Path, extract_dir: Path | None = None) -> bool:
                     tf.extractall(extract_dir)
         elif name_lower.endswith(".tar.bz2"):
             with tarfile.open(archive_path, "r:bz2") as tf:
-                for member in tf.getmembers():
-                    if not _is_safe_member_path(member.name):
+                for tmember in tf.getmembers():
+                    if not _is_safe_member_path(tmember.name):
                         _update_logger.error(
                             "apply_update: refusing to extract unsafe member",
-                            member=member.name,
+                            member=tmember.name,
                             archive=str(archive_path),
                         )
                         return False

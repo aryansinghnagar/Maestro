@@ -149,7 +149,7 @@ class CameraStream:
             # array (cv2 ops always return one). ``frame.data`` would also
             # be zero-copy but its ``len()`` is the first-dim shape (480),
             # not the byte count, which DoubleFrameBuffer.write() needs.
-            db.write(memoryview(frame).cast("B"))
+            db.write(memoryview(frame).cast("B"))  # type: ignore[arg-type]
             self.frame_ready_event.set()
 
         db.close()

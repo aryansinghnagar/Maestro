@@ -1,7 +1,8 @@
 import argparse
 from pathlib import Path
-import onnxruntime as ort
-from onnxruntime.quantization import quantize_dynamic, QuantType
+
+from onnxruntime.quantization import QuantType, quantize_dynamic
+
 
 def quantize_to_int8(model_path: Path, output_path: Path) -> None:
     """Quantize FP32 ONNX model to INT8 using dynamic quantization."""
@@ -13,7 +14,8 @@ def quantize_to_int8(model_path: Path, output_path: Path) -> None:
     )
     print("Quantization complete!")
 
-def main():
+
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--onnx-path", default="gesture_controller/data/hand_landmark.onnx")
     parser.add_argument("--output-path", default="gesture_controller/data/hand_landmark_int8.onnx")
@@ -26,6 +28,7 @@ def main():
         raise FileNotFoundError(f"Model not found: {model_path}")
 
     quantize_to_int8(model_path, output_path)
+
 
 if __name__ == "__main__":
     main()

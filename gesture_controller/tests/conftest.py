@@ -23,20 +23,26 @@ import pytest
 import numpy as np
 from multiprocessing import shared_memory
 from gesture_controller.models.data_types import Hand, Landmark3D
+
 # Audit fix MAE-V2-REG-002: make PyQt6 import conditional so that
 # test_audit_remediation.py can run without PyQt6 installed.
 try:
     from PyQt6.QtWidgets import QApplication
 except ImportError:
+
     class QApplication:  # type: ignore[no-redef]
         """Mock QApplication for environments without PyQt6."""
+
         @staticmethod
         def instance():
             return None
+
         def __init__(self, *args, **kwargs):
             pass
+
         def processEvents(self):
             pass
+
 
 failed_reports = []
 collected_warnings = []
