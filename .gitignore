@@ -6,11 +6,16 @@ build/
 .eggs/
 .mypy_cache/
 .pytest_cache/
+.ruff_cache/
 .benchmarks/
 *.so
 .venv/
 venv/
 *.log
+error_log.md
+*.prof
+*.pstats
+*.out
 gesture_controller/data/custom_templates/*.json
 !gesture_controller/data/custom_templates/.gitkeep
 .coverage*

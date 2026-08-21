@@ -108,3 +108,8 @@ class GestureRecognizer:
         if self._fsm_manager:
             return self._fsm_manager.get_states()
         return {}
+
+    @property
+    def custom_matcher(self) -> Any:
+        """Return the base custom gesture matcher instance."""
+        return self._custom_matcher

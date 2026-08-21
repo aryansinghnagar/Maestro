@@ -442,9 +442,7 @@ class IntegrationServer:
         # a sink for unbounded data or smuggle non-RFC-6455 traffic. The
         # reader thread runs until the client sends a Close frame, the
         # server stops, or any frame violates the bounds below.
-        reader = threading.Thread(
-            target=self._read_client_frames, args=(conn,), daemon=True
-        )
+        reader = threading.Thread(target=self._read_client_frames, args=(conn,), daemon=True)
         reader.start()
 
     @staticmethod
@@ -512,8 +510,7 @@ class IntegrationServer:
                 # --- masking validation (RFC 6455 §5.1 — client frames MUST be masked)
                 if not masked:
                     logger.warning(
-                        "WebSocket frame rejected: client frame not masked "
-                        "(RFC 6455 §5.1)"
+                        "WebSocket frame rejected: client frame not masked " "(RFC 6455 §5.1)"
                     )
                     break
 
@@ -531,9 +528,7 @@ class IntegrationServer:
                     # any 64-bit length whose top bit is set (would be >2^63).
                     payload_len = struct.unpack("!Q", ext)[0]
                     if payload_len > (1 << 63):
-                        logger.warning(
-                            "WebSocket frame rejected: 64-bit length high bit set"
-                        )
+                        logger.warning("WebSocket frame rejected: 64-bit length high bit set")
                         break
 
                 # --- payload-length bounds ---------------------------------------------
@@ -559,9 +554,7 @@ class IntegrationServer:
                 # the payload, but we do it anyway so the bytes are correct
                 # for any future opcode-specific handling (e.g. ping replies).
                 if payload:
-                    payload = bytes(
-                        b ^ mask_key[i % 4] for i, b in enumerate(payload)
-                    )
+                    payload = bytes(b ^ mask_key[i % 4] for i, b in enumerate(payload))
 
                 # --- opcode-specific handling -----------------------------------------
                 if opcode == _WS_OPCODE_CLOSE:

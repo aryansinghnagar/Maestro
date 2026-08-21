@@ -244,7 +244,7 @@ class GestureFSM:
         if handler is not None:
             event = handler(features, timestamp, correlation_id)
             if event is not None:
-                return event
+                return event  # type: ignore[no-any-return]
 
         return None
 

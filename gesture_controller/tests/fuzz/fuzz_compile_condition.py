@@ -2,6 +2,7 @@ try:
     import atheris
 except ImportError:
     import sys
+
     print("Atheris not installed. Skipping fuzz target execution.")
     sys.exit(0)
 
@@ -9,6 +10,7 @@ except ImportError:
 with atheris.instrument_imports():
     from gesture_controller.core.config_manager import SafeExpressionEvaluator
     from gesture_controller.core.state_machine import compile_condition
+
 
 def TestOneInput(data):
     """Atheris entry point."""
@@ -25,7 +27,9 @@ def TestOneInput(data):
     except ValueError:
         pass
     except Exception as e:
-        print(f"Unexpected exception in compile_expression: {type(e).__name__}: {e} for input {repr(expr_str)}")
+        print(
+            f"Unexpected exception in compile_expression: {type(e).__name__}: {e} for input {repr(expr_str)}"
+        )
         raise e
 
     try:
@@ -33,12 +37,16 @@ def TestOneInput(data):
     except ValueError:
         pass
     except Exception as e:
-        print(f"Unexpected exception in compile_condition: {type(e).__name__}: {e} for input {repr(expr_str)}")
+        print(
+            f"Unexpected exception in compile_condition: {type(e).__name__}: {e} for input {repr(expr_str)}"
+        )
         raise e
+
 
 def main():
     atheris.Setup(sys.argv, TestOneInput)
     atheris.Fuzz()
+
 
 if __name__ == "__main__":
     main()

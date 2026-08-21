@@ -88,6 +88,16 @@ class GestureEngine:
     def _extractor(self) -> Any:
         return self._inference_pipeline._extractor
 
+    @property
+    def custom_matcher(self) -> Any:
+        """Return the custom gesture matcher managed by the gesture recognizer."""
+        return self._gesture_recognizer.custom_matcher
+
+    @property
+    def _custom_matcher(self) -> Any:
+        """Backward-compatible alias for custom_matcher."""
+        return self._gesture_recognizer.custom_matcher
+
     def _create_os_controller(self) -> Any:
         """Create OS Controller appropriate for the platform."""
         current_os = platform.system()

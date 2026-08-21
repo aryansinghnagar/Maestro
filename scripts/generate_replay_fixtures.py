@@ -1,8 +1,9 @@
 import json
+import math
 from pathlib import Path
 
 
-def get_open_palm_coords():
+def get_open_palm_coords() -> list[tuple[float, float, float]]:
     return [
         (0.5, 0.8, 0.0),  # 0: WRIST
         (0.45, 0.65, 0.0),  # 1: THUMB_CMC
@@ -28,7 +29,7 @@ def get_open_palm_coords():
     ]
 
 
-def generate_fixtures():
+def generate_fixtures() -> None:
     fixtures_dir = Path("gesture_controller/tests/replay/fixtures")
     fixtures_dir.mkdir(parents=True, exist_ok=True)
 
@@ -61,7 +62,7 @@ def generate_fixtures():
     for i in range(20):
         t = i / 19.0
         frame_lms = []
-        for start, end in zip(open_coords, fist_coords):
+        for start, end in zip(open_coords, fist_coords, strict=False):
             # Interpolate coordinates
             x = start[0] + t * (end[0] - start[0])
             y = start[1] + t * (end[1] - start[1])
@@ -73,7 +74,7 @@ def generate_fixtures():
                 "hands": [{"handedness": "Right", "landmarks": frame_lms}],
             }
         )
-    with open(fixtures_dir / "minimize.json", "w") as f:
+    with (fixtures_dir / "minimize.json").open("w", encoding="utf-8") as f:
         json.dump({"gesture_name": "Minimize", "frames": minimize_frames}, f, indent=2)
 
     # 2. Swipe Gesture (Pointing hand moving right-to-left horizontally)
@@ -111,7 +112,7 @@ def generate_fixtures():
                 "hands": [{"handedness": "Right", "landmarks": frame_lms}],
             }
         )
-    with open(fixtures_dir / "swipe.json", "w") as f:
+    with (fixtures_dir / "swipe.json").open("w", encoding="utf-8") as f:
         json.dump({"gesture_name": "SwipeLeft", "frames": swipe_frames}, f, indent=2)
 
     # 3. Pinch Gesture (Open tips contracting close together)
@@ -120,11 +121,9 @@ def generate_fixtures():
     base_coords = get_open_palm_coords()
     for i in range(20):
         t = i / 19.0
-        frame_lms = [dict(zip(["x", "y", "z"], c)) for c in base_coords]
+        frame_lms = [dict(zip(["x", "y", "z"], c, strict=False)) for c in base_coords]
         # Gradually move index tip and thumb tip close together
         # Thumb tip index: 4, Index tip index: 8
-        # Start: thumb (0.35, 0.3), index (0.38, 0.22)
-        # End: thumb (0.375, 0.26), index (0.375, 0.26)
         frame_lms[4]["x"] = 0.35 + t * (0.375 - 0.35)
         frame_lms[4]["y"] = 0.30 + t * (0.26 - 0.30)
         frame_lms[8]["x"] = 0.38 + t * (0.375 - 0.38)
@@ -135,7 +134,7 @@ def generate_fixtures():
                 "hands": [{"handedness": "Right", "landmarks": frame_lms}],
             }
         )
-    with open(fixtures_dir / "pinch.json", "w") as f:
+    with (fixtures_dir / "pinch.json").open("w", encoding="utf-8") as f:
         json.dump({"gesture_name": "Pinch", "frames": pinch_frames}, f, indent=2)
 
     # 4. Scroll Gesture (Pointing hand moving vertically downwards)
@@ -150,14 +149,12 @@ def generate_fixtures():
                 "hands": [{"handedness": "Right", "landmarks": frame_lms}],
             }
         )
-    with open(fixtures_dir / "scroll.json", "w") as f:
+    with (fixtures_dir / "scroll.json").open("w", encoding="utf-8") as f:
         json.dump({"gesture_name": "Scroll", "frames": scroll_frames}, f, indent=2)
 
     # 5. Custom Wave Gesture (Sequence of palm centers shifting back and forth)
     custom_frames = []
     for i in range(20):
-        import math
-
         # Simulate small waving oscillation
         delta_x = 0.1 * math.sin(i * 0.5)
         frame_lms = [{"x": x + delta_x, "y": y, "z": z} for x, y, z in open_coords]
@@ -167,7 +164,7 @@ def generate_fixtures():
                 "hands": [{"handedness": "Right", "landmarks": frame_lms}],
             }
         )
-    with open(fixtures_dir / "custom.json", "w") as f:
+    with (fixtures_dir / "custom.json").open("w", encoding="utf-8") as f:
         json.dump({"gesture_name": "CustomWave", "frames": custom_frames}, f, indent=2)
 
     print("All replay fixtures generated successfully!")

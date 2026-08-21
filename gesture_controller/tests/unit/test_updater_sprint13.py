@@ -337,12 +337,44 @@ class TestApplyUpdate:
         f.write_bytes(b"fake deb content")
         assert apply_update(f) is False
 
-    def test_apply_exe_launches_subprocess(self, tmp_path) -> None:
+    def test_apply_exe_verified_signature_launches_subprocess(self, tmp_path) -> None:
         from gesture_controller.core.updater import apply_update
 
         exe = tmp_path / "maestro-setup.exe"
-        exe.write_bytes(b"MZ fake exe")
-        with patch("subprocess.Popen") as mock_popen:
+        exe.write_bytes(b"MZ fake signed exe")
+        with (
+            patch(
+                "gesture_controller.core.updater.verify_windows_executable_signature",
+                return_value=True,
+            ),
+            patch("subprocess.Popen") as mock_popen,
+        ):
             result = apply_update(exe)
         assert result is True
-        mock_popen.assert_called_once_with([str(exe), "/S"])
+        mock_popen.assert_called_once_with([str(exe), "/S"], close_fds=True)
+
+    def test_apply_exe_rejects_unsigned(self, tmp_path) -> None:
+        from gesture_controller.core.updater import apply_update
+
+        exe = tmp_path / "maestro-setup.exe"
+        exe.write_bytes(b"MZ fake unsigned exe")
+        with (
+            patch(
+                "gesture_controller.core.updater.verify_windows_executable_signature",
+                return_value=False,
+            ),
+            patch("subprocess.Popen") as mock_popen,
+        ):
+            result = apply_update(exe)
+        assert result is False
+        mock_popen.assert_not_called()
+
+    def test_apply_exe_allow_unsigned_flag(self, tmp_path) -> None:
+        from gesture_controller.core.updater import apply_update
+
+        exe = tmp_path / "maestro-setup.exe"
+        exe.write_bytes(b"MZ fake dev exe")
+        with patch("subprocess.Popen") as mock_popen:
+            result = apply_update(exe, allow_unsigned=True)
+        assert result is True
+        mock_popen.assert_called_once_with([str(exe), "/S"], close_fds=True)

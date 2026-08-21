@@ -3,7 +3,7 @@
 !define COMPANYNAME "Maestro"
 !define DESCRIPTION "Cross-platform hand-gesture desktop controller"
 !define VERSIONMAJOR 1
-!define VERSIONMINOR 0
+!define VERSIONMINOR 2
 !define VERSIONBUILD 0
 
 # Set compression type

@@ -17,7 +17,9 @@ FORBIDDEN_APPLESCRIPT_PATTERNS = [
     re.compile(r"\bPOSIX\s+path\s+of\b", re.IGNORECASE),
     # Audit fix MAE-V2-SEC-005: catch additional bypass vectors
     re.compile(r"\brun\s+script\b", re.IGNORECASE),  # run script "..." bypasses -e
-    re.compile(r"\btell\s+application\b\s*[\"']Terminal[\"']", re.IGNORECASE),  # Terminal.app do script
+    re.compile(
+        r"\btell\s+application\b\s*[\"']Terminal[\"']", re.IGNORECASE
+    ),  # Terminal.app do script
     re.compile(r"\bdo\s+script\b", re.IGNORECASE),  # Terminal.app do script
 ]
 

@@ -149,4 +149,4 @@ Every commit pushed to `main` triggers the GitHub Actions CI pipeline defined in
 1. **Workflow Lint**: Validates GitHub Actions YAML syntax.
 2. **Lint & Typecheck**: Enforces `mypy` zero-error requirement across all source files.
 3. **Security Scan**: Executes `bandit` to block potential security regressions.
-4. **Multi-Platform Test Matrix**: Executes 550+ tests headlessly across all 9 OS/Python matrix combinations (`QT_QPA_PLATFORM=offscreen`).
+4. **Multi-Platform Test Matrix**: Executes 590+ tests headlessly across all 9 OS/Python matrix combinations (`QT_QPA_PLATFORM=offscreen`).

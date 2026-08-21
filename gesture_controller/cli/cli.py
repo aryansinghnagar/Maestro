@@ -121,7 +121,8 @@ def main() -> None:
     # the flag only so the test suite can exercise the extraction path
     # without pinning to a real (mutable) upstream hash.
     dvm_parser = subparsers.add_parser(
-        "download-voice-model-dev", help="Download Vosk model without SHA-256 verification (dev only)."
+        "download-voice-model-dev",
+        help="Download Vosk model without SHA-256 verification (dev only).",
     )
     dvm_parser.add_argument(
         "--skip-verify",
@@ -198,9 +199,8 @@ def main() -> None:
         # ``download-voice-model-dev`` sets skip_verify to True by virtue of
         # the ``--skip-verify`` flag defaulting to False on the dev command,
         # but we also force-skip for the dev command name.
-        skip_verify = (
-            args.command == "download-voice-model-dev"
-            or getattr(args, "skip_verify", False)
+        skip_verify = args.command == "download-voice-model-dev" or getattr(
+            args, "skip_verify", False
         )
 
         # If the user is on the production command and the hash is not pinned,
@@ -251,7 +251,9 @@ def main() -> None:
             with zipfile.ZipFile(zip_path) as z:
                 for member in z.infolist():
                     member_name = member.filename
-                    if member_name.startswith("/") or ".." in member_name.replace("\\", "/").split("/"):
+                    if member_name.startswith("/") or ".." in member_name.replace("\\", "/").split(
+                        "/"
+                    ):
                         print(
                             f"ERROR: zip member {member_name!r} is unsafe (path traversal)",
                             file=sys.stderr,

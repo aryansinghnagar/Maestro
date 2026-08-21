@@ -124,16 +124,22 @@ class GestureControllerApp:
             hands = self._engine.get_current_hands()
             return hands[0] if hands else None
 
+        matcher = getattr(self._engine, "custom_matcher", None) or getattr(
+            self._engine, "_custom_matcher", None
+        )
         template_dir = (
-            Path(self._engine._custom_matcher._template_dir)
-            if hasattr(self._engine._custom_matcher, "_template_dir")
+            Path(matcher._template_dir)
+            if matcher and hasattr(matcher, "_template_dir") and matcher._template_dir
             else None
+        )
+        reload_cb = (
+            matcher.load_templates if matcher and hasattr(matcher, "load_templates") else None
         )
         self._settings = SettingsWindow(
             self._config,
             landmark_callback=_get_current_hand,
             template_dir=template_dir,
-            reload_callback=self._engine._custom_matcher.load_templates,
+            reload_callback=reload_cb,
             parent=None,
         )
 
