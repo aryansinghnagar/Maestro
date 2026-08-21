@@ -112,7 +112,7 @@ jobs:
         # or releases. If a known-vulnerable dependency is acceptable for
         # a specific reason, suppress it explicitly via ``--ignore-vuln``
         # rather than masking the entire step.
-        run: pip-audit --local --skip-editable --strict
+        run: pip-audit . --strict
 
   test:
     name: Test (${{ matrix.os }} / Python ${{ matrix.python-version }})
