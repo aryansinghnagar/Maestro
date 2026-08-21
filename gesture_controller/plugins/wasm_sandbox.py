@@ -11,6 +11,7 @@ class WasmSandbox:
 
     def __init__(self, config: dict) -> None:
         self._config = config
+        self._fuel_per_call = config.get("plugins", {}).get("wasm", {}).get("fuel", 1_000_000)
 
         cfg = wasmtime.Config()
         try:
@@ -20,14 +21,10 @@ class WasmSandbox:
         self._engine = wasmtime.Engine(cfg)
         self._store = wasmtime.Store(self._engine)
 
-        fuel = config.get("plugins", {}).get("wasm", {}).get("fuel", 1_000_000)
         try:
-            self._store.add_fuel(fuel)
+            self._store.set_fuel(self._fuel_per_call)
         except Exception:
-            try:
-                self._store.set_fuel(fuel)
-            except Exception:
-                pass
+            pass
 
         try:
             wasi_cfg = wasmtime.WasiConfig()
@@ -46,15 +43,23 @@ class WasmSandbox:
         instance = linker.instantiate(self._store, module)
 
         exports = instance.exports(self._store)
-        return WasmPlugin(exports, self._store)
+        return WasmPlugin(exports, self._store, fuel_per_call=self._fuel_per_call)
 
 
 class WasmPlugin:
     """A loaded WASM plugin."""
 
-    def __init__(self, exports: Any, store: wasmtime.Store) -> None:
+    def __init__(self, exports: Any, store: wasmtime.Store, fuel_per_call: int = 1_000_000) -> None:
         self._exports = exports
         self._store = store
+        self._fuel_per_call = fuel_per_call
+
+    def _replenish_fuel(self) -> None:
+        """Audit fix MAE-AUD-004: replenish fuel per invocation to prevent starvation."""
+        try:
+            self._store.set_fuel(self._fuel_per_call)
+        except Exception:
+            pass
 
     def get_gestures(self) -> list[dict]:
         """Call the plugin's get_gestures export."""
@@ -62,11 +67,15 @@ class WasmPlugin:
         if not func:
             return []
 
-        result = func(self._store)
-        if isinstance(result, str):
-            return json.loads(result)
-        elif isinstance(result, bytes):
-            return json.loads(result.decode("utf-8"))
+        self._replenish_fuel()
+        try:
+            result = func(self._store)
+            if isinstance(result, str):
+                return json.loads(result)
+            elif isinstance(result, bytes):
+                return json.loads(result.decode("utf-8"))
+        except Exception as e:
+            logger.error("WASM get_gestures execution failed", error=str(e))
         return []
 
     def on_gesture(self, gesture_name: str, features: dict) -> dict | None:
@@ -75,9 +84,13 @@ class WasmPlugin:
         if not func:
             return None
 
-        result = func(self._store, gesture_name, json.dumps(features))
-        if isinstance(result, str):
-            return json.loads(result)
-        elif isinstance(result, bytes):
-            return json.loads(result.decode("utf-8"))
+        self._replenish_fuel()
+        try:
+            result = func(self._store, gesture_name, json.dumps(features))
+            if isinstance(result, str):
+                return json.loads(result)
+            elif isinstance(result, bytes):
+                return json.loads(result.decode("utf-8"))
+        except Exception as e:
+            logger.error("WASM on_gesture execution failed", error=str(e), gesture=gesture_name)
         return None

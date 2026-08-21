@@ -46,9 +46,16 @@ class SafeExpressionEvaluator:
         ast.Load,
     }
 
+    MAX_EXPRESSION_LENGTH: int = 512
+    MAX_AST_DEPTH: int = 10
+
     @classmethod
-    def validate_node(cls, node: ast.AST) -> None:
-        """Recursively check if the AST nodes are in the allow-list."""
+    def validate_node(cls, node: ast.AST, depth: int = 0) -> None:
+        """Recursively check if the AST nodes are in the allow-list and within depth limits."""
+        if depth > cls.MAX_AST_DEPTH:
+            raise ValueError(
+                f"Expression AST exceeds maximum allowed depth of {cls.MAX_AST_DEPTH}."
+            )
         if type(node) not in cls.ALLOWED_NODES:
             raise ValueError(
                 f"AST node type '{type(node).__name__}' is not allowed for security reasons."
@@ -61,13 +68,20 @@ class SafeExpressionEvaluator:
                     f"Function call to '{func_name}' is not allowed for security reasons."
                 )
         for child in ast.iter_child_nodes(node):
-            cls.validate_node(child)
+            cls.validate_node(child, depth=depth + 1)
 
     @classmethod
     def compile_expression(cls, expr_str: str) -> ast.Expression:
         """Parse, validate and compile a safe expression string into an AST Expression."""
+        if not isinstance(expr_str, str):
+            raise ValueError("Expression must be a string")
+        stripped = expr_str.strip()
+        if len(stripped) > cls.MAX_EXPRESSION_LENGTH:
+            raise ValueError(
+                f"Expression exceeds maximum allowed length of {cls.MAX_EXPRESSION_LENGTH} characters."
+            )
         try:
-            tree = ast.parse(expr_str.strip(), mode="eval")
+            tree = ast.parse(stripped, mode="eval")
             cls.validate_node(tree)
             return tree
         except Exception as e:

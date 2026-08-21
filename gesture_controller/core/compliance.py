@@ -278,9 +278,10 @@ def export_data(output_zip_path: Path) -> None:
         except Exception as e:
             logger.warning("Could not collect system info for export", error=str(e))
 
-        # 6. Crash reports (Sprint 14) — up to 10 most recent
+        # 6. Crash reports (Sprint 14) — up to 10 most recent (anonymized)
         try:
             from gesture_controller.core.paths import user_data_dir
+            from gesture_controller.core.crash_reporter import anonymize_traceback
 
             crash_dir = user_data_dir() / "crash_reports"
             if crash_dir.exists():
@@ -290,6 +291,8 @@ def export_data(output_zip_path: Path) -> None:
                     reverse=True,
                 )[:10]
                 for rpt in reports:
-                    zipf.writestr(f"crash_reports/{rpt.name}", rpt.read_text(encoding="utf-8"))
+                    rpt_content = rpt.read_text(encoding="utf-8")
+                    clean_content = anonymize_traceback(rpt_content)
+                    zipf.writestr(f"crash_reports/{rpt.name}", clean_content)
         except Exception as e:
             logger.warning("Could not include crash reports in export", error=str(e))

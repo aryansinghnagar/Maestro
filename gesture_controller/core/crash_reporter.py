@@ -14,7 +14,9 @@ Usage::
 from __future__ import annotations
 
 import json
+import os
 import platform
+import re
 import sys
 import threading
 import traceback
@@ -96,6 +98,26 @@ def gather_system_info() -> dict[str, Any]:
 # ── Crash report writer ───────────────────────────────────────────────────────
 
 
+def anonymize_traceback(text: str) -> str:
+    """Audit fix MAE-AUD-003: replace user home directories and usernames with placeholders."""
+    if not text:
+        return text
+    home_dir = str(Path.home())
+    if home_dir:
+        text = text.replace(home_dir, "~")
+    # Also handle forward/backward slash variants
+    home_alt = home_dir.replace("\\", "/")
+    if home_alt != home_dir:
+        text = text.replace(home_alt, "~")
+
+    user_name = os.environ.get("USERNAME") or os.environ.get("USER")
+    if user_name and len(user_name) >= 3:
+        import re
+
+        text = re.sub(rf"\b{re.escape(user_name)}\b", "<USER>", text, flags=re.IGNORECASE)
+    return text
+
+
 def write_crash_report(
     exc_type: type[BaseException],
     exc_value: BaseException,
@@ -115,6 +137,7 @@ def write_crash_report(
     report_path = crash_dir / filename
 
     tb_lines = traceback.format_exception(exc_type, exc_value, exc_tb)
+    tb_clean = anonymize_traceback("".join(tb_lines))
 
     report: dict[str, Any] = {
         "report_version": _CRASH_REPORT_VERSION,
@@ -123,8 +146,8 @@ def write_crash_report(
         "thread": thread_name,
         "exception": {
             "type": f"{exc_type.__module__}.{exc_type.__qualname__}",
-            "message": str(exc_value),
-            "traceback": "".join(tb_lines),
+            "message": anonymize_traceback(str(exc_value)),
+            "traceback": tb_clean,
         },
         "system": gather_system_info(),
     }

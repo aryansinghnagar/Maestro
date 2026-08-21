@@ -29,6 +29,16 @@ def clean_onboarding_marker():
             pass
 
 
+@pytest.fixture(autouse=True)
+def mock_camera_permissions():
+    """Mock cv2.VideoCapture so physical hardware camera is not polled during unit tests."""
+    with patch("cv2.VideoCapture") as mock_cap:
+        mock_instance = MagicMock()
+        mock_instance.isOpened.return_value = True
+        mock_cap.return_value = mock_instance
+        yield mock_cap
+
+
 def test_is_onboarded_initially_false() -> None:
     assert is_onboarded() is False
 

@@ -220,6 +220,21 @@ class IntegrationServer:
                     k, v = line.split(":", 1)
                     headers[k.strip().lower()] = v.strip()
 
+            # Audit fix MAE-AUD-005: validate Host header against DNS rebinding attacks.
+            host_header = headers.get("host", "").lower().split(":")[0]
+            if host_header and host_header not in {
+                "127.0.0.1",
+                "localhost",
+                "[::1]",
+                "::1",
+            }:
+                logger.warning(
+                    "Rejected request with foreign Host header", host=headers.get("host")
+                )
+                self._send_http_response(conn, 400, {"error": "Invalid Host header"})
+                conn.close()
+                return
+
             # Parse query parameters for token auth
             parsed_url = urllib.parse.urlparse(path)
             query_params = urllib.parse.parse_qs(parsed_url.query)
@@ -293,13 +308,17 @@ class IntegrationServer:
                     conn.close()
                     return
 
-                parts = req_str.split("\r\n\r\n", 1)
-                body = parts[1] if len(parts) > 1 else ""
-                while len(body.encode("utf-8")) < content_length:
+                # Byte-accurate accumulation
+                body_bytes = b""
+                parts = req_data.split(b"\r\n\r\n", 1)
+                if len(parts) > 1:
+                    body_bytes = parts[1]
+                while len(body_bytes) < content_length:
                     more = conn.recv(4096)
                     if not more:
                         break
-                    body += more.decode("utf-8", errors="ignore")
+                    body_bytes += more
+                body = body_bytes.decode("utf-8", errors="ignore")
 
             # Handle standard REST routes
             if method == "POST" and parsed_url.path == "/api/trigger":
