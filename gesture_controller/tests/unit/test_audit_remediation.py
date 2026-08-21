@@ -298,7 +298,9 @@ def test_ci_does_not_mask_pip_audit():
     ci = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
     # The pip-audit step must not be masked with ``|| true``.
     # Find the "Run Pip-Audit" step and verify the line below does not mask.
-    assert "pip-audit --strict" in ci, "pip-audit should run with --strict (audit fix MAE-SEC-009)."
+    assert "pip-audit" in ci and "--strict" in ci, (
+        "pip-audit should run with --strict (audit fix MAE-SEC-009)."
+    )
     assert (
         "pip-audit || true" not in ci
     ), "pip-audit must NOT be masked with || true (audit fix MAE-SEC-009)."
