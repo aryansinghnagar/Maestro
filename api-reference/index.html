@@ -1528,6 +1528,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#gesture_controller.core.crash_reporter.anonymize_traceback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;anonymize_traceback
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#gesture_controller.core.crash_reporter.write_crash_report" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2513,6 +2524,17 @@
     <span class="md-ellipsis">
       
         <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;logger
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gesture_controller.os_integration.broker.ALLOWED_BROKER_METHODS" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;ALLOWED_BROKER_METHODS
       
     </span>
   </a>
@@ -5827,6 +5849,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#gesture_controller.core.crash_reporter.anonymize_traceback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;anonymize_traceback
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#gesture_controller.core.crash_reporter.write_crash_report" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6812,6 +6845,17 @@
     <span class="md-ellipsis">
       
         <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;logger
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gesture_controller.os_integration.broker.ALLOWED_BROKER_METHODS" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;ALLOWED_BROKER_METHODS
       
     </span>
   </a>
@@ -11754,6 +11798,26 @@ install_crash_handler(event_bus=bus, user_dir=paths.user_data_dir())
 
         <p>Collect safe, non-PII system metadata for crash reports and diagnostics.</p>
 <p>Returns a dict with platform, Python, screen, and package version info.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="gesture_controller.core.crash_reporter.anonymize_traceback" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">anonymize_traceback</span>
+
+
+<a href="#gesture_controller.core.crash_reporter.anonymize_traceback" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">anonymize_traceback</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Audit fix MAE-AUD-003: replace user home directories and usernames with placeholders.</p>
 
 
     </div>
@@ -16962,6 +17026,28 @@ during which NO custom gesture can trigger.</p>
 
 <a href="#gesture_controller.os_integration.broker.logger" class="headerlink" title="Permanent link">&para;</a></h3>
 <div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">logger</span> <span class="o">=</span> <span class="n">structlog</span><span class="o">.</span><span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+</span></code></pre></div>
+
+    <div class="doc doc-contents ">
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="gesture_controller.os_integration.broker.ALLOWED_BROKER_METHODS" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">ALLOWED_BROKER_METHODS</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#gesture_controller.os_integration.broker.ALLOWED_BROKER_METHODS" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">ALLOWED_BROKER_METHODS</span><span class="p">:</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s1">'key_press'</span><span class="p">,</span> <span class="s1">'key_release'</span><span class="p">,</span> <span class="s1">'key_combo'</span><span class="p">,</span> <span class="s1">'mouse_click'</span><span class="p">,</span> <span class="s1">'mouse_double_click'</span><span class="p">,</span> <span class="s1">'mouse_move'</span><span class="p">,</span> <span class="s1">'mouse_scroll'</span><span class="p">,</span> <span class="s1">'get_foreground_app'</span><span class="p">,</span> <span class="s1">'minimize_active_window'</span><span class="p">,</span> <span class="s1">'switch_window'</span><span class="p">,</span> <span class="s1">'show_desktop'</span><span class="p">,</span> <span class="s1">'media_play_pause'</span><span class="p">,</span> <span class="s1">'media_next'</span><span class="p">,</span> <span class="s1">'media_previous'</span><span class="p">,</span> <span class="s1">'media_volume_up'</span><span class="p">,</span> <span class="s1">'media_volume_down'</span><span class="p">,</span> <span class="s1">'execute_action'</span><span class="p">})</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
