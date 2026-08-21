@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0](https://github.com/aryansinghnagar/Maestro/compare/v1.2.0...v1.3.0) (2026-08-21)
+
+
+### Features
+
+* **ci:** add ruff configuration for linting and style enforcement ([8662af2](https://github.com/aryansinghnagar/Maestro/commit/8662af2ae1598447fc06e03ff0685338aa80083a))
+* complete release readiness, adaptive performance tier system, security hardening, mypy type safety, and CI workflow fixes ([f0de0ff](https://github.com/aryansinghnagar/Maestro/commit/f0de0ffdf9592d1983786e64c3e6783513e89dde))
+* **core:** implement production readiness hardening, WinVerifyTrust Authenticode checks, and TUF ceremony tooling ([edbe389](https://github.com/aryansinghnagar/Maestro/commit/edbe3891fc1a88294e4bb6456713ef08bac2a3e2))
+* implement compile-time RestrictedPython plugin sandboxing and structured latency metrics collection ([5476df9](https://github.com/aryansinghnagar/Maestro/commit/5476df91c7c3e1b182dadb4889e02308e1469390))
+* implement native platform integrations, tremor auto-tuning, voice commands, REST/WS server, and developer CLI commands (Phases 12-18) ([59ce5c1](https://github.com/aryansinghnagar/Maestro/commit/59ce5c1a870c6df9bb9d95424fa8bfc23b936a60))
+* implement Sprint 1 (CI & Test Foundation) with property tests, schema updates, and ADR docs ([5fbee4c](https://github.com/aryansinghnagar/Maestro/commit/5fbee4c0ff5bf7279f833c68b6d1ceb6e8fbfcef))
+* implement Sprint 2 (Installers & Onboarding) with installer scripts, onboarding wizard, and verify-install CLI ([0456a0e](https://github.com/aryansinghnagar/Maestro/commit/0456a0ee2e5232e774ac6870539800886ee9aec5))
+* integrate strict static type checking, automated release workflows, async event dispatch, and native win32 input injection ([eaa9a93](https://github.com/aryansinghnagar/Maestro/commit/eaa9a934c7b3d4b0eb3c2f8efb98b4d77d40264b))
+* **v2.0-m1:** resolve 5 critical blockers and implement position-based Hand-ID tracking ([a7d42c4](https://github.com/aryansinghnagar/Maestro/commit/a7d42c4f105b74e774878b58a31dc434dc169333))
+* **v2.0:** implement Compliance Framework (Phase 11) ([4ba0778](https://github.com/aryansinghnagar/Maestro/commit/4ba07789ef68054fdd47d228b55f32d18afcf335))
+* **v2.0:** implement Sprint 1 OpenCV context managers, sandbox hardening & fuzzing targets ([6592335](https://github.com/aryansinghnagar/Maestro/commit/65923352cfd4b0d8f2ebf5492a22a2a05db83e16))
+* **v2.0:** implement TUF auto-updates, privilege-separated input broker, and WASM sandboxing ([92b1296](https://github.com/aryansinghnagar/Maestro/commit/92b129663b8fde621a45d40645bf8aac7ff607df))
+* **vision:** implement seqlock double-buffer and ONNX Runtime backend ([479714d](https://github.com/aryansinghnagar/Maestro/commit/479714d894d0405f4b5bc54ac3f35b40922f7091))
+
+
+### Bug Fixes
+
+* **ci:** add dbus, gi, mpris_media, and applescript_bridge to mypy overrides ([fe42de5](https://github.com/aryansinghnagar/Maestro/commit/fe42de50ece4265a7f83fa0a717a69ba3d5e70df))
+* **ci:** add pywin32 system32 paths to GITHUB_PATH for Windows runners ([9a51fc2](https://github.com/aryansinghnagar/Maestro/commit/9a51fc264a20ca6095608435e38d4207fda21be6))
+* **ci:** adjust coverage floor to 65% for multi-platform matrix runs ([d7ddd8e](https://github.com/aryansinghnagar/Maestro/commit/d7ddd8ea11d65c824aa79c5b18b8371c524c6459))
+* **ci:** handle non-windows headless display limitations gracefully in CI matrix ([ea6bbfb](https://github.com/aryansinghnagar/Maestro/commit/ea6bbfb57b905f2eb5a712f0e3f22fc59be44a61))
+* **ci:** lower test coverage fail threshold to 69 ([bd5c180](https://github.com/aryansinghnagar/Maestro/commit/bd5c180c0e3fcdd5400e05c7ac02aef0ece91a6f))
+* **ci:** remediate multi-platform mypy typing, bandit security, and matrix test failures ([9df73f9](https://github.com/aryansinghnagar/Maestro/commit/9df73f9cb8125e780fe59f6001985f7190437d55))
+* **ci:** remove --cov-fail-under from multi-platform matrix test step ([688520c](https://github.com/aryansinghnagar/Maestro/commit/688520c79f7e1fa547670e77d471cf50402f9831))
+* **ci:** remove hardcoded pytest coverage floor from pyproject.toml addopts ([457e94a](https://github.com/aryansinghnagar/Maestro/commit/457e94a56f45761cc13cf36177d25e06ceec485d))
+* **ci:** set coverage floor to 55 for multi-platform matrix runs ([b6d3ceb](https://github.com/aryansinghnagar/Maestro/commit/b6d3cebb1bfab056d64d83537df3b25891eff144))
+* **ci:** set fail_under = 0 in pyproject.toml coverage report ([a8c731d](https://github.com/aryansinghnagar/Maestro/commit/a8c731dd0f5483b22f9277d7839459bc839f56f7))
+* **ci:** set gesture_controller.os_integration.* in mypy overrides ([c41bb23](https://github.com/aryansinghnagar/Maestro/commit/c41bb23f296d1d25dd0eb871f2d0742a39955f26))
+* **ci:** set pytest --cov-fail-under=40 in ci.yml ([404f05c](https://github.com/aryansinghnagar/Maestro/commit/404f05c0c7e91dd676b4eae5daec1caafed11594))
+* **ci:** set pytest --cov-fail-under=50 in ci.yml ([296098b](https://github.com/aryansinghnagar/Maestro/commit/296098bf29d03178f227acca8fb7f7b2baf1fc13))
+* **ci:** set shell: bash for cross-platform test step execution ([e60ceda](https://github.com/aryansinghnagar/Maestro/commit/e60ceda75ba6d6792309cf58cd77b70b67b5de32))
+* **ci:** set warn_unused_ignores = false for cross-platform mypy checks ([d55219f](https://github.com/aryansinghnagar/Maestro/commit/d55219fe4777e5ebcb4d0cef15ef145c1d402897))
+* **ci:** simplify Windows step and ensure pytest.xml generation across matrix runners ([603d349](https://github.com/aryansinghnagar/Maestro/commit/603d349e68a2b2ebeae0745c04b6d4193b4917f1))
+* **ci:** update mypy config flag and Ubuntu 24.04 apt packages ([600093b](https://github.com/aryansinghnagar/Maestro/commit/600093b0524b9a3316d6f6e1cee54e569a1608c0))
+* **ci:** update mypy overrides, Ubuntu packages, and pip-audit step ([52f65e5](https://github.com/aryansinghnagar/Maestro/commit/52f65e5b06b745b232d055a22dd2fdc1c94df8b3))
+* **ci:** update workflow actions, optional voice dependencies, and Linux build dependencies ([93ec4b6](https://github.com/aryansinghnagar/Maestro/commit/93ec4b63ea559fc24ff50004f52f7482e81afb65))
+* **ci:** use Out-File ASCII encoding for GITHUB_PATH in Windows pywin32 step ([84d6b00](https://github.com/aryansinghnagar/Maestro/commit/84d6b0026a2e958a852b3404144e9606a8f201f7))
+* **cli:** use masked_val in token print statements to resolve CodeQL taint analysis ([64383a4](https://github.com/aryansinghnagar/Maestro/commit/64383a4065a615c32d5ec6510c6b9ed86a6094ca))
+* **core:** enhance cross-platform type safety in paths and broker ([50cfd42](https://github.com/aryansinghnagar/Maestro/commit/50cfd4268766868e82e4e09bbfc1efbf96c34e79))
+* **security:** remediate forensic audit findings across core, broker, and CI ([67ac32c](https://github.com/aryansinghnagar/Maestro/commit/67ac32ce49b200470f6f9e43785096660998bc0d))
+* **security:** resolve code scanning alerts for token redacting & workflow permissions ([397c48f](https://github.com/aryansinghnagar/Maestro/commit/397c48fb99c3e0d84aa6a2ab74b2d6815a97b6e4))
+* **v2.0:** resolve mypy type warnings in compliance, updater, and broker modules ([f5e8aad](https://github.com/aryansinghnagar/Maestro/commit/f5e8aad5081861d3759447fbfc53871746718d4c))
+
+
+### Dependencies
+
+* **npm:** bump @biomejs/biome from 2.5.7 to 2.5.8 ([#27](https://github.com/aryansinghnagar/Maestro/issues/27)) ([d9d57e5](https://github.com/aryansinghnagar/Maestro/commit/d9d57e53018f16dae317420e9c0ae2369b658f91))
+* **npm:** bump @commitlint/cli and @commitlint/config-conventional to 21.2.2 ([c2d647b](https://github.com/aryansinghnagar/Maestro/commit/c2d647b08c399102b498d258020d697c8f4726e1))
+* **npm:** bump @commitlint/cli from 19.8.1 to 21.2.1 ([d2709c2](https://github.com/aryansinghnagar/Maestro/commit/d2709c200beebfa4814cda639bf8468a165bc26b))
+* **npm:** bump @commitlint/config-conventional from 19.8.1 to 21.2.0 ([b281c97](https://github.com/aryansinghnagar/Maestro/commit/b281c97fe9212b1e13b7234ae9810dc0db3eba76))
+
+
+### Documentation
+
+* add comprehensive CI failure analysis report with detailed diagnostics and solutions ([5cf1ba5](https://github.com/aryansinghnagar/Maestro/commit/5cf1ba548b7b2715420fa0b5c90dfe6b3747713d))
+* add comprehensive refactor plan v4.0 ([e5e2b13](https://github.com/aryansinghnagar/Maestro/commit/e5e2b137b879105073f4368530ff8e7bf3e019d4))
+* add comprehensive testing and risk mitigation guide ([34f7c32](https://github.com/aryansinghnagar/Maestro/commit/34f7c3205cbe36f12f5b0fd27ae6144f801a07dc))
+* archive legacy design docs and update core product release guides ([3da7a40](https://github.com/aryansinghnagar/Maestro/commit/3da7a4051b640977161e6afff27ff3c19d26a44a))
+* implement Sprint 0 (P0 Blocker Fixes) for pipeline, threading, and GUI thread safety ([7c6b709](https://github.com/aryansinghnagar/Maestro/commit/7c6b709d6549aa875ed2e61d9f3bf53c863eac6e))
+* place TESTING.md at project root ([f1e096b](https://github.com/aryansinghnagar/Maestro/commit/f1e096b4838bbbe78219320fd0cacfe7e26841c0))
+* set up MkDocs Material site, extract ADRs/RFCs/specs, and rewrite top-level files ([0a4812b](https://github.com/aryansinghnagar/Maestro/commit/0a4812b4905f26ed933398aa129c598c6f455042))
+* **v2.0:** add PRIVACY.md documenting on-device data minimization policies ([dc3703b](https://github.com/aryansinghnagar/Maestro/commit/dc3703b307437057e1f832a5e0d784e4a526542b))
+
 ## [Unreleased]
 
 ### Security
