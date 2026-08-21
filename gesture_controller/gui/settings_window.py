@@ -354,7 +354,7 @@ class SettingsWindow(QDialog):
             "ar": "العربية",
             "hi": "हिन्दी",
         }
-        _cur = current_lang()
+        _cur = self._config.get("ui.language") or current_lang()
         for code in available_languages():
             label = _LANG_DISPLAY.get(code, code.upper())
             self._lang_combo.addItem(label, code)
@@ -637,6 +637,14 @@ class SettingsWindow(QDialog):
     def _load_current_config(self) -> None:
         """Populate current GUI settings from ConfigManager values."""
         self._camera_device.setCurrentIndex(self._config.get("camera.device_id", 0))
+
+        # Load language setting
+        lang_code = self._config.get("ui.language")
+        if lang_code:
+            for i in range(self._lang_combo.count()):
+                if self._lang_combo.itemData(i) == lang_code:
+                    self._lang_combo.setCurrentIndex(i)
+                    break
 
         # Load sensitivity
         sens = int(self._config.get("sensitivity.global_multiplier", 1.0) * 100)

@@ -41,9 +41,11 @@ def download_model() -> int:
     print(f"Destination: {TARGET_FILE.absolute()}")
 
     try:
-        TARGET_DIR.mkdir(parents=True, exist_ok=True)
+        TARGET_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-        with tempfile.NamedTemporaryFile(delete=False, dir=TARGET_DIR, suffix=".tmp") as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            delete=False, dir=TARGET_FILE.parent, suffix=".tmp"
+        ) as tmp_file:
             tmp_path = Path(tmp_file.name)
 
         def progress_hook(count: int, block_size: int, total_size: int) -> None:
@@ -54,7 +56,7 @@ def download_model() -> int:
             )
             sys.stdout.flush()
 
-        urllib.request.urlretrieve(MODEL_URL, str(tmp_path), reporthook=progress_hook)
+        urllib.request.urlretrieve(MODEL_URL, str(tmp_path), reporthook=progress_hook)  # nosec B310
         print("\nDownload finished. Verifying SHA-256 integrity...")
 
         if not verify_sha256(tmp_path, EXPECTED_SHA256):
