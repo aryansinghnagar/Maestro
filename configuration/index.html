@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#maestro-configuration-guide" class="md-skip">
+        <a href="#maestro-configuration-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -709,10 +709,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#configuration-schema" class="md-nav__link">
+  <a href="#1-configuration-file-locations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration Schema
+        1. Configuration File Locations
       
     </span>
   </a>
@@ -720,10 +720,71 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hot-reloading" class="md-nav__link">
+  <a href="#2-complete-configyaml-schema" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hot-Reloading
+        2. Complete config.yaml Schema
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-trigger-conditions-dsl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Trigger Conditions DSL
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Trigger Conditions DSL">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supported-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-conditional-expressions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Conditional Expressions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-dynamic-hot-reloading-schema-migrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Dynamic Hot-Reloading &amp; Schema Migrations
       
     </span>
   </a>
@@ -3257,10 +3318,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#configuration-schema" class="md-nav__link">
+  <a href="#1-configuration-file-locations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration Schema
+        1. Configuration File Locations
       
     </span>
   </a>
@@ -3268,10 +3329,71 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hot-reloading" class="md-nav__link">
+  <a href="#2-complete-configyaml-schema" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hot-Reloading
+        2. Complete config.yaml Schema
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-trigger-conditions-dsl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Trigger Conditions DSL
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Trigger Conditions DSL">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supported-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-conditional-expressions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Conditional Expressions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-dynamic-hot-reloading-schema-migrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Dynamic Hot-Reloading &amp; Schema Migrations
       
     </span>
   </a>
@@ -3298,59 +3420,242 @@
   
 
 
-<h1 id="maestro-configuration-guide">Maestro Configuration Guide<a class="headerlink" href="#maestro-configuration-guide" title="Permanent link">&para;</a></h1>
-<p>Maestro persists configuration in human-readable YAML format located at:
-- <strong>Windows</strong>: <code>%APPDATA%\maestro\config.yaml</code>
-- <strong>Linux / macOS</strong>: <code>~/.config/maestro/config.yaml</code></p>
+<h1 id="maestro-configuration-reference">Maestro Configuration Reference<a class="headerlink" href="#maestro-configuration-reference" title="Permanent link">&para;</a></h1>
+<p>Maestro persists its configuration in human-readable YAML format with automatic schema validation, versioned migrations, and dynamic hot-reloading.</p>
 <hr />
-<h2 id="configuration-schema">Configuration Schema<a class="headerlink" href="#configuration-schema" title="Permanent link">&para;</a></h2>
-<p>Below is an annotated sample <code>config.yaml</code>:</p>
-<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">app</span><span class="p">:</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">language</span><span class="p">:</span><span class="w"> </span><span class="s">"en"</span><span class="w">             </span><span class="c1"># Interface language ("en", "fr", "de", "ja")</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="nt">onboarding_complete</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">  </span><span class="c1"># Onboarding status flag</span>
+<h2 id="1-configuration-file-locations">1. Configuration File Locations<a class="headerlink" href="#1-configuration-file-locations" title="Permanent link">&para;</a></h2>
+<p>Maestro follows standard OS directory conventions:</p>
+<table>
+<thead>
+<tr>
+<th>Operating System</th>
+<th>Default Configuration Path</th>
+<th>Data / Templates Directory</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Windows</strong></td>
+<td><code>%APPDATA%\maestro\config.yaml</code></td>
+<td><code>%LOCALAPPDATA%\maestro\templates\</code></td>
+</tr>
+<tr>
+<td><strong>Linux</strong></td>
+<td><code>~/.config/maestro/config.yaml</code></td>
+<td><code>~/.local/share/maestro/templates/</code></td>
+</tr>
+<tr>
+<td><strong>macOS</strong></td>
+<td><code>~/Library/Application Support/maestro/config.yaml</code></td>
+<td><code>~/Library/Application Support/maestro/templates/</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>[!TIP]
+You can override the default configuration directory at any time by setting the <code>MAESTRO_CONFIG_DIR</code> environment variable.</p>
+</blockquote>
+<hr />
+<h2 id="2-complete-configyaml-schema">2. Complete <code>config.yaml</code> Schema<a class="headerlink" href="#2-complete-configyaml-schema" title="Permanent link">&para;</a></h2>
+<p>Below is the fully annotated YAML configuration:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># ==============================================================================</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># Maestro Configuration File (Schema v1.2)</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># ==============================================================================</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nt">engine</span><span class="p">:</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">min_detection_confidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.7</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="nt">min_tracking_confidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nt">max_hands</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span><span class="nt">fps_cap</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="nt">global_cooldown_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">200.0</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nt">app</span><span class="p">:</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="nt">language</span><span class="p">:</span><span class="w"> </span><span class="s">"en"</span><span class="w">               </span><span class="c1"># UI language ("en", "es", "fr", "de", "ja", "zh")</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="nt">onboarding_complete</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">    </span><span class="c1"># First-run onboarding completion status</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">  </span><span class="nt">theme</span><span class="p">:</span><span class="w"> </span><span class="s">"system"</span><span class="w">              </span><span class="c1"># "system", "dark", "light", or "high_contrast"</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span><span class="nt">start_minimized</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">        </span><span class="c1"># Launch directly into system tray</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="nt">panic_hotkey</span><span class="p">:</span><span class="w"> </span><span class="s">"ctrl+alt+shift+q"</span>
 </span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="nt">filtering</span><span class="p">:</span>
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="nt">one_euro</span><span class="p">:</span>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">    </span><span class="nt">min_cutoff</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">    </span><span class="nt">beta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.007</span>
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">    </span><span class="nt">d_cutoff</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">  </span><span class="nt">tremor</span><span class="p">:</span>
-</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">    </span><span class="nt">window_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
-</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="w">    </span><span class="nt">max_displacement_px</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.0</span>
-</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="nt">voice</span><span class="p">:</span>
-</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">  </span><span class="nt">wake_word</span><span class="p">:</span><span class="w"> </span><span class="s">"maestro"</span>
-</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">  </span><span class="nt">commands</span><span class="p">:</span>
-</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">phrase</span><span class="p">:</span><span class="w"> </span><span class="s">"open</span><span class="nv"> </span><span class="s">browser"</span>
-</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">      </span><span class="nt">gesture</span><span class="p">:</span><span class="w"> </span><span class="s">"SwipeRight"</span>
-</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>
-</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="nt">profiles</span><span class="p">:</span>
-</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="w">  </span><span class="nt">auto_detect_app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="w">  </span><span class="nt">app_profiles</span><span class="p">:</span>
-</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="w">    </span><span class="nt">chrome.exe</span><span class="p">:</span>
-</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="w">      </span><span class="nt">SwipeLeft</span><span class="p">:</span><span class="w"> </span><span class="s">"KeyPress:Ctrl+Shift+Tab"</span>
-</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="w">      </span><span class="nt">SwipeRight</span><span class="p">:</span><span class="w"> </span><span class="s">"KeyPress:Ctrl+Tab"</span>
-</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="w">    </span><span class="nt">vlc.exe</span><span class="p">:</span>
-</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="w">      </span><span class="nt">Fist</span><span class="p">:</span><span class="w"> </span><span class="s">"Media:PlayPause"</span>
-</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>
-</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="nt">hud</span><span class="p">:</span>
-</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">  </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.85</span>
-</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">  </span><span class="nt">show_tracking_dots</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
-</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">  </span><span class="nt">show_progress_ring</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="nt">engine</span><span class="p">:</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="w">  </span><span class="nt">min_detection_confidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.70</span><span class="w">  </span><span class="c1"># Minimum confidence for initial palm detection</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="w">  </span><span class="nt">min_tracking_confidence</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.50</span><span class="w">   </span><span class="c1"># Minimum confidence for landmark tracking</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="w">  </span><span class="nt">max_hands</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w">                    </span><span class="c1"># Number of simultaneous hands (1 or 2)</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="w">  </span><span class="nt">fps_cap</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span><span class="w">                     </span><span class="c1"># Target camera capture FPS cap (10 - 60)</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="w">  </span><span class="nt">global_cooldown_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">200.0</span><span class="w">       </span><span class="c1"># Cooldown between sequential gesture triggers</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="w">  </span><span class="nt">preferred_backend</span><span class="p">:</span><span class="w"> </span><span class="s">"auto"</span><span class="w">       </span><span class="c1"># "auto", "directml", "tensorrt", "coreml", "cpu"</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a><span class="w">  </span><span class="nt">adaptive_tiers_enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">    </span><span class="c1"># Automatic dynamic scaling (T0 - T3)</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="nt">filtering</span><span class="p">:</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="w">  </span><span class="nt">one_euro</span><span class="p">:</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="w">    </span><span class="nt">min_cutoff</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w">     </span><span class="c1"># Minimum cutoff frequency (lower = smoother when slow)</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="w">    </span><span class="nt">beta</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.007</span><span class="w">         </span><span class="c1"># Speed coefficient (higher = less lag during rapid movement)</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="w">    </span><span class="nt">d_cutoff</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w">       </span><span class="c1"># Derivative cutoff frequency</span>
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="w">  </span><span class="nt">tremor</span><span class="p">:</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="w">    </span><span class="nt">window_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="w">    </span><span class="nt">max_displacement_px</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.0</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="nt">dwell_clicker</span><span class="p">:</span>
+</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="w">  </span><span class="nt">dwell_time_ms</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">800</span>
+</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="w">  </span><span class="nt">radius_px</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20</span>
+</span><span id="__span-0-35"><a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="w">  </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="s">"MouseClick:Left"</span>
+</span><span id="__span-0-36"><a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>
+</span><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="nt">voice</span><span class="p">:</span>
+</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="w">  </span><span class="nt">wake_word</span><span class="p">:</span><span class="w"> </span><span class="s">"maestro"</span>
+</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="w">  </span><span class="nt">wake_window_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.0</span>
+</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="w">  </span><span class="nt">model_path</span><span class="p">:</span><span class="w"> </span><span class="s">"models/vosk-model-small-en-us-0.15"</span>
+</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="w">  </span><span class="nt">commands</span><span class="p">:</span>
+</span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">phrase</span><span class="p">:</span><span class="w"> </span><span class="s">"swipe</span><span class="nv"> </span><span class="s">left"</span>
+</span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="w">      </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="s">"KeyPress:Ctrl+Shift+Tab"</span>
+</span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">phrase</span><span class="p">:</span><span class="w"> </span><span class="s">"swipe</span><span class="nv"> </span><span class="s">right"</span>
+</span><span id="__span-0-46"><a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a><span class="w">      </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="s">"KeyPress:Ctrl+Tab"</span>
+</span><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">phrase</span><span class="p">:</span><span class="w"> </span><span class="s">"minimize"</span>
+</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a><span class="w">      </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="s">"OS:MinimizeActiveWindow"</span>
+</span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">phrase</span><span class="p">:</span><span class="w"> </span><span class="s">"play</span><span class="nv"> </span><span class="s">pause"</span>
+</span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a><span class="w">      </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="s">"Media:PlayPause"</span>
+</span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>
+</span><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a><span class="nt">profiles</span><span class="p">:</span>
+</span><span id="__span-0-53"><a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a><span class="w">  </span><span class="nt">auto_detect_app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-0-54"><a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a><span class="w">  </span><span class="nt">default</span><span class="p">:</span>
+</span><span id="__span-0-55"><a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a><span class="w">    </span><span class="nt">SwipeLeft</span><span class="p">:</span><span class="w"> </span><span class="s">"KeyPress:Ctrl+Shift+Tab"</span>
+</span><span id="__span-0-56"><a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a><span class="w">    </span><span class="nt">SwipeRight</span><span class="p">:</span><span class="w"> </span><span class="s">"KeyPress:Ctrl+Tab"</span>
+</span><span id="__span-0-57"><a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a><span class="w">    </span><span class="nt">SwipeUp</span><span class="p">:</span><span class="w"> </span><span class="s">"OS:ShowDesktop"</span>
+</span><span id="__span-0-58"><a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a><span class="w">    </span><span class="nt">SwipeDown</span><span class="p">:</span><span class="w"> </span><span class="s">"OS:SwitchWindow"</span>
+</span><span id="__span-0-59"><a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a><span class="w">    </span><span class="nt">Fist</span><span class="p">:</span><span class="w"> </span><span class="s">"OS:MinimizeActiveWindow"</span>
+</span><span id="__span-0-60"><a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a><span class="w">  </span><span class="nt">app_profiles</span><span class="p">:</span>
+</span><span id="__span-0-61"><a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a><span class="w">    </span><span class="nt">chrome.exe</span><span class="p">:</span>
+</span><span id="__span-0-62"><a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a><span class="w">      </span><span class="nt">SwipeLeft</span><span class="p">:</span><span class="w"> </span><span class="s">"KeyPress:Ctrl+Shift+Tab"</span>
+</span><span id="__span-0-63"><a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a><span class="w">      </span><span class="nt">SwipeRight</span><span class="p">:</span><span class="w"> </span><span class="s">"KeyPress:Ctrl+Tab"</span>
+</span><span id="__span-0-64"><a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a><span class="w">      </span><span class="nt">Fist</span><span class="p">:</span><span class="w"> </span><span class="s">"KeyPress:Ctrl+W"</span>
+</span><span id="__span-0-65"><a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a><span class="w">    </span><span class="nt">vlc.exe</span><span class="p">:</span>
+</span><span id="__span-0-66"><a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a><span class="w">      </span><span class="nt">SwipeLeft</span><span class="p">:</span><span class="w"> </span><span class="s">"KeyPress:Alt+Left"</span>
+</span><span id="__span-0-67"><a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a><span class="w">      </span><span class="nt">SwipeRight</span><span class="p">:</span><span class="w"> </span><span class="s">"KeyPress:Alt+Right"</span>
+</span><span id="__span-0-68"><a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a><span class="w">      </span><span class="nt">Fist</span><span class="p">:</span><span class="w"> </span><span class="s">"Media:PlayPause"</span>
+</span><span id="__span-0-69"><a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a>
+</span><span id="__span-0-70"><a id="__codelineno-0-70" name="__codelineno-0-70" href="#__codelineno-0-70"></a><span class="nt">hud</span><span class="p">:</span>
+</span><span id="__span-0-71"><a id="__codelineno-0-71" name="__codelineno-0-71" href="#__codelineno-0-71"></a><span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-0-72"><a id="__codelineno-0-72" name="__codelineno-0-72" href="#__codelineno-0-72"></a><span class="w">  </span><span class="nt">opacity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.85</span>
+</span><span id="__span-0-73"><a id="__codelineno-0-73" name="__codelineno-0-73" href="#__codelineno-0-73"></a><span class="w">  </span><span class="nt">show_tracking_dots</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-0-74"><a id="__codelineno-0-74" name="__codelineno-0-74" href="#__codelineno-0-74"></a><span class="w">  </span><span class="nt">show_skeleton_lines</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-0-75"><a id="__codelineno-0-75" name="__codelineno-0-75" href="#__codelineno-0-75"></a><span class="w">  </span><span class="nt">show_progress_ring</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-0-76"><a id="__codelineno-0-76" name="__codelineno-0-76" href="#__codelineno-0-76"></a><span class="w">  </span><span class="nt">show_fps</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</span><span id="__span-0-77"><a id="__codelineno-0-77" name="__codelineno-0-77" href="#__codelineno-0-77"></a>
+</span><span id="__span-0-78"><a id="__codelineno-0-78" name="__codelineno-0-78" href="#__codelineno-0-78"></a><span class="nt">broker</span><span class="p">:</span>
+</span><span id="__span-0-79"><a id="__codelineno-0-79" name="__codelineno-0-79" href="#__codelineno-0-79"></a><span class="w">  </span><span class="nt">rate_limit_per_second</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+</span><span id="__span-0-80"><a id="__codelineno-0-80" name="__codelineno-0-80" href="#__codelineno-0-80"></a><span class="w">  </span><span class="nt">rate_limit_burst</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+</span><span id="__span-0-81"><a id="__codelineno-0-81" name="__codelineno-0-81" href="#__codelineno-0-81"></a><span class="w">  </span><span class="nt">audit_logging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-0-82"><a id="__codelineno-0-82" name="__codelineno-0-82" href="#__codelineno-0-82"></a>
+</span><span id="__span-0-83"><a id="__codelineno-0-83" name="__codelineno-0-83" href="#__codelineno-0-83"></a><span class="nt">updater</span><span class="p">:</span>
+</span><span id="__span-0-84"><a id="__codelineno-0-84" name="__codelineno-0-84" href="#__codelineno-0-84"></a><span class="w">  </span><span class="nt">auto_check</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="__span-0-85"><a id="__codelineno-0-85" name="__codelineno-0-85" href="#__codelineno-0-85"></a><span class="w">  </span><span class="nt">check_interval_hours</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">24</span>
+</span><span id="__span-0-86"><a id="__codelineno-0-86" name="__codelineno-0-86" href="#__codelineno-0-86"></a><span class="w">  </span><span class="nt">channel</span><span class="p">:</span><span class="w"> </span><span class="s">"stable"</span><span class="w">    </span><span class="c1"># "stable" or "beta"</span>
 </span></code></pre></div>
 <hr />
-<h2 id="hot-reloading">Hot-Reloading<a class="headerlink" href="#hot-reloading" title="Permanent link">&para;</a></h2>
-<p>Maestro watches <code>config.yaml</code> using <code>watchdog</code>. Changes made to <code>config.yaml</code> via text editor are automatically reloaded at runtime without requiring an application restart.</p>
+<h2 id="3-trigger-conditions-dsl">3. Trigger Conditions DSL<a class="headerlink" href="#3-trigger-conditions-dsl" title="Permanent link">&para;</a></h2>
+<p>Maestro supports contextual trigger conditions evaluated via a restricted, safe Abstract Syntax Tree (AST) evaluator. You can bind gestures conditionally based on runtime state:</p>
+<h3 id="supported-variables">Supported Variables<a class="headerlink" href="#supported-variables" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Type</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app_name</code></td>
+<td>string</td>
+<td>Lowercase name of foreground application process</td>
+<td><code>app_name == "chrome.exe"</code></td>
+</tr>
+<tr>
+<td><code>time_hour</code></td>
+<td>integer</td>
+<td>Current 24-hour local clock hour (0–23)</td>
+<td><code>time_hour &gt;= 18</code></td>
+</tr>
+<tr>
+<td><code>display_count</code></td>
+<td>integer</td>
+<td>Number of active desktop monitors</td>
+<td><code>display_count &gt; 1</code></td>
+</tr>
+<tr>
+<td><code>is_audio_playing</code></td>
+<td>boolean</td>
+<td>Whether system media is currently active</td>
+<td><code>is_audio_playing == True</code></td>
+</tr>
+<tr>
+<td><code>hand_count</code></td>
+<td>integer</td>
+<td>Number of detected hands in frame</td>
+<td><code>hand_count == 2</code></td>
+</tr>
+<tr>
+<td><code>handedness</code></td>
+<td>string</td>
+<td>Primary hand classification (<code>"Left"</code> / <code>"Right"</code>)</td>
+<td><code>handedness == "Right"</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="example-conditional-expressions">Example Conditional Expressions<a class="headerlink" href="#example-conditional-expressions" title="Permanent link">&para;</a></h3>
+<div class="language-yaml highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nt">profiles</span><span class="p">:</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">custom_conditions</span><span class="p">:</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">gesture</span><span class="p">:</span><span class="w"> </span><span class="s">"SwipeLeft"</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">      </span><span class="nt">condition</span><span class="p">:</span><span class="w"> </span><span class="s">'app_name</span><span class="nv"> </span><span class="s">==</span><span class="nv"> </span><span class="s">"chrome.exe"</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">display_count</span><span class="nv"> </span><span class="s">==</span><span class="nv"> </span><span class="s">1'</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">      </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="s">"KeyPress:Ctrl+Shift+Tab"</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">gesture</span><span class="p">:</span><span class="w"> </span><span class="s">"SwipeLeft"</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">      </span><span class="nt">condition</span><span class="p">:</span><span class="w"> </span><span class="s">'app_name</span><span class="nv"> </span><span class="s">==</span><span class="nv"> </span><span class="s">"chrome.exe"</span><span class="nv"> </span><span class="s">and</span><span class="nv"> </span><span class="s">display_count</span><span class="nv"> </span><span class="s">&gt;</span><span class="nv"> </span><span class="s">1'</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">      </span><span class="nt">action</span><span class="p">:</span><span class="w"> </span><span class="s">"KeyPress:Ctrl+Alt+Left"</span>
+</span></code></pre></div>
+<hr />
+<h2 id="4-environment-variables">4. Environment Variables<a class="headerlink" href="#4-environment-variables" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Purpose</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MAESTRO_CONFIG_DIR</code></td>
+<td>Custom directory containing <code>config.yaml</code></td>
+<td>Platform default</td>
+</tr>
+<tr>
+<td><code>MAESTRO_LOG_LEVEL</code></td>
+<td>Logging verbosity (<code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>, <code>ERROR</code>)</td>
+<td><code>INFO</code></td>
+</tr>
+<tr>
+<td><code>MAESTRO_NO_GUI</code></td>
+<td>Run headless daemon mode without PyQt6 GUI</td>
+<td><code>0</code></td>
+</tr>
+<tr>
+<td><code>MAESTRO_FORCE_TIER</code></td>
+<td>Lock performance tier (<code>T0</code>, <code>T1</code>, <code>T2</code>, <code>T3</code>)</td>
+<td>Dynamic</td>
+</tr>
+<tr>
+<td><code>MAESTRO_PATCH_CDLL</code></td>
+<td>Apply Windows ctypes MediaPipe runtime fix</td>
+<td><code>1</code></td>
+</tr>
+<tr>
+<td><code>QT_QPA_PLATFORM</code></td>
+<td>PyQt6 rendering platform (e.g. <code>offscreen</code> for headless CI)</td>
+<td>Platform native</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-dynamic-hot-reloading-schema-migrations">5. Dynamic Hot-Reloading &amp; Schema Migrations<a class="headerlink" href="#5-dynamic-hot-reloading-schema-migrations" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Hot-Reloading</strong>: Maestro runs a filesystem watcher (<code>watchdog</code>) monitoring <code>config.yaml</code>. Editing the file in any text editor updates running parameters in-memory instantly without dropping camera frames or restarting the process.</li>
+<li><strong>Config Migration</strong>: When upgrading between Maestro releases, <code>config_migrator.py</code> automatically updates existing YAML files to the latest schema version while preserving custom gesture profiles and bindings.</li>
+</ul>
 
 
 

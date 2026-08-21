@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#accessibility-features" class="md-skip">
+        <a href="#maestro-accessibility-universal-design" class="md-skip">
           Skip to content
         </a>
       
@@ -863,6 +863,24 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Accessibility
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -879,6 +897,80 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-jitter-suppression-adaptive-one-euro-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Jitter Suppression &amp; Adaptive One-Euro Filtering
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-live-tremor-calibration-wizard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Live Tremor Calibration Wizard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-hands-free-dwell-to-click-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Hands-Free Dwell-to-Click Engine
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-screen-reader-assistive-technology-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Screen Reader &amp; Assistive Technology Integration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-keyboard-navigation-high-contrast-themes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Keyboard Navigation &amp; High Contrast Themes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -3194,6 +3286,69 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-jitter-suppression-adaptive-one-euro-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Jitter Suppression &amp; Adaptive One-Euro Filtering
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-live-tremor-calibration-wizard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Live Tremor Calibration Wizard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-hands-free-dwell-to-click-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Hands-Free Dwell-to-Click Engine
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-screen-reader-assistive-technology-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Screen Reader &amp; Assistive Technology Integration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-keyboard-navigation-high-contrast-themes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Keyboard Navigation &amp; High Contrast Themes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -3212,11 +3367,55 @@
   
 
 
-<h1 id="accessibility-features">Accessibility features<a class="headerlink" href="#accessibility-features" title="Permanent link">&para;</a></h1>
-<p>Maestro is designed to follow WCAG 2.2 AA guidelines to support diverse user needs:
-- <strong>Keyboard navigation</strong> support for all PyQt6 dialogs.
-- <strong>Accessible descriptions</strong> on all interactive UI controls.
-- <strong>Tremor auto-calibration</strong> wizard to tune OneEuroFilters.</p>
+<h1 id="maestro-accessibility-universal-design">Maestro Accessibility &amp; Universal Design<a class="headerlink" href="#maestro-accessibility-universal-design" title="Permanent link">&para;</a></h1>
+<p>Maestro is built from the ground up to adhere to <strong>WCAG 2.2 AA</strong> universal accessibility standards, enabling users with essential tremor, Parkinson's disease, repetitive strain injuries (RSI), or limited motor control to interact with desktop computers hands-free.</p>
+<hr />
+<h2 id="1-jitter-suppression-adaptive-one-euro-filtering">1. Jitter Suppression &amp; Adaptive One-Euro Filtering<a class="headerlink" href="#1-jitter-suppression-adaptive-one-euro-filtering" title="Permanent link">&para;</a></h2>
+<p>Standard webcam landmark detectors frequently exhibit high-frequency coordinate jitter. To deliver smooth, stable mouse cursor control without introducing sluggish lag, Maestro applies a dual-adaptive <strong>One-Euro low-pass filter</strong> (<code>one_euro_filter.py</code>):</p>
+<div class="arithmatex">\[
+\alpha = \frac{1}{1 + \frac{\tau}{T_e}}, \quad \tau = \frac{1}{2\pi (f_c + \beta |\dot{x}|)}
+\]</div>
+<ul>
+<li><strong>Low Velocity (<span class="arithmatex">\(|\dot{x}| \to 0\)</span>)</strong>: The cutoff frequency drops to <code>min_cutoff</code> (default: <code>1.0 Hz</code>), filtering out subtle hand tremors and sensor noise.</li>
+<li><strong>High Velocity (<span class="arithmatex">\(|\dot{x}| \gg 0\)</span>)</strong>: The cutoff frequency scales with speed coefficient <code>beta</code> (default: <code>0.007</code>), reducing phase lag so fast cursor movements remain instantaneous.</li>
+</ul>
+<hr />
+<h2 id="2-live-tremor-calibration-wizard">2. Live Tremor Calibration Wizard<a class="headerlink" href="#2-live-tremor-calibration-wizard" title="Permanent link">&para;</a></h2>
+<p>Because tremor frequencies and amplitudes vary widely between individuals, Maestro includes an automated <strong>Tremor Calibration Wizard</strong> (<code>tremor_calibrator.py</code>):</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>  [Start Calibration] ──&gt; [Sample 500ms Window] ──&gt; [FFT Variance Analysis] ──&gt; [Save OneEuro Parameters]
+</span></code></pre></div>
+<ol>
+<li>Launch <strong>Tremor Calibration</strong> from the system tray menu.</li>
+<li>Hold your hand stationary in front of the camera for 5 seconds.</li>
+<li>The wizard calculates the standard deviation <span class="arithmatex">\(\sigma_x, \sigma_y\)</span> and dominant oscillation frequency.</li>
+<li>Optimal values for <code>min_cutoff</code>, <code>beta</code>, and <code>max_displacement_px</code> are calculated and saved directly into <code>config.yaml</code>.</li>
+</ol>
+<hr />
+<h2 id="3-hands-free-dwell-to-click-engine">3. Hands-Free Dwell-to-Click Engine<a class="headerlink" href="#3-hands-free-dwell-to-click-engine" title="Permanent link">&para;</a></h2>
+<p>For users unable to perform rapid pinch or fist gestures, Maestro provides a <strong>Dwell Clicker</strong> (<code>dwell_clicker.py</code>):</p>
+<ol>
+<li>Position the cursor over a UI button or link.</li>
+<li>Maintain your hand within a small tolerance bounding radius (default: <code>20 pixels</code>) for the dwell duration (default: <code>800ms</code>).</li>
+<li>An animated translucent circular progress ring fills around the pointer.</li>
+<li>When the countdown completes, Maestro generates a native OS <code>LeftClick</code> (or configured double-click/right-click).</li>
+</ol>
+<hr />
+<h2 id="4-screen-reader-assistive-technology-integration">4. Screen Reader &amp; Assistive Technology Integration<a class="headerlink" href="#4-screen-reader-assistive-technology-integration" title="Permanent link">&para;</a></h2>
+<p>All PyQt6 dialogs, wizards, and tray menus implement full Qt Accessibility APIs:</p>
+<ul>
+<li><strong>Accessible Names &amp; Descriptions</strong>: Every widget sets <code>setAccessibleName()</code> and <code>setAccessibleDescription()</code> providing contextual announcements to screen readers.</li>
+<li><strong>Screen Reader Compatibility</strong>: Verified against:</li>
+<li><strong>Windows</strong>: NVDA (NonVisual Desktop Access) and JAWS via UI Automation (UIA)</li>
+<li><strong>macOS</strong>: VoiceOver via NSAccessibility protocols</li>
+<li><strong>Linux</strong>: Orca via AT-SPI2 D-Bus bridges</li>
+</ul>
+<hr />
+<h2 id="5-keyboard-navigation-high-contrast-themes">5. Keyboard Navigation &amp; High Contrast Themes<a class="headerlink" href="#5-keyboard-navigation-high-contrast-themes" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>100% Keyboard Accessible</strong>: Every dialog and configuration tab in Maestro can be fully traversed using <code>Tab</code>, <code>Shift+Tab</code>, <code>Space</code>, <code>Enter</code>, and standard arrow keys.</li>
+<li><strong>High-Contrast Theme</strong>: Features a WCAG 2.2 AA compliant palette with contrast ratios exceeding <code>7:1</code> for text and <code>4.5:1</code> for UI components.</li>
+<li><strong>Colorblind-Safe HUD</strong>: Visual indicators avoid relying solely on color coding, pairing color states with distinct geometric shapes (circles, squares, rings).</li>
+</ul>
 
 
 

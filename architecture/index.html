@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#maestro-architecture-overview" class="md-skip">
+        <a href="#maestro-architecture-system-design" class="md-skip">
           Skip to content
         </a>
       
@@ -736,10 +736,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#high-level-architecture-diagram" class="md-nav__link">
+  <a href="#1-system-topology-data-flow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        High-Level Architecture Diagram
+        1. System Topology &amp; Data Flow
       
     </span>
   </a>
@@ -747,22 +747,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#core-components" class="md-nav__link">
+  <a href="#2-core-subsystems" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Core Components
+        2. Core Subsystems
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Core Components">
+    <nav class="md-nav" aria-label="2. Core Subsystems">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-vision-landmark-engine" class="md-nav__link">
+  <a href="#21-double-buffered-shared-memory-zero-copy-ingestion" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Vision &amp; Landmark Engine
+        2.1 Double-Buffered Shared Memory (Zero-Copy Ingestion)
       
     </span>
   </a>
@@ -770,10 +770,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-filtering-normalization" class="md-nav__link">
+  <a href="#22-vision-engine-hardware-backends" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Filtering &amp; Normalization
+        2.2 Vision Engine &amp; Hardware Backends
       
     </span>
   </a>
@@ -781,10 +781,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-gesture-recognition" class="md-nav__link">
+  <a href="#23-adaptive-performance-tier-manager-t0t3" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Gesture Recognition
+        2.3 Adaptive Performance Tier Manager (T0–T3)
       
     </span>
   </a>
@@ -792,10 +792,82 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-os-input-integration-security" class="md-nav__link">
+  <a href="#24-hybrid-gesture-recognition-fsm-dtw" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. OS Input Integration &amp; Security
+        2.4 Hybrid Gesture Recognition: FSM + DTW
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-offline-speech-recognition-vosk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Offline Speech Recognition (Vosk)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-security-architecture-privilege-separation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Security Architecture &amp; Privilege Separation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Security Architecture &amp; Privilege Separation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-input-broker-os-privilege-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Input Broker &amp; OS Privilege Boundaries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-three-tiered-rate-limiter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Three-Tiered Rate Limiter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-tamper-evident-sha-256-audit-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Tamper-Evident SHA-256 Audit Log
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-tuf-signed-auto-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 TUF-Signed Auto-Updates
       
     </span>
   </a>
@@ -3307,10 +3379,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#high-level-architecture-diagram" class="md-nav__link">
+  <a href="#1-system-topology-data-flow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        High-Level Architecture Diagram
+        1. System Topology &amp; Data Flow
       
     </span>
   </a>
@@ -3318,22 +3390,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#core-components" class="md-nav__link">
+  <a href="#2-core-subsystems" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Core Components
+        2. Core Subsystems
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Core Components">
+    <nav class="md-nav" aria-label="2. Core Subsystems">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-vision-landmark-engine" class="md-nav__link">
+  <a href="#21-double-buffered-shared-memory-zero-copy-ingestion" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Vision &amp; Landmark Engine
+        2.1 Double-Buffered Shared Memory (Zero-Copy Ingestion)
       
     </span>
   </a>
@@ -3341,10 +3413,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-filtering-normalization" class="md-nav__link">
+  <a href="#22-vision-engine-hardware-backends" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Filtering &amp; Normalization
+        2.2 Vision Engine &amp; Hardware Backends
       
     </span>
   </a>
@@ -3352,10 +3424,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-gesture-recognition" class="md-nav__link">
+  <a href="#23-adaptive-performance-tier-manager-t0t3" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Gesture Recognition
+        2.3 Adaptive Performance Tier Manager (T0–T3)
       
     </span>
   </a>
@@ -3363,10 +3435,82 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-os-input-integration-security" class="md-nav__link">
+  <a href="#24-hybrid-gesture-recognition-fsm-dtw" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. OS Input Integration &amp; Security
+        2.4 Hybrid Gesture Recognition: FSM + DTW
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-offline-speech-recognition-vosk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Offline Speech Recognition (Vosk)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-security-architecture-privilege-separation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Security Architecture &amp; Privilege Separation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Security Architecture &amp; Privilege Separation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-input-broker-os-privilege-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Input Broker &amp; OS Privilege Boundaries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-three-tiered-rate-limiter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Three-Tiered Rate Limiter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-tamper-evident-sha-256-audit-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Tamper-Evident SHA-256 Audit Log
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-tuf-signed-auto-updates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 TUF-Signed Auto-Updates
       
     </span>
   </a>
@@ -3398,45 +3542,125 @@
   
 
 
-<h1 id="maestro-architecture-overview">Maestro Architecture Overview<a class="headerlink" href="#maestro-architecture-overview" title="Permanent link">&para;</a></h1>
-<p>Maestro is designed with a modular, event-driven, multiprocessing architecture focused on ultra-low latency (&lt;15ms P50) and zero network egress.</p>
+<h1 id="maestro-architecture-system-design">Maestro Architecture &amp; System Design<a class="headerlink" href="#maestro-architecture-system-design" title="Permanent link">&para;</a></h1>
+<p>Maestro is engineered as a decoupled, multi-threaded, real-time edge processing engine designed to achieve sub-15ms P50 latency without compromising process security or user privacy.</p>
 <hr />
-<h2 id="high-level-architecture-diagram">High-Level Architecture Diagram<a class="headerlink" href="#high-level-architecture-diagram" title="Permanent link">&para;</a></h2>
+<h2 id="1-system-topology-data-flow">1. System Topology &amp; Data Flow<a class="headerlink" href="#1-system-topology-data-flow" title="Permanent link">&para;</a></h2>
 <pre class="mermaid"><code>graph TD
-    Cam[Webcam / Frame Source] --&gt; Stream[CameraStream]
-    Stream --&gt; SHM[Double-Buffered SharedMemory]
-    SHM --&gt; Vision[PalmDetector &amp; HandPoseEstimator]
-    Vision --&gt; Filter[One-Euro Low-Pass Filter]
-    Filter --&gt; Engine[FSM &amp; DTW Gesture Engine]
-    Engine --&gt; EventBus[Thread-Safe EventBus]
-    Voice[VoiceCommandListener] --&gt; EventBus
-    EventBus --&gt; Dispatcher[ActionDispatcher]
-    Dispatcher --&gt; Controller[OS Input Controller]
-    EventBus --&gt; GUI[PyQt6 System Tray &amp; HUD Overlay]</code></pre>
+    subgraph Capture &amp; Vision Subsystem
+        Cam[CameraStream / OpenCV] --&gt;|Zero-Copy Frame| SHM[Double-Buffered SharedMemory]
+        SHM --&gt; Palm[PalmDetector / ONNX]
+        Palm --&gt; Crop[ROI Cropper &amp; Normalizer]
+        Crop --&gt; Pose[HandPoseEstimator / 21 Landmarks]
+        Pose --&gt; Filter[1€ Adaptive Low-Pass Filter]
+        Filter --&gt; Tremor[Tremor Compensator]
+    end
+
+    subgraph Gesture Engine &amp; Voice
+        Tremor --&gt; Feat[Feature Engineering / Angles &amp; Palm Normal]
+        Feat --&gt; FSM[FSM Gesture Recognizer]
+        Feat --&gt; DTW[Numba DTW Matcher]
+        Voice[Vosk Offline Voice Listener] --&gt; EventBus
+        FSM --&gt; EventBus[Thread-Safe EventBus]
+        DTW --&gt; EventBus
+    end
+
+    subgraph OS Integration &amp; Security Boundary
+        EventBus --&gt; Dispatch[ActionDispatcher]
+        Dispatch --&gt; Profile[Active App Profile Evaluator]
+        Profile --&gt; Broker[Privilege-Separated Broker IPC]
+        Broker --&gt; Auth[SID / UID Peer Verifier]
+        Auth --&gt; Rate[3-Tier Rate Limiter]
+        Rate --&gt; Audit[SHA-256 Audit Logger]
+        Rate --&gt; Inject[Native OS Controller: Win32 / Quartz / uinput]
+    end
+
+    subgraph UI &amp; Accessibility
+        EventBus --&gt; QtBridge[GUI Event Bridge]
+        QtBridge --&gt; Overlay[Transparent HUD Overlay]
+        QtBridge --&gt; Tray[PyQt6 System Tray Icon]
+        QtBridge --&gt; Dwell[Hands-Free Dwell Clicker]
+    end</code></pre>
 <hr />
-<h2 id="core-components">Core Components<a class="headerlink" href="#core-components" title="Permanent link">&para;</a></h2>
-<h3 id="1-vision-landmark-engine">1. Vision &amp; Landmark Engine<a class="headerlink" href="#1-vision-landmark-engine" title="Permanent link">&para;</a></h3>
+<h2 id="2-core-subsystems">2. Core Subsystems<a class="headerlink" href="#2-core-subsystems" title="Permanent link">&para;</a></h2>
+<h3 id="21-double-buffered-shared-memory-zero-copy-ingestion">2.1 Double-Buffered Shared Memory (Zero-Copy Ingestion)<a class="headerlink" href="#21-double-buffered-shared-memory-zero-copy-ingestion" title="Permanent link">&para;</a></h3>
+<p>To prevent video frame acquisition from bottlenecking inference, <code>CameraStream</code> and <code>FramePipeline</code> communicate via lock-free, double-buffered POSIX/Windows shared memory (<code>DoubleBufferedFrameBuffer</code>):
+- <strong>Ring Buffer</strong>: Writer writes to <code>Buffer A</code> while Reader reads <code>Buffer B</code>.
+- <strong>Atomic Pointer Swap</strong>: Swaps active memory pages with atomic integer increment upon frame completion.
+- <strong>Watchdog Recovery</strong>: The camera acquisition thread operates an isolated watchdog with exponential backoff if the USB device drops or stalls.</p>
+<h3 id="22-vision-engine-hardware-backends">2.2 Vision Engine &amp; Hardware Backends<a class="headerlink" href="#22-vision-engine-hardware-backends" title="Permanent link">&para;</a></h3>
+<p>Landmark extraction runs through ONNX Runtime, dynamically selecting the highest performance execution provider:</p>
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Preferred Execution Provider</th>
+<th>Fallback</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Windows</strong></td>
+<td>DirectML (<code>DmlExecutionProvider</code>)</td>
+<td>CPU (<code>CPUExecutionProvider</code>)</td>
+</tr>
+<tr>
+<td><strong>Linux (NVIDIA)</strong></td>
+<td>TensorRT / CUDA (<code>TensorrtExecutionProvider</code>, <code>CUDAExecutionProvider</code>)</td>
+<td>CPU</td>
+</tr>
+<tr>
+<td><strong>macOS (Apple Silicon)</strong></td>
+<td>CoreML (<code>CoreMLExecutionProvider</code>)</td>
+<td>CPU</td>
+</tr>
+</tbody>
+</table>
+<h3 id="23-adaptive-performance-tier-manager-t0t3">2.3 Adaptive Performance Tier Manager (T0–T3)<a class="headerlink" href="#23-adaptive-performance-tier-manager-t0t3" title="Permanent link">&para;</a></h3>
+<p>To ensure smooth responsiveness across low-power laptops and high-end workstations alike, the <code>TierManager</code> continuously monitors frame processing time, CPU utilization, and battery/thermal state:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>[Tier 0: Ultra]       60 FPS | FP16 Precision | Full HUD Overlay | Multi-Hand
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>      ▲   ▼  (Load &gt; 75% or Frame Latency &gt; 30ms)
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>[Tier 1: Balanced]    30 FPS | FP16 Precision | Standard HUD     | Multi-Hand
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>      ▲   ▼  (Load &gt; 85% or Battery Discharging)
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>[Tier 2: Power Saver] 20 FPS | INT8 Precision | Minimal HUD      | Single-Hand
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>      ▲   ▼  (Severe Thermal Throttling / Low Battery)
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>[Tier 3: Minimal]     10 FPS | INT8 Precision | No HUD / Audio Only
+</span></code></pre></div>
+<h3 id="24-hybrid-gesture-recognition-fsm-dtw">2.4 Hybrid Gesture Recognition: FSM + DTW<a class="headerlink" href="#24-hybrid-gesture-recognition-fsm-dtw" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>PalmDetector</strong>: ONNX Runtime model detecting palm bounding boxes and anchors.</li>
-<li><strong>HandPoseEstimator</strong>: 21 3D hand landmark estimator with scale and rotation normalization.</li>
-<li><strong>Double-Buffered SharedMemory</strong>: High-efficiency IPC transferring zero-copy video frames across process boundaries.</li>
+<li><strong>Finite State Machine (FSM)</strong>:</li>
+<li>Evaluates boolean conditions compiled via Python AST parsing (e.g. <code>index_finger_extended and thumb_distance &lt; 0.05</code>).</li>
+<li>Implements per-state entry/exit actions, transition hysteresis, and configurable debounce cooldowns.</li>
+<li><strong>Dynamic Time Warping (DTW)</strong>:</li>
+<li>Used for dynamic, multi-frame user gestures (waving, drawing shapes).</li>
+<li>Uses JIT-compiled Numba distance matrix computations achieving sub-microsecond evaluation times over 60-frame landmark sequences.</li>
 </ul>
-<h3 id="2-filtering-normalization">2. Filtering &amp; Normalization<a class="headerlink" href="#2-filtering-normalization" title="Permanent link">&para;</a></h3>
+<h3 id="25-offline-speech-recognition-vosk">2.5 Offline Speech Recognition (Vosk)<a class="headerlink" href="#25-offline-speech-recognition-vosk" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>One-Euro Filter</strong>: Dual adaptive low-pass filter smoothing landmark jitter while maintaining low phase lag during rapid motion.</li>
-<li><strong>Tremor Compensator</strong>: Moving window displacement reducer for motor tremor stabilization.</li>
+<li>Operates on a dedicated background thread reading 16kHz PCM audio from PyAudio / SoundDevice.</li>
+<li>Runs completely offline without cloud API requests.</li>
+<li>Implements wake-word gating (<code>"maestro"</code>) with sliding 5-second command windows.</li>
 </ul>
-<h3 id="3-gesture-recognition">3. Gesture Recognition<a class="headerlink" href="#3-gesture-recognition" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong>GestureFSMManager</strong>: Multi-hand Finite State Machine engine executing AST-compiled boolean condition strings.</li>
-<li><strong>CustomGestureMatcher</strong>: Fast Numba-accelerated Dynamic Time Warping (DTW) sequence matcher for custom recorded gestures.</li>
-</ul>
-<h3 id="4-os-input-integration-security">4. OS Input Integration &amp; Security<a class="headerlink" href="#4-os-input-integration-security" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong>ActionDispatcher</strong>: Maps recognized gestures to OS actions based on active foreground process name.</li>
-<li><strong>RateLimiter</strong>: 3-tiered rate limiter (global 30/s, burst 10/100ms, per-gesture 5/s) preventing input flooding.</li>
-<li><strong>AuditLogger</strong>: SHA-256 tamper-evident hash chain logging all stimulated actions.</li>
-</ul>
+<hr />
+<h2 id="3-security-architecture-privilege-separation">3. Security Architecture &amp; Privilege Separation<a class="headerlink" href="#3-security-architecture-privilege-separation" title="Permanent link">&para;</a></h2>
+<h3 id="31-input-broker-os-privilege-boundaries">3.1 Input Broker &amp; OS Privilege Boundaries<a class="headerlink" href="#31-input-broker-os-privilege-boundaries" title="Permanent link">&para;</a></h3>
+<p>On modern desktop OSs, injecting input into elevated administrative applications requires elevated rights or special IPC tokens:
+- <strong>Windows</strong>: The Maestro Broker runs over named pipes with explicit Access Control Lists (ACLs). When a client connects, the broker calls <code>OpenProcessToken</code> and validates the peer process Security Identifier (SID) matches the logged-in interactive user before accepting input injection packets.
+- <strong>Linux</strong>: The broker validates client credentials via <code>SO_PEERCRED</code> on Unix domain sockets, enforcing UID equivalence.
+- <strong>Fail-Closed Design</strong>: Any authentication failure or exception immediately closes the connection and records a rejection event.</p>
+<h3 id="32-three-tiered-rate-limiter">3.2 Three-Tiered Rate Limiter<a class="headerlink" href="#32-three-tiered-rate-limiter" title="Permanent link">&para;</a></h3>
+<p>Prevents accidental or malicious input flooding:
+1. <strong>Global Cap</strong>: Maximum 30 injected events per second.
+2. <strong>Burst Limit</strong>: Maximum 10 events within any 100ms window.
+3. <strong>Per-Gesture Cooldown</strong>: Minimum 200ms debounce between identical gesture triggers.</p>
+<h3 id="33-tamper-evident-sha-256-audit-log">3.3 Tamper-Evident SHA-256 Audit Log<a class="headerlink" href="#33-tamper-evident-sha-256-audit-log" title="Permanent link">&para;</a></h3>
+<p>Every stimulated input event is appended to <code>audit.log</code> as a cryptographically linked blockchain-style hash chain:
+[
+H_i = \text{SHA-256}(H_{i-1} \parallel \text{Timestamp} \parallel \text{Gesture} \parallel \text{Action} \parallel \text{CallerPID})
+]
+Integrity can be validated at any time using <code>maestro verify-audit-log</code>.</p>
+<h3 id="34-tuf-signed-auto-updates">3.4 TUF-Signed Auto-Updates<a class="headerlink" href="#34-tuf-signed-auto-updates" title="Permanent link">&para;</a></h3>
+<p>Auto-updates follow The Update Framework (TUF) specification with Ed25519 signature threshold verification (<span class="arithmatex">\(N \ge 3\)</span>) to guarantee authenticity and rollback protection.</p>
 
 
 

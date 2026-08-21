@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#frequently-asked-questions" class="md-skip">
+        <a href="#frequently-asked-questions-faq" class="md-skip">
           Skip to content
         </a>
       
@@ -1000,10 +1000,43 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#is-my-camera-feed-sent-to-any-servers" class="md-nav__link">
+  <a href="#1-privacy-offline-operation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Is my camera feed sent to any servers?
+        1. Privacy &amp; Offline Operation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-performance-hardware" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Performance &amp; Hardware
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-gesture-recognition-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Gesture Recognition &amp; Controls
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-compatibility-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Compatibility &amp; Security
       
     </span>
   </a>
@@ -3246,10 +3279,43 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#is-my-camera-feed-sent-to-any-servers" class="md-nav__link">
+  <a href="#1-privacy-offline-operation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Is my camera feed sent to any servers?
+        1. Privacy &amp; Offline Operation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-performance-hardware" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Performance &amp; Hardware
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-gesture-recognition-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Gesture Recognition &amp; Controls
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-compatibility-security" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Compatibility &amp; Security
       
     </span>
   </a>
@@ -3276,9 +3342,42 @@
   
 
 
-<h1 id="frequently-asked-questions">Frequently Asked Questions<a class="headerlink" href="#frequently-asked-questions" title="Permanent link">&para;</a></h1>
-<h3 id="is-my-camera-feed-sent-to-any-servers">Is my camera feed sent to any servers?<a class="headerlink" href="#is-my-camera-feed-sent-to-any-servers" title="Permanent link">&para;</a></h3>
-<p>No. All hand-tracking and image processing happens fully locally.</p>
+<h1 id="frequently-asked-questions-faq">Frequently Asked Questions (FAQ)<a class="headerlink" href="#frequently-asked-questions-faq" title="Permanent link">&para;</a></h1>
+<p>Find answers to common questions about Maestro's privacy architecture, hardware requirements, gaming compatibility, and multi-monitor support.</p>
+<hr />
+<h3 id="1-privacy-offline-operation">1. Privacy &amp; Offline Operation<a class="headerlink" href="#1-privacy-offline-operation" title="Permanent link">&para;</a></h3>
+<h4 id="is-my-webcam-video-or-audio-ever-transmitted-over-the-internet">Is my webcam video or audio ever transmitted over the internet?<a class="headerlink" href="#is-my-webcam-video-or-audio-ever-transmitted-over-the-internet" title="Permanent link">&para;</a></h4>
+<p><strong>No, never.</strong> Maestro operates on a strict <strong>Zero Network Egress</strong> security policy. All computer vision inference (MediaPipe / ONNX Runtime) and speech recognition (Vosk) execute 100% locally on your device's CPU/GPU. No video frames, landmark coordinates, voice audio, or keystrokes leave your machine.</p>
+<h4 id="does-maestro-require-an-active-internet-connection">Does Maestro require an active internet connection?<a class="headerlink" href="#does-maestro-require-an-active-internet-connection" title="Permanent link">&para;</a></h4>
+<p>No. Once installed, Maestro functions completely offline. The only network requests occur when you explicitly initiate an auto-update check or run the plugin marketplace search.</p>
+<hr />
+<h3 id="2-performance-hardware">2. Performance &amp; Hardware<a class="headerlink" href="#2-performance-hardware" title="Permanent link">&para;</a></h3>
+<h4 id="will-maestro-drain-my-laptops-battery">Will Maestro drain my laptop's battery?<a class="headerlink" href="#will-maestro-drain-my-laptops-battery" title="Permanent link">&para;</a></h4>
+<p>Maestro features an <strong>Adaptive Performance Tier Manager (T0–T3)</strong> that automatically reduces frame rate, inference resolution, and model precision when running on battery power or when system CPU load exceeds thresholds. On modern laptops, Maestro typically consumes less than 4% CPU in balanced mode.</p>
+<h4 id="does-maestro-require-a-dedicated-nvidia-gpu">Does Maestro require a dedicated NVIDIA GPU?<a class="headerlink" href="#does-maestro-require-a-dedicated-nvidia-gpu" title="Permanent link">&para;</a></h4>
+<p>No. While NVIDIA GPUs benefit from TensorRT and CUDA acceleration, Maestro runs efficiently across diverse platforms:
+- <strong>Windows</strong>: Uses DirectML for hardware acceleration across Intel, AMD, and NVIDIA GPUs.
+- <strong>macOS</strong>: Uses CoreML on Apple Silicon (M1/M2/M3/M4) Neural Engine and GPU.
+- <strong>CPU Fallback</strong>: Uses optimized AVX2 SIMD routines for fast CPU execution.</p>
+<hr />
+<h3 id="3-gesture-recognition-controls">3. Gesture Recognition &amp; Controls<a class="headerlink" href="#3-gesture-recognition-controls" title="Permanent link">&para;</a></h3>
+<h4 id="can-i-use-both-hands-simultaneously">Can I use both hands simultaneously?<a class="headerlink" href="#can-i-use-both-hands-simultaneously" title="Permanent link">&para;</a></h4>
+<p>Yes. Maestro tracks up to two hands concurrently (configurable via <code>engine.max_hands</code> in <code>config.yaml</code>). Two-hand gestures such as zoom spread/pinch and two-handed window management are supported out of the box.</p>
+<h4 id="how-accurate-are-custom-recorded-dtw-gestures">How accurate are custom recorded DTW gestures?<a class="headerlink" href="#how-accurate-are-custom-recorded-dtw-gestures" title="Permanent link">&para;</a></h4>
+<p>Maestro normalizes 21-point hand landmark sequences for translation, rotation, and hand scale before computing Dynamic Time Warping (DTW) distance matrices. Recording a distinct, intentional motion 3 times in the wizard typically yields <code>&gt;98%</code> recognition accuracy.</p>
+<h4 id="can-i-use-maestro-across-multiple-monitors">Can I use Maestro across multiple monitors?<a class="headerlink" href="#can-i-use-maestro-across-multiple-monitors" title="Permanent link">&para;</a></h4>
+<p>Yes. Maestro fully supports multi-monitor setups, virtual desktops, and mixed-DPI scaling across Windows, macOS, and Linux. The HUD overlay automatically positions itself on your primary display or follows cursor focus.</p>
+<hr />
+<h3 id="4-compatibility-security">4. Compatibility &amp; Security<a class="headerlink" href="#4-compatibility-security" title="Permanent link">&para;</a></h3>
+<h4 id="will-maestro-interfere-with-games-or-anti-cheat-software">Will Maestro interfere with games or anti-cheat software?<a class="headerlink" href="#will-maestro-interfere-with-games-or-anti-cheat-software" title="Permanent link">&para;</a></h4>
+<p>Maestro simulates standard OS input events via native operating system APIs (<code>SendInput</code> on Windows, <code>CGEvent</code> on macOS, <code>uinput</code> on Linux). For administrative windows or protected anti-cheat games, the privilege-separated input broker ensures secure, authenticated event routing.</p>
+<h4 id="how-do-i-temporarily-pause-gesture-recognition-when-typing">How do I temporarily pause gesture recognition when typing?<a class="headerlink" href="#how-do-i-temporarily-pause-gesture-recognition-when-typing" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Global Hotkey</strong>: Press <code>Ctrl+Alt+P</code> to instantly toggle pause/resume.</li>
+<li><strong>Voice Command</strong>: Say <code>"maestro pause recognition"</code>.</li>
+<li><strong>System Tray</strong>: Right-click the tray icon and select <strong>Pause Recognition</strong>.</li>
+<li><strong>Auto-Suppress</strong>: Maestro automatically suspends gesture triggers during rapid physical keyboard typing.</li>
+</ul>
 
 
 
