@@ -129,7 +129,12 @@ class PalmDetector:
         return image[np.newaxis, :, :, :], pad_bias  # hwc -> nhwc
 
     def infer(self, image):
-        h, w, _ = image.shape
+        if image is None or not isinstance(image, np.ndarray) or image.size == 0:
+            return np.empty(shape=(0, 19))
+        if len(image.shape) < 2 or image.shape[0] <= 0 or image.shape[1] <= 0:
+            return np.empty(shape=(0, 19))
+
+        h, w = image.shape[:2]
 
         # Preprocess
         input_blob, pad_bias = self._preprocess(image)

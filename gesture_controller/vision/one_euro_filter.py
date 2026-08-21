@@ -13,13 +13,14 @@ class OneEuroFilter:
     by Gery Casiez, Nicolas Roussel, Daniel Vogel. CHI 2012.
     """
 
-    def __init__(self, config: dict[str, Any]) -> None:
-        self._config = config
-        oe_config = config.get("filtering", {}).get("one_euro", {})
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
+        cfg = config or {}
+        self._config = cfg
+        oe_config = cfg.get("filtering", {}).get("one_euro", {})
         self._min_cutoff = oe_config.get("min_cutoff", 1.0)
         self._beta = oe_config.get("beta", 0.007)
         self._derivate_cutoff = oe_config.get("derivate_cutoff", 1.0)
-        self._dynamic = config.get("filtering", {}).get("dynamic_adaptation", {})
+        self._dynamic = cfg.get("filtering", {}).get("dynamic_adaptation", {})
 
         # Pre-allocate state arrays for 21 landmarks x 3 axes
         # Shape: (21, 3)
@@ -128,9 +129,9 @@ class OneEuroFilter:
                     peak_idx = magnitudes[tremor_mask].argmax()
                     peak_freq = freqs[tremor_mask][peak_idx]
                     peak_mag = magnitudes[tremor_mask][peak_idx]
-                    total_energy = magnitudes.sum()
+                    total_energy = float(magnitudes.sum())
 
-                    if total_energy > 0 and (peak_mag / total_energy) > 0.20:
+                    if total_energy > 1e-9 and (peak_mag / total_energy) > 0.20:
                         min_cutoff = 0.1
                         beta = 0.001
 
@@ -151,7 +152,12 @@ class OneEuroFilter:
             self._initialized = True
             return self._x_filt_prev, self._velocity, self._acceleration
 
-        dt = float(max(float(timestamp - self._prev_timestamp), 1e-6))  # type: ignore[assignment]
+        # Clock rewind / non-monotonic timestamp protection
+        if timestamp < self._prev_timestamp:
+            self._prev_timestamp = timestamp
+            dt = 1e-6  # type: ignore[assignment]
+        else:
+            dt = float(max(float(timestamp - self._prev_timestamp), 1e-6))  # type: ignore[assignment]
 
         # Vectorized computation for all 63 values simultaneously using in-place operations
         # Step 1: Derivative (velocity) with low-pass filtering
@@ -194,8 +200,10 @@ class OneEuroFilter:
     def _smoothing_factor(te: Any, cutoff: Any) -> Any:
         """Compute smoothing factor alpha from sampling period and cutoff frequency.
         alpha = te / (te + (1 / (2 * pi * cutoff)))"""
-        tau = 1.0 / (2.0 * np.pi * cutoff)
-        return te / (te + tau)
+        cutoff_clamped = np.maximum(cutoff, 1e-6)
+        tau = 1.0 / (2.0 * np.pi * cutoff_clamped)
+        alpha = te / (te + tau)
+        return np.clip(alpha, 0.0, 1.0)
 
     def reset(self) -> None:
         """Reset filter state. Call on camera reconnect or hand lost."""

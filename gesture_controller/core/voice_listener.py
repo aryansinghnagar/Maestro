@@ -74,6 +74,7 @@ class VoiceCommandRegistry:
     """
 
     def __init__(self, config: Any = None) -> None:
+        self._lock = threading.RLock()
         self._map: dict[str, str] = dict(_DEFAULT_PHRASES)
         if config is not None:
             self._load_from_config(config)
@@ -85,24 +86,27 @@ class VoiceCommandRegistry:
         user_cmds = config.get("voice.commands", [])
         if not isinstance(user_cmds, list):
             return
-        for entry in user_cmds:
-            if not isinstance(entry, dict):
-                continue
-            phrase = str(entry.get("phrase", "")).strip().lower()
-            gesture = str(entry.get("gesture", "")).strip()
-            if phrase and gesture:
-                self._map[phrase] = gesture
-                logger.debug("Loaded user voice command", phrase=phrase, gesture=gesture)
+        with self._lock:
+            for entry in user_cmds:
+                if not isinstance(entry, dict):
+                    continue
+                phrase = str(entry.get("phrase", "")).strip().lower()
+                gesture = str(entry.get("gesture", "")).strip()
+                if phrase and gesture:
+                    self._map[phrase] = gesture
+                    logger.debug("Loaded user voice command", phrase=phrase, gesture=gesture)
 
     # ── Mutation ──────────────────────────────────────────────────────────────
 
     def register(self, phrase: str, gesture: str) -> None:
         """Add or overwrite a phrase→gesture mapping at runtime."""
-        self._map[phrase.strip().lower()] = gesture
+        with self._lock:
+            self._map[phrase.strip().lower()] = gesture
 
     def unregister(self, phrase: str) -> bool:
         """Remove a mapping. Returns True if it existed."""
-        return self._map.pop(phrase.strip().lower(), None) is not None
+        with self._lock:
+            return self._map.pop(phrase.strip().lower(), None) is not None
 
     # ── Resolution ────────────────────────────────────────────────────────────
 
@@ -121,17 +125,20 @@ class VoiceCommandRegistry:
         prefer more specific matches (e.g. ``"swipe left"`` before ``"left"``).
         """
         normalised = self._normalise(text)
-        for phrase in sorted(self._map, key=len, reverse=True):
-            if phrase in normalised:
-                return self._map[phrase]
+        with self._lock:
+            for phrase in sorted(self._map, key=len, reverse=True):
+                if phrase in normalised:
+                    return self._map[phrase]
         return None
 
     def all_phrases(self) -> list[str]:
         """Return all registered phrases sorted alphabetically."""
-        return sorted(self._map.keys())
+        with self._lock:
+            return sorted(self._map.keys())
 
     def __len__(self) -> int:
-        return len(self._map)
+        with self._lock:
+            return len(self._map)
 
 
 # ── Voice listener ────────────────────────────────────────────────────────────
@@ -271,6 +278,8 @@ class VoiceCommandListener:
             vosk_ok = False
 
         if vosk_ok and Model_cls and KaldiRecognizer_cls and pyaudio_mod:
+            p = None
+            stream = None
             try:
                 model = Model_cls(str(self.model_dir))
                 rec = KaldiRecognizer_cls(model, 16000)
@@ -295,13 +304,21 @@ class VoiceCommandListener:
                         text = res.get("text", "").lower().strip()
                         if text:
                             self.process_command(text)
-
-                stream.stop_stream()
-                stream.close()
-                p.terminate()
                 return
             except Exception as e:
                 logger.error("Error in Vosk loop, falling back to mock", error=str(e))
+            finally:
+                if stream is not None:
+                    try:
+                        stream.stop_stream()
+                        stream.close()
+                    except Exception:
+                        pass
+                if p is not None:
+                    try:
+                        p.terminate()
+                    except Exception:
+                        pass
 
         # Fallback no-op loop
         logger.info("Running mock (no-op) voice listener loop")

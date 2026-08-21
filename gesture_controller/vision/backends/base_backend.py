@@ -72,6 +72,13 @@ class BaseONNXBackend:
         else:
             image = getattr(mp_image, "data", mp_image)
 
+        if image is None or not isinstance(image, np.ndarray) or image.size == 0:
+            return None
+
+        h, w = image.shape[:2]
+        if h <= 0 or w <= 0:
+            return None
+
         # Convert RGB to BGR for OpenCV DNN preprocessing inside PalmDetector/HandPoseEstimator
         image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
@@ -93,7 +100,7 @@ class BaseONNXBackend:
             handedness_val = res[130]
             conf = res[131]
 
-            # Reconstruct 21 landmarks and normalize to [0.0, 1.0]
+            # Reconstruct 21 landmarks and normalize dynamically to [0.0, 1.0] using actual image dimensions
             landmarks = []
             for i in range(21):
                 offset = i * 3
@@ -103,9 +110,9 @@ class BaseONNXBackend:
 
                 landmarks.append(
                     Landmark3D(
-                        x=float(x / FRAME_WIDTH),
-                        y=float(y / FRAME_HEIGHT),
-                        z=float(z / FRAME_WIDTH),
+                        x=float(x / w),
+                        y=float(y / h),
+                        z=float(z / w),
                         visibility=1.0,
                     )
                 )

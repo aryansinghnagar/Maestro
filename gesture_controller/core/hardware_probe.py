@@ -107,7 +107,7 @@ def probe_hardware() -> HardwareProfile:
             if bat is not None:
                 has_battery = True
                 battery_percent = float(bat.percent)
-                is_charging = bool(bat.power_plugged)
+                is_charging = True if bat.power_plugged is None else bool(bat.power_plugged)
     except Exception:
         pass
 
