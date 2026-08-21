@@ -348,3 +348,71 @@ def test_vosk_download_refuses_unverified(tmp_path, monkeypatch, capsys):
     assert "SHA-256" in captured.err or "SHA-256" in captured.out, (
         "The 'not pinned' error message must mention SHA-256 " "(audit fix MAE-SEC-017)."
     )
+
+
+# --- MAE-AUD-001 through MAE-AUD-007 ---------------------------------------
+
+
+def test_broker_rejects_unallowed_and_private_methods():
+    """Audit fix MAE-AUD-002: broker rejects private/dunder or unallowed methods."""
+    from gesture_controller.os_integration.broker import InjectionBrokerServer
+
+    server = InjectionBrokerServer(
+        address=(
+            r"\\.\pipe\test_broker_allowlist"
+            if sys.platform == "Windows"
+            else "/tmp/test_broker_allowlist.sock"
+        )
+    )
+
+    # Private / internal method
+    res1 = server.handle_request({"method": "_private_helper", "args": {}})
+    assert res1["status"] == "error"
+    assert "not supported or forbidden" in res1["message"]
+
+    # Dunder method
+    res2 = server.handle_request({"method": "__init__", "args": {}})
+    assert res2["status"] == "error"
+    assert "not supported or forbidden" in res2["message"]
+
+    # Arbitrary non-allowlisted method
+    res3 = server.handle_request({"method": "arbitrary_eval", "args": {}})
+    assert res3["status"] == "error"
+    assert "not supported or forbidden" in res3["message"]
+
+
+def test_expression_evaluator_depth_and_length_limit():
+    """Audit fix MAE-AUD-007: SafeExpressionEvaluator rejects excessive length and deep recursion."""
+    from gesture_controller.core.expression_evaluator import SafeExpressionEvaluator
+
+    # Length limit
+    long_expr = "x > 1" + " and x > 1" * 100
+    with pytest.raises(ValueError, match="exceeds maximum allowed length"):
+        SafeExpressionEvaluator.compile_expression(long_expr)
+
+    # Depth limit (nested unary expressions)
+    nested_expr = "not " * 12 + "True"
+    with pytest.raises(ValueError, match="exceeds maximum allowed depth"):
+        SafeExpressionEvaluator.compile_expression(nested_expr)
+
+
+def test_cli_rejects_path_traversal_plugin_name(capsys):
+    """Audit fix MAE-AUD-001: CLI rejects path traversal in plugin name."""
+    from gesture_controller.cli.cli import _validate_identifier
+
+    with pytest.raises(ValueError, match="Invalid plugin name"):
+        _validate_identifier("../evil_plugin", "plugin name")
+
+    with pytest.raises(ValueError, match="Invalid gesture name"):
+        _validate_identifier("gesture/../../etc", "gesture name")
+
+
+def test_crash_report_anonymizes_home_path():
+    """Audit fix MAE-AUD-003: anonymize_traceback sanitizes home directory and username."""
+    from gesture_controller.core.crash_reporter import anonymize_traceback
+
+    home = str(Path.home())
+    sample_tb = f'File "{home}\\gesture_controller\\core\\engine.py", line 42, in process_frame'
+    cleaned = anonymize_traceback(sample_tb)
+    assert home not in cleaned
+    assert "~" in cleaned

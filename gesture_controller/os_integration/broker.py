@@ -272,6 +272,29 @@ class AuditLogger:
             self._flush_locked()
 
 
+ALLOWED_BROKER_METHODS: frozenset[str] = frozenset(
+    {
+        "key_press",
+        "key_release",
+        "key_combo",
+        "mouse_click",
+        "mouse_double_click",
+        "mouse_move",
+        "mouse_scroll",
+        "get_foreground_app",
+        "minimize_active_window",
+        "switch_window",
+        "show_desktop",
+        "media_play_pause",
+        "media_next",
+        "media_previous",
+        "media_volume_up",
+        "media_volume_down",
+        "execute_action",
+    }
+)
+
+
 class InjectionBrokerServer:
     def __init__(self, address: Optional[str] = None) -> None:
         self.address = address or get_broker_address()
@@ -304,6 +327,12 @@ class InjectionBrokerServer:
 
         logger.info("Starting input injection broker", address=self.address)
         self._listener = Listener(self.address, self.family)
+        # Audit fix MAE-AUD-006: strictly restrict socket permissions to owner-only (0600)
+        if self.family == "AF_UNIX" and os.path.exists(self.address):
+            try:
+                os.chmod(self.address, 0o600)
+            except Exception as e:
+                logger.warning("Could not set 0600 permissions on broker socket", error=str(e))
         self.running = True
         self.audit_logger.log("broker_started", {"address": self.address})
 
@@ -383,11 +412,21 @@ class InjectionBrokerServer:
         method_name = req.get("method")
         args = req.get("args", {})
 
-        if not isinstance(method_name, str):
-            return {"status": "error", "message": "Method name must be a string"}
+        # Audit fix MAE-AUD-002: enforce explicit allowlist and reject any
+        # private, internal, or dunder method names to prevent arbitrary
+        # controller attribute execution.
+        if (
+            not isinstance(method_name, str)
+            or method_name.startswith("_")
+            or method_name not in ALLOWED_BROKER_METHODS
+        ):
+            return {
+                "status": "error",
+                "message": f"Method {method_name!r} not supported or forbidden",
+            }
 
         if not hasattr(self.controller, method_name):
-            return {"status": "error", "message": f"Method {method_name} not supported"}
+            return {"status": "error", "message": f"Method {method_name} not implemented"}
 
         if not self.rate_limiter.check_and_record(gesture_str):
             self.audit_logger.log(

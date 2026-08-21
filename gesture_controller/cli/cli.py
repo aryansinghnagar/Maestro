@@ -42,6 +42,20 @@ def _make_api_request(
         raise RuntimeError(f"Could not connect to running Maestro daemon (port 8765): {e}")
 
 
+import re
+
+_SAFE_IDENTIFIER_RE = re.compile(r"^[a-zA-Z0-9_\-]+$")
+
+
+def _validate_identifier(name: str, label: str = "identifier") -> str:
+    """Audit fix MAE-AUD-001: validate CLI name parameters to prevent path traversal."""
+    if not isinstance(name, str) or not _SAFE_IDENTIFIER_RE.match(name) or ".." in name:
+        raise ValueError(
+            f"Invalid {label} '{name}'. Must contain only alphanumeric characters, dashes, and underscores."
+        )
+    return name
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Maestro: Cross-platform hand-gesture desktop controller."
@@ -343,50 +357,77 @@ def main() -> None:
         for m in matches:
             print(f" - {m} (ver 1.0.0)")
     elif args.command == "install":
-        print(f"Downloading and installing plugin: '{args.plugin_name}' from marketplace...")
+        try:
+            plugin_name = _validate_identifier(args.plugin_name, "plugin name")
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        print(f"Downloading and installing plugin: '{plugin_name}' from marketplace...")
         # Create mock directories in plugins
         from gesture_controller.core.compliance import get_user_data_dirs
 
         data_dirs = get_user_data_dirs()
         if data_dirs:
-            plugins_dir = data_dirs[0] / "plugins" / args.plugin_name
+            base_plugins_dir = (data_dirs[0] / "plugins").resolve()
+            plugins_dir = (base_plugins_dir / plugin_name).resolve()
+            if not str(plugins_dir).startswith(str(base_plugins_dir)):
+                print("Error: Invalid plugin path (path traversal).", file=sys.stderr)
+                sys.exit(1)
             plugins_dir.mkdir(parents=True, exist_ok=True)
             # Write a mock manifest tomllib
             (plugins_dir / "maestro.toml").write_text(
-                f'[plugin]\nname = "{args.plugin_name}"\nversion = "1.0.0"\ndescription = "Mock installed plugin"\n',
+                f'[plugin]\nname = "{plugin_name}"\nversion = "1.0.0"\ndescription = "Mock installed plugin"\n',
                 encoding="utf-8",
             )
-            print(f"Successfully installed plugin '{args.plugin_name}'.")
+            print(f"Successfully installed plugin '{plugin_name}'.")
     elif args.command == "remove":
-        print(f"Uninstalling plugin: '{args.plugin_name}'...")
+        try:
+            plugin_name = _validate_identifier(args.plugin_name, "plugin name")
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        print(f"Uninstalling plugin: '{plugin_name}'...")
         from gesture_controller.core.compliance import get_user_data_dirs
 
         data_dirs = get_user_data_dirs()
         if data_dirs:
-            plugins_dir = data_dirs[0] / "plugins" / args.plugin_name
+            base_plugins_dir = (data_dirs[0] / "plugins").resolve()
+            plugins_dir = (base_plugins_dir / plugin_name).resolve()
+            if not str(plugins_dir).startswith(str(base_plugins_dir)):
+                print("Error: Invalid plugin path (path traversal).", file=sys.stderr)
+                sys.exit(1)
             if plugins_dir.exists():
                 import shutil
 
                 shutil.rmtree(plugins_dir)
-            print(f"Successfully uninstalled plugin '{args.plugin_name}'.")
+            print(f"Successfully uninstalled plugin '{plugin_name}'.")
     elif args.command == "update":
         print("Checking marketplace updates...")
         print("All plugins are already up to date.")
     elif args.command == "export-gesture":
+        try:
+            gesture_name = _validate_identifier(args.gesture_name, "gesture name")
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
         from gesture_controller.core.compliance import get_user_data_dirs
 
         data_dirs = get_user_data_dirs()
         if data_dirs:
-            template_path = data_dirs[0] / "templates" / f"{args.gesture_name}.json"
+            base_templates_dir = (data_dirs[0] / "templates").resolve()
+            template_path = (base_templates_dir / f"{gesture_name}.json").resolve()
+            if not str(template_path).startswith(str(base_templates_dir)):
+                print("Error: Invalid template path (path traversal).", file=sys.stderr)
+                sys.exit(1)
             if template_path.exists():
                 import shutil
 
                 shutil.copy(template_path, Path(args.output))
                 print(
-                    f"Successfully exported custom gesture template: '{args.gesture_name}' -> '{args.output}'"
+                    f"Successfully exported custom gesture template: '{gesture_name}' -> '{args.output}'"
                 )
             else:
-                print(f"Error: Gesture template '{args.gesture_name}' not found.", file=sys.stderr)
+                print(f"Error: Gesture template '{gesture_name}' not found.", file=sys.stderr)
                 sys.exit(1)
     elif args.command == "import-gesture":
         from gesture_controller.core.compliance import get_user_data_dirs
