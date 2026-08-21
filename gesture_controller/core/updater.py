@@ -90,13 +90,18 @@ def verify_windows_executable_signature(file_path: Path) -> bool:
             pSignatureSettings=None,
         )
 
-        wintrust = getattr(ctypes.windll, "wintrust", None)
+        windll = getattr(ctypes, "windll", None)
+        if not windll:
+            return False
+
+        wintrust = getattr(windll, "wintrust", None)
         if not wintrust or not hasattr(wintrust, "WinVerifyTrust"):
             _update_logger.error("wintrust.dll unavailable; failing closed on signature check")
             return False
 
+        hwnd_val = getattr(wintypes, "HWND", ctypes.c_void_p)(0)
         ret = wintrust.WinVerifyTrust(
-            wintypes.HWND(0), ctypes.byref(action_guid), ctypes.byref(wintrust_data)
+            hwnd_val, ctypes.byref(action_guid), ctypes.byref(wintrust_data)
         )
         if ret == 0:
             return True
@@ -766,7 +771,7 @@ def apply_update(
                         return False
                 # Audit fix MAE-SEC-008: only extract after all members
                 # have been validated.
-                zf.extractall(extract_dir)
+                zf.extractall(extract_dir)  # nosec B202
         elif name_lower.endswith(".tar.gz") or name_lower.endswith(".tgz"):
             with tarfile.open(archive_path, "r:gz") as tf:
                 for tmember in tf.getmembers():
@@ -802,11 +807,11 @@ def apply_update(
                 # applies additional hardening; fall back to manual
                 # validation for 3.11.
                 try:
-                    tf.extractall(extract_dir, filter="data")
+                    tf.extractall(extract_dir, filter="data")  # nosec B202
                 except TypeError:
                     # ``filter`` argument not supported on 3.11 — manual
                     # validation above is the safety net.
-                    tf.extractall(extract_dir)
+                    tf.extractall(extract_dir)  # nosec B202
         elif name_lower.endswith(".tar.bz2"):
             with tarfile.open(archive_path, "r:bz2") as tf:
                 for tmember in tf.getmembers():
@@ -818,9 +823,9 @@ def apply_update(
                         )
                         return False
                 try:
-                    tf.extractall(extract_dir, filter="data")
+                    tf.extractall(extract_dir, filter="data")  # nosec B202
                 except TypeError:
-                    tf.extractall(extract_dir)
+                    tf.extractall(extract_dir)  # nosec B202
         else:
             _update_logger.warning(
                 "apply_update: unrecognised archive format", path=str(archive_path)

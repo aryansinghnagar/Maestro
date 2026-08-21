@@ -56,7 +56,8 @@ def verify_peer(conn: Any) -> bool:
 
             handle = conn.fileno()
             client_pid = ctypes.c_ulong()
-            kernel32 = getattr(ctypes.windll, "kernel32", None)
+            windll = getattr(ctypes, "windll", None)
+            kernel32 = getattr(windll, "kernel32", None) if windll else None
             if kernel32 and hasattr(kernel32, "GetNamedPipeClientProcessId"):
                 if kernel32.GetNamedPipeClientProcessId(handle, ctypes.byref(client_pid)):
                     client_proc = win32api.OpenProcess(0x0400, False, client_pid.value)
@@ -68,17 +69,16 @@ def verify_peer(conn: Any) -> bool:
                     )
                     return bool(current_sid == client_sid)
             # Audit fix MAE-SEC-001: if we fell through without returning,
-            # we did not actually verify the peer — fail closed.
+            # we failed to obtain or compare SIDs. Fail closed.
             logger.error(
-                "Windows peer verification could not complete; connection rejected",
-                reason="kernel32_or_api_unavailable",
+                "Windows peer verification: unable to query peer SID; connection rejected",
+                handle=handle,
             )
             return False
         except Exception as e:
-            # Audit fix MAE-SEC-001: previously ``return True`` here, which
-            # fail-opened the broker to any local process whenever
-            # win32security/win32api were not importable (e.g., pywin32
-            # post-install skipped) or any other exception was raised.
+            # Audit fix MAE-SEC-001: ALWAYS fail closed. Previously we
+            # returned True when win32security/win32api were not importable
+            # or any other exception was raised.
             logger.error(
                 "Windows peer verification failed; connection rejected",
                 error=str(e),
@@ -112,7 +112,8 @@ def verify_peer(conn: Any) -> bool:
             sol_local = int(getattr(socket, "SOL_LOCAL", 0))
             local_peercred = int(getattr(socket, "LOCAL_PEERCRED", 1))
             cred = s.getsockopt(sol_local, local_peercred, 128)
-            _, uid = struct.unpack("=HI", cred[:6])
+            # macOS struct xucred: cr_version (uint32), cr_uid (uid_t/uint32), cr_ngroups (short), ...
+            _, uid = struct.unpack("=II", cred[:8])
             return bool(uid == getuid_fn())
     except Exception as e:
         logger.error("Peer verification failed", error=str(e))
@@ -500,7 +501,9 @@ class BrokerClientController(BaseController):
                     close_fds=True,
                     env=os.environ.copy(),
                     creationflags=(
-                        subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0
+                        getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+                        if platform.system() == "Windows"
+                        else 0
                     ),
                 )
 

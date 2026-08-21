@@ -32,6 +32,14 @@ def _clear_cache() -> None:
     i18n_mod._ = i18n_mod._noop
 
 
+@pytest.fixture(autouse=True)
+def reset_i18n_state():
+    """Reset i18n global state before and after each test."""
+    _clear_cache()
+    yield
+    _clear_cache()
+
+
 # ---------------------------------------------------------------------------
 # detect_system_locale
 # ---------------------------------------------------------------------------
@@ -185,12 +193,12 @@ class TestFallbackChain:
     def teardown_method(self):
         _clear_cache()
 
-    def test_missing_mo_file_does_not_crash(self) -> None:
+    def test_missing_mo_file_does_not_crash(self, tmp_path: Path) -> None:
         """If no .mo is present, should fall back to NullTranslations."""
         import gesture_controller.core.i18n as i18n_mod
 
         # Patch locale dir to a temp path where no .mo exists
-        with patch("gesture_controller.core.i18n._LOCALE_DIR", Path("/tmp/nonexistent_locales")):
+        with patch("gesture_controller.core.i18n._LOCALE_DIR", tmp_path / "nonexistent_locales"):
             t = i18n_mod._load_translator("xx")
         # Should have returned a NullTranslations without raising
         import gettext

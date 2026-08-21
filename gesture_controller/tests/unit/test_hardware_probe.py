@@ -48,14 +48,14 @@ def test_probe_hardware_execution() -> None:
 
 
 def test_probe_hardware_cpu_freq_exception() -> None:
-    with patch("psutil.cpu_freq", side_effect=RuntimeError("psutil error")):
+    with patch("psutil.cpu_freq", create=True, side_effect=RuntimeError("psutil error")):
         profile = probe_hardware()
         assert profile.cpu_freq_mhz == 0
 
 
 def test_probe_hardware_battery_detection() -> None:
     mock_battery = MagicMock(percent=75.0, power_plugged=False)
-    with patch("psutil.sensors_battery", return_value=mock_battery):
+    with patch("psutil.sensors_battery", create=True, return_value=mock_battery):
         profile = probe_hardware()
         assert profile.has_battery is True
         assert profile.battery_percent == 75.0
