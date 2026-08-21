@@ -47,6 +47,7 @@ class DoubleFrameBuffer:
         self.name = name
         self.create = create
         self.size = size
+        self.frame_size = (size - HEADER_SIZE) // 2
 
         if create:
             self.shm = shared_memory.SharedMemory(name=name, create=True, size=size)
@@ -56,6 +57,8 @@ class DoubleFrameBuffer:
             struct.pack_into("<Q", buf, 0, 0)
         else:
             self.shm = shared_memory.SharedMemory(name=name)
+            self.size = size
+            self.frame_size = (size - HEADER_SIZE) // 2
 
     def write(self, frame_bytes: bytes) -> None:
         """Write frame_bytes to the double buffer slot, incrementing seq before and after.
@@ -67,8 +70,10 @@ class DoubleFrameBuffer:
         an extra ~921 KB allocation per frame at 30 FPS (27 MB/sec of GC
         pressure).
         """
-        if len(frame_bytes) != FRAME_SIZE:
-            raise ValueError(f"Invalid frame size: expected {FRAME_SIZE}, got {len(frame_bytes)}")
+        if len(frame_bytes) != self.frame_size:
+            raise ValueError(
+                f"Invalid frame size: expected {self.frame_size}, got {len(frame_bytes)}"
+            )
 
         buf = self.shm.buf
         assert buf is not None
@@ -83,8 +88,8 @@ class DoubleFrameBuffer:
         # Write to alternating slot: seq = 0 -> slot 0, seq = 2 -> slot 1
         # Slot index is (seq // 2) % 2
         slot = (seq // 2) % 2
-        offset = HEADER_SIZE + slot * FRAME_SIZE
-        buf[offset : offset + FRAME_SIZE] = frame_bytes
+        offset = HEADER_SIZE + slot * self.frame_size
+        buf[offset : offset + self.frame_size] = frame_bytes
 
         # Increment to even (write finished)
         seq_even = seq_odd + 1
@@ -106,10 +111,10 @@ class DoubleFrameBuffer:
 
             # Latest complete slot is ((seq1 // 2) - 1) % 2
             slot = ((seq1 // 2) - 1) % 2
-            offset = HEADER_SIZE + slot * FRAME_SIZE
+            offset = HEADER_SIZE + slot * self.frame_size
 
             # Copy data to local buffer
-            data = bytes(buf[offset : offset + FRAME_SIZE])
+            data = bytes(buf[offset : offset + self.frame_size])
 
             # Verify no concurrent write occurred during the read
             seq2 = struct.unpack_from("<Q", buf, 0)[0]
@@ -119,7 +124,7 @@ class DoubleFrameBuffer:
         # Return None if consistently failed to read atomically
         return None
 
-    def read_array(self) -> Optional["Any"]:
+    def read_array(self, shape: tuple[int, ...] | None = None) -> Optional["Any"]:
         """Zero-copy read returning a numpy view directly into the SHM buffer.
 
         Performance optimization (P2): the previous ``read()`` returns a
@@ -139,6 +144,9 @@ class DoubleFrameBuffer:
         buf = self.shm.buf
         assert buf is not None
 
+        if shape is None:
+            shape = (FRAME_HEIGHT, FRAME_WIDTH, FRAME_CHANNELS)
+
         max_retries = 10
         for _ in range(max_retries):
             seq1 = struct.unpack_from("<Q", buf, 0)[0]
@@ -147,14 +155,14 @@ class DoubleFrameBuffer:
                 continue
 
             slot = ((seq1 // 2) - 1) % 2
-            offset = HEADER_SIZE + slot * FRAME_SIZE
+            offset = HEADER_SIZE + slot * self.frame_size
 
             # Build a numpy view over the SHM buffer at the slot offset.
             # The view is read-only because ``shm.buf`` is a read-only
             # memoryview; downstream consumers must not attempt in-place
             # writes (those would race with the writer's seqlock).
             view = np.ndarray(
-                (FRAME_HEIGHT, FRAME_WIDTH, FRAME_CHANNELS),
+                shape,
                 dtype=np.uint8,
                 buffer=buf,
                 offset=offset,

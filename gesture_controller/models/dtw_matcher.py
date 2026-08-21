@@ -34,6 +34,9 @@ def fast_dtw_distance(s1: np.ndarray, s2: np.ndarray) -> float:
     n = len(s1)
     m = len(s2)
 
+    if n == 0 or m == 0:
+        return 1e9
+
     # Cost matrix
     dtw_matrix = np.zeros((n + 1, m + 1), dtype=np.float64)
 
@@ -98,10 +101,17 @@ def normalize_sequence(
     sequence: list[np.ndarray], target_len: int = DTW_BUFFER_FRAMES
 ) -> np.ndarray:
     """Resample landmark sequences to a fixed target length using linear interpolation."""
-    seq_arr = np.array(sequence)
+    if not sequence:
+        return np.zeros((target_len, DTW_FEATURE_DIMS), dtype=np.float64)
+    seq_arr = np.array(sequence, dtype=np.float64)
     L = len(seq_arr)
+    if L == 0:
+        return np.zeros((target_len, DTW_FEATURE_DIMS), dtype=np.float64)
     if L == target_len:
         return seq_arr
+    if L == 1:
+        return np.repeat(seq_arr, target_len, axis=0)
+
     x_old = np.linspace(0, 1, L)
     x_new = np.linspace(0, 1, target_len)
     resampled = np.zeros((target_len, seq_arr.shape[1]), dtype=np.float64)

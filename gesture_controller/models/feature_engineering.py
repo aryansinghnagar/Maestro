@@ -167,6 +167,11 @@ def compute_features(
         dtype=np.float64,
     )
 
+    if velocity is None or not np.isfinite(velocity).all():
+        velocity = np.zeros((21, 3), dtype=np.float64)
+    if acceleration is None or not np.isfinite(acceleration).all():
+        acceleration = np.zeros((21, 3), dtype=np.float64)
+
     # 9. Transform velocity and acceleration to normalized hand scale
     # Hand-mirrored wrist velocity
     palm_vel = np.array(
@@ -196,6 +201,10 @@ def compute_features(
         dtype=np.float64,
     )
 
+    palm_vel_mag = float(
+        np.sqrt(palm_vel[0] * palm_vel[0] + palm_vel[1] * palm_vel[1] + palm_vel[2] * palm_vel[2])
+    )
+
     return FeatureVector(
         thumb_extended=finger_extended["thumb"],
         index_extended=finger_extended["index"],
@@ -215,7 +224,7 @@ def compute_features(
         palm_velocity=palm_vel,
         palm_acceleration=palm_accel,
         index_tip_velocity=index_tip_vel,
-        palm_velocity_magnitude=float(np.linalg.norm(palm_vel)),
+        palm_velocity_magnitude=palm_vel_mag,
         handedness="Right",  # Mirroring maps Left hand poses onto Right coordinate space
         confidence=hand.confidence,
         timestamp=timestamp,
