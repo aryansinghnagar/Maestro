@@ -78,7 +78,21 @@ class CameraStream:
         if not backends:
             backends = ["ANY"]
 
+        def _release_cap(cap: Any) -> None:
+            try:
+                if cap is not None and cap.isOpened():
+                    cap.release()
+                elif cap is not None:
+                    # ReAct fix: failed opens still hold a handle on some backends.
+                    try:
+                        cap.release()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
         for backend in backends:
+            cap = None
             try:
                 backend_val = getattr(cv2, f"CAP_{backend}", cv2.CAP_ANY)
                 logger.info("Trying to open camera", device_id=device_id, backend=backend)
@@ -91,11 +105,14 @@ class CameraStream:
                     logger.info("Camera connected successfully", backend=backend, device=device_id)
                     self._backoff_idx = 0
                     return
+                _release_cap(cap)
             except Exception as e:
                 logger.debug("Failed opening camera with backend", backend=backend, error=str(e))
+                _release_cap(cap)
                 continue
 
         # If none of preferred backends worked, try default CAP_ANY
+        cap = None
         try:
             logger.info("Trying fallback default CAP_ANY", device_id=device_id)
             cap = cv2.VideoCapture(device_id, cv2.CAP_ANY)
@@ -107,8 +124,10 @@ class CameraStream:
                 logger.info("Camera connected with CAP_ANY", device=device_id)
                 self._backoff_idx = 0
                 return
+            _release_cap(cap)
         except Exception as e:
             logger.debug("Failed CAP_ANY fallback", error=str(e))
+            _release_cap(cap)
 
         raise RuntimeError(f"Cannot open camera device {device_id} with any backend")
 
@@ -116,43 +135,52 @@ class CameraStream:
         from gesture_controller.vision.double_buffer import DoubleFrameBuffer
 
         db = DoubleFrameBuffer(name=self.shm_name, create=False)
-        watchdog_timeout = self.config.get("camera", {}).get("watchdog_timeout_ms", 2000) / 1000.0
-        last_frame_time = time.monotonic()
-
-        while self._running and self._cap is not None:
-            ret, frame = self._cap.read()
-            if not ret:
-                if time.monotonic() - last_frame_time > watchdog_timeout:
-                    logger.warning("Camera watchdog timeout triggered (no frame received)")
-                    raise RuntimeError("Camera frame timeout")
-                time.sleep(0.001)
-                continue
-
+        try:
+            try:
+                watchdog_timeout = (
+                    self.config.get("camera", {}).get("watchdog_timeout_ms", 2000) / 1000.0
+                )
+            except (TypeError, ValueError, AttributeError):
+                watchdog_timeout = 2.0
             last_frame_time = time.monotonic()
 
-            # Preprocessing: resize, BGR->RGB, horizontal mirror
-            if frame.shape[0] != FRAME_HEIGHT or frame.shape[1] != FRAME_WIDTH:
-                frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame = cv2.flip(frame, 1)  # Mirror
+            while self._running and self._cap is not None:
+                try:
+                    ret, frame = self._cap.read()
+                except Exception as e:
+                    logger.warning("Camera read failed", error=str(e))
+                    raise RuntimeError("Camera read failed") from e
+                if not ret or frame is None:
+                    if time.monotonic() - last_frame_time > watchdog_timeout:
+                        logger.warning("Camera watchdog timeout triggered (no frame received)")
+                        raise RuntimeError("Camera frame timeout")
+                    time.sleep(0.001)
+                    continue
 
-            # Write to DoubleFrameBuffer.
-            # Performance optimization (P2): pass a flat byte view of the
-            # numpy array directly instead of calling ``frame.tobytes()``.
-            # ``memoryview(frame).cast('B')`` is zero-copy on the caller
-            # side and the SHM-side assignment uses a single ``memcpy``
-            # into the shared segment. Previously ``tobytes()`` allocated
-            # ~921 KB per frame (27 MB/sec at 30 FPS) just to be
-            # immediately copied again into SHM.
-            #
-            # Note: ``memoryview(frame).cast('B')`` requires a C-contiguous
-            # array (cv2 ops always return one). ``frame.data`` would also
-            # be zero-copy but its ``len()`` is the first-dim shape (480),
-            # not the byte count, which DoubleFrameBuffer.write() needs.
-            db.write(memoryview(frame).cast("B"))  # type: ignore[arg-type]
-            self.frame_ready_event.set()
+                last_frame_time = time.monotonic()
 
-        db.close()
+                # Preprocessing: resize, BGR->RGB, horizontal mirror
+                try:
+                    if frame.shape[0] != FRAME_HEIGHT or frame.shape[1] != FRAME_WIDTH:
+                        frame = cv2.resize(frame, (FRAME_WIDTH, FRAME_HEIGHT))
+                    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    frame = cv2.flip(frame, 1)  # Mirror
+                except Exception as e:
+                    logger.warning("Frame preprocess failed; skipping", error=str(e))
+                    continue
+
+                # Write to DoubleFrameBuffer (zero-copy view; see P2 note).
+                try:
+                    db.write(memoryview(frame).cast("B"))  # type: ignore[arg-type]
+                    self.frame_ready_event.set()
+                except Exception as e:
+                    logger.warning("SHM write failed", error=str(e))
+                    continue
+        finally:
+            try:
+                db.close()
+            except Exception:
+                pass
 
     def _disconnect(self) -> None:
         if self._cap is not None:

@@ -21,13 +21,21 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies (frozen lockfile)
         run: |
-          python -m pip install --upgrade pip
-          pip install .[dev]
-          pip install atheris
+          uv sync --frozen --extra dev
+          uv pip install atheris
 
       - name: Run Fuzz Target
+        # ReAct fix: fail-closed. The previous `|| echo` masked fuzzer
+        # crashes (the exact signal fuzzing exists to surface). Atheris
+        # exits 0 on clean timeout-expiry and non-zero on findings, so a
+        # bare invocation is the correct gate.
         run: |
           # Run the fuzz target for 10 minutes (600 seconds)
-          python gesture_controller/tests/fuzz/fuzz_compile_condition.py -max_total_time=600 || echo "Fuzzing run completed or encountered expected fuzzing stops."
+          uv run python gesture_controller/tests/fuzz/fuzz_compile_condition.py -max_total_time=600

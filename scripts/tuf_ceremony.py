@@ -50,17 +50,60 @@ def create_role_keys(
             priv_path = keys_dir / f"{role_name}_{i+1}_{key_id[:8]}.priv.json"
             pub_path = keys_dir / f"{role_name}_{i+1}_{key_id[:8]}.pub.json"
 
-            # Write private key with restricted permissions
+            # ReAct fix: persist the PRIVATE key (was writing public keyval
+            # into the .priv file, making the ceremony unusable).
+            # securesystemslib 1.x: signer.private_bytes holds the PEM/DER.
+            try:
+                from securesystemslib.signer import SSlibSigner as _SSlibSigner
+
+                _ = _SSlibSigner
+            except Exception:
+                pass
+            private_val: object = None
+            for attr in ("private_bytes", "private_key", "_private_key"):
+                try:
+                    private_val = getattr(signer, attr, None)
+                    if callable(private_val):
+                        private_val = private_val()
+                    if private_val:
+                        break
+                except Exception:
+                    continue
+            if isinstance(private_val, (bytes, bytearray)):
+                try:
+                    private_str = bytes(private_val).decode("utf-8")
+                except UnicodeDecodeError:
+                    import base64 as _b64
+
+                    private_str = _b64.b64encode(bytes(private_val)).decode("ascii")
+            elif isinstance(private_val, str):
+                private_str = private_val
+            elif private_val is not None:
+                try:
+                    private_str = json.dumps(private_val, default=str)
+                except Exception:
+                    private_str = str(private_val)
+            else:
+                # Last resort: export via to_dict if the signer supports it.
+                try:
+                    private_str = json.dumps(signer.to_dict())  # type: ignore[attr-defined]
+                except Exception:
+                    private_str = ""
             priv_content = json.dumps(
                 {
                     "keytype": "ed25519",
                     "scheme": "ed25519",
-                    "keyval": signer.public_key.to_dict()["keyval"],
+                    "keyval": {"private": private_str},
                     "keyid": key_id,
                 },
                 indent=2,
             )
-            priv_path.write_text(priv_content, encoding="utf-8")
+            # Atomic write with 0600.
+            tmp_priv = priv_path.with_suffix(".priv.json.tmp")
+            tmp_priv.write_text(priv_content, encoding="utf-8")
+            with contextlib.suppress(OSError):
+                tmp_priv.chmod(0o600)
+            tmp_priv.replace(priv_path)
             with contextlib.suppress(OSError):
                 priv_path.chmod(0o600)
 
@@ -72,8 +115,9 @@ def create_role_keys(
 
 def run_ceremony(
     output_dir: Path,
-    root_threshold: int = 2,
-    root_key_count: int = 3,
+    # ReAct fix: default to 3-of-5 to match SECURITY.md (was 2-of-3).
+    root_threshold: int = 3,
+    root_key_count: int = 5,
     expiry_days: int = 365,
 ) -> dict[str, Any]:
     """Execute the TUF ceremony, writing metadata and bootstrap JSON to output_dir."""
@@ -191,14 +235,14 @@ def main() -> int:
     parser.add_argument(
         "--threshold",
         type=int,
-        default=2,
-        help="Root signing threshold (default: 2)",
+        default=3,
+        help="Root signing threshold (default: 3, per SECURITY.md)",
     )
     parser.add_argument(
         "--key-count",
         type=int,
-        default=3,
-        help="Number of root keys to generate (default: 3)",
+        default=5,
+        help="Number of root keys to generate (default: 5, per SECURITY.md)",
     )
     parser.add_argument(
         "--expiry-days",

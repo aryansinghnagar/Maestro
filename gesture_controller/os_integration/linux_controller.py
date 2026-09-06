@@ -191,6 +191,14 @@ class LinuxController(BaseController):
         syn = struct.pack("llHHI", 0, 0, evdev.ecodes.EV_SYN, evdev.ecodes.SYN_REPORT, 0)
         os.write(self._fd, syn)
 
+    def _is_wayland(self) -> bool:
+        st = (os.environ.get("XDG_SESSION_TYPE") or "").lower()
+        if st == "wayland":
+            return True
+        if st == "x11":
+            return False
+        return bool(os.environ.get("WAYLAND_DISPLAY"))
+
     def _detect_window_manager(self) -> str:
         if os.environ.get("KDE_SESSION_VERSION"):
             return "kwin"
@@ -200,30 +208,89 @@ class LinuxController(BaseController):
             return "sway"
         if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"):
             return "hyprland"
-        if shutil.which("xdotool") is not None:
+        # ReAct fix: xdotool is X11-only — never advertise it on Wayland.
+        if not self._is_wayland() and shutil.which("xdotool") is not None:
             return "xdotool"
         return "none"
 
     def _has_xdotool(self) -> bool:
+        # ReAct fix: gate on X11; on Wayland xdotool silently fails.
+        if self._is_wayland():
+            return False
         return shutil.which("xdotool") is not None
 
+    def close(self) -> None:
+        """Release the uinput fd (ReAct fix: was leaked, no DESTROY)."""
+        fd, self._fd = self._fd, None
+        self._use_uinput = False
+        if fd is not None:
+            try:
+                if evdev is not None:
+                    try:
+                        import fcntl as _fcntl
+
+                        UI_DEV_DESTROY = 0x5502
+                        _fcntl.ioctl(fd, UI_DEV_DESTROY)
+                    except Exception:
+                        pass
+            finally:
+                try:
+                    os.close(fd)
+                except Exception:
+                    pass
+
+    def __del__(self):  # pragma: no cover
+        try:
+            self.close()
+        except Exception:
+            pass
+
+    def _has_xdotool(self) -> bool:
+        return shutil.which("xdotool") is not None
+
+    def _button_code(self, button: str):  # type: ignore[no-untyped-def]
+        b = (button or "left").lower()
+        if b == "left":
+            return evdev.ecodes.BTN_LEFT
+        if b == "right":
+            return evdev.ecodes.BTN_RIGHT
+        if b == "middle":
+            return evdev.ecodes.BTN_MIDDLE
+        return evdev.ecodes.BTN_LEFT
+
     def key_press(self, key: str, modifiers: list[str] | None = None) -> None:
+        # ReAct fix: was press-only (stuck keys). Now full down+up with
+        # try/finally modifier release.
         if not self.is_supported():
             return
 
         if self._use_uinput and evdev is not None:
-            if modifiers:
-                for mod in modifiers:
-                    mod_mapped = LINUX_MODIFIER_MAP.get(mod.lower(), mod.lower())
-                    code = LINUX_KEYCODES.get(mod_mapped, 0)
-                    if code:
-                        self._emit_event(evdev.ecodes.EV_KEY, code, 1)
-            code = LINUX_KEYCODES.get(key.lower(), 0)
-            if code:
-                self._emit_event(evdev.ecodes.EV_KEY, code, 1)
+            pressed: list[int] = []
+            try:
+                if modifiers:
+                    for mod in modifiers:
+                        mod_mapped = LINUX_MODIFIER_MAP.get(mod.lower(), mod.lower())
+                        code = LINUX_KEYCODES.get(mod_mapped, 0)
+                        if code:
+                            self._emit_event(evdev.ecodes.EV_KEY, code, 1)
+                            pressed.append(code)
+                code = LINUX_KEYCODES.get(key.lower(), 0)
+                if code:
+                    self._emit_event(evdev.ecodes.EV_KEY, code, 1)
+                    self._emit_event(evdev.ecodes.EV_KEY, code, 0)
+            finally:
+                for code in reversed(pressed):
+                    try:
+                        self._emit_event(evdev.ecodes.EV_KEY, code, 0)
+                    except Exception:
+                        pass
         elif self._has_xdotool():
             combo = "+".join(modifiers + [key]) if modifiers else key
             subprocess.run(["xdotool", "keydown", combo], capture_output=True)
+            try:
+                subprocess.run(["xdotool", "keyup", combo], capture_output=True)
+            except Exception:
+                pass
 
     def key_release(self, key: str) -> None:
         if not self.is_supported():
@@ -277,11 +344,11 @@ class LinuxController(BaseController):
             return
 
         if self._use_uinput and evdev is not None:
-            code = evdev.ecodes.BTN_LEFT if button == "left" else evdev.ecodes.BTN_RIGHT
+            code = self._button_code(button)
             self._emit_event(evdev.ecodes.EV_KEY, code, 1)
             self._emit_event(evdev.ecodes.EV_KEY, code, 0)
         elif self._has_xdotool():
-            btn_idx = "1" if button == "left" else "3"
+            btn_idx = {"left": "1", "middle": "2", "right": "3"}.get(button.lower(), "1")
             cmd = ["xdotool", "click", btn_idx]
             if x is not None and y is not None:
                 cmd = ["xdotool", "mousemove", str(x), str(y), "click", btn_idx]
@@ -294,13 +361,13 @@ class LinuxController(BaseController):
             return
 
         if self._use_uinput and evdev is not None:
-            code = evdev.ecodes.BTN_LEFT if button == "left" else evdev.ecodes.BTN_RIGHT
+            code = self._button_code(button)
             self._emit_event(evdev.ecodes.EV_KEY, code, 1)
             self._emit_event(evdev.ecodes.EV_KEY, code, 0)
             self._emit_event(evdev.ecodes.EV_KEY, code, 1)
             self._emit_event(evdev.ecodes.EV_KEY, code, 0)
         elif self._has_xdotool():
-            btn_idx = "1" if button == "left" else "3"
+            btn_idx = {"left": "1", "middle": "2", "right": "3"}.get(button.lower(), "1")
             cmd = ["xdotool", "click", "--repeat", "2", btn_idx]
             if x is not None and y is not None:
                 subprocess.run(["xdotool", "mousemove", str(x), str(y)], capture_output=True)
@@ -310,12 +377,22 @@ class LinuxController(BaseController):
         if not self.is_supported():
             return
 
+        try:
+            x, y = int(x), int(y)
+        except (TypeError, ValueError):
+            return
         if self._use_uinput and evdev is not None:
-            # Relative movement is supported via EV_REL
-            # Absolute position requires screen size mapping which is better done via xdotool
+            # Relative movement is supported via EV_REL.
             if not absolute:
                 self._emit_event(evdev.ecodes.EV_REL, evdev.ecodes.REL_X, x)
                 self._emit_event(evdev.ecodes.EV_REL, evdev.ecodes.REL_Y, y)
+                return
+            # ReAct fix: absolute was a silent no-op under uinput.
+            # Fall back to xdotool on X11; otherwise log once.
+            if self._has_xdotool():
+                subprocess.run(["xdotool", "mousemove", str(x), str(y)], capture_output=True)
+            else:
+                logger.debug("Absolute mouse_move unavailable (uinput EV_ABS + Wayland)")
         elif self._has_xdotool():
             mode = "mousemove" if absolute else "mousemove_relative"
             subprocess.run(["xdotool", mode, str(x), str(y)], capture_output=True)
@@ -324,6 +401,15 @@ class LinuxController(BaseController):
         if not self.is_supported():
             return
 
+        # ReAct fix: clamp to avoid xdotool click-storms / EV_REL overflow.
+        def _clamp(v: object) -> int:
+            try:
+                iv = int(v)  # type: ignore[arg-type]
+            except (TypeError, ValueError):
+                return 0
+            return max(-10, min(10, iv))
+
+        delta_x, delta_y = _clamp(delta_x), _clamp(delta_y)
         if self._use_uinput and evdev is not None:
             if delta_y != 0:
                 self._emit_event(evdev.ecodes.EV_REL, evdev.ecodes.REL_WHEEL, delta_y)

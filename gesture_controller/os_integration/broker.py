@@ -147,6 +147,8 @@ class RateLimiter:
     _BURST_MAXLEN = 32  # > max_burst (30)
     _PER_GESTURE_MAXLEN = 8  # > 5/gesture/sec
 
+    _MAX_GESTURE_KEYS = 256
+
     def __init__(self) -> None:
         self.global_history: deque[float] = deque(maxlen=self._GLOBAL_MAXLEN)
         self.gesture_history: dict[str, deque[float]] = {}
@@ -171,9 +173,20 @@ class RateLimiter:
             return False
 
         # 3. Per-gesture rate limit: 5 actions/sec
+        # ReAct fix: bound dict against attacker-controlled gesture_id spam.
         if gesture_id:
+            if not isinstance(gesture_id, str):
+                gesture_id = str(gesture_id)
+            gesture_id = gesture_id[:128]
             history = self.gesture_history.get(gesture_id)
             if history is None:
+                if len(self.gesture_history) >= self._MAX_GESTURE_KEYS:
+                    # Evict oldest key (FIFO) to stay bounded.
+                    try:
+                        oldest = next(iter(self.gesture_history))
+                        self.gesture_history.pop(oldest, None)
+                    except StopIteration:
+                        pass
                 history = deque(maxlen=self._PER_GESTURE_MAXLEN)
                 self.gesture_history[gesture_id] = history
             while history and now - history[0] > 1.0:
@@ -223,13 +236,38 @@ class AuditLogger:
             except Exception:
                 pass
 
+    _SENSITIVE_KEYS = frozenset(
+        {"key", "keys", "password", "token", "secret", "combo", "text", "x", "y"}
+    )
+
+    @classmethod
+    def _redact(cls, details: dict[str, Any]) -> dict[str, Any]:
+        # ReAct fix: audit log recorded raw keys/coords (keystroke privacy
+        # leak). Redact values but keep key names + coarse types for forensics.
+        redacted: dict[str, Any] = {}
+        for k, v in details.items():
+            kl = str(k).lower()
+            if kl in cls._SENSITIVE_KEYS or "key" in kl or "token" in kl or "pass" in kl:
+                redacted[k] = f"<redacted:{type(v).__name__}>"
+            elif isinstance(v, dict):
+                redacted[k] = cls._redact(v)
+            elif isinstance(v, (list, tuple)) and len(v) > 8:
+                redacted[k] = f"<list len={len(v)}>"
+            else:
+                redacted[k] = v
+        return redacted
+
     def log(self, event_type: str, details: dict[str, Any]) -> None:
         with self._lock:
             now_str = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            try:
+                safe_details = self._redact(dict(details) if isinstance(details, dict) else {})
+            except Exception:
+                safe_details = {"_redact_error": True}
             entry = {
                 "timestamp": now_str,
                 "event": event_type,
-                "details": details,
+                "details": safe_details,
                 "prev_hash": self.last_hash,
             }
             entry_json = json.dumps(entry, sort_keys=True)
@@ -370,12 +408,26 @@ class InjectionBrokerServer:
         # events are not lost on shutdown.
         self.audit_logger.flush()
 
+    _MAX_IPC_BYTES = 64 * 1024  # 64 KiB per request (OOM guard)
+
     def _handle_client(self, conn: Any) -> None:
         try:
             while self.running:
                 try:
                     msg_bytes = conn.recv_bytes()
                     if not msg_bytes:
+                        break
+                    # ReAct fix: cap IPC payload (same-UID peer could OOM broker).
+                    if len(msg_bytes) > self._MAX_IPC_BYTES:
+                        logger.warning("Oversize IPC request rejected", size=len(msg_bytes))
+                        try:
+                            conn.send_bytes(
+                                json.dumps(
+                                    {"status": "error", "message": "Request too large"}
+                                ).encode("utf-8")
+                            )
+                        except Exception:
+                            pass
                         break
                     req = json.loads(msg_bytes.decode("utf-8"))
                     res = self.handle_request(req)
@@ -570,28 +622,42 @@ class BrokerClientController(BaseController):
             "gesture_id": self.get_active_gesture(),
         }
 
-        with self._lock:
-            try:
-                self._conn.send_bytes(json.dumps(req).encode("utf-8"))
-                res_bytes = self._conn.recv_bytes()
-                res = json.loads(res_bytes.decode("utf-8"))
-                if isinstance(res, dict):
-                    return res
-            except Exception as e:
-                logger.error("Broker connection error, retrying...", error=str(e))
-                self._conn = None
-
-        # Retry once
-        if self._ensure_connected():
+        def _roundtrip() -> dict[str, Any] | None:
             with self._lock:
                 try:
                     self._conn.send_bytes(json.dumps(req).encode("utf-8"))
+                    # ReAct fix: bound recv with poll timeout (was indefinite
+                    # block holding the single client lock).
+                    try:
+                        if hasattr(self._conn, "poll") and not self._conn.poll(5.0):
+                            logger.warning("Broker response timeout (5s)")
+                            return None
+                    except Exception:
+                        pass
                     res_bytes = self._conn.recv_bytes()
+                    if len(res_bytes) > 64 * 1024:
+                        logger.warning("Oversize broker response rejected")
+                        return None
                     res = json.loads(res_bytes.decode("utf-8"))
                     if isinstance(res, dict):
                         return res
-                except Exception:
-                    self._conn = None
+                except Exception as e:
+                    logger.error("Broker connection error, retrying...", error=str(e))
+                    try:
+                        self._conn = None
+                    except Exception:
+                        pass
+            return None
+
+        res = _roundtrip()
+        if res is not None:
+            return res
+
+        # Retry once
+        if self._ensure_connected():
+            res = _roundtrip()
+            if res is not None:
+                return res
 
         return {"status": "error", "message": "Broker connection lost"}
 

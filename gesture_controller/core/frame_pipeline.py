@@ -7,7 +7,8 @@ from typing import Any
 import structlog
 
 from gesture_controller.core.config_manager import ConfigManager
-from gesture_controller.vision.double_buffer import DoubleFrameBuffer, TOTAL_SIZE
+from gesture_controller.vision.double_buffer import DoubleFrameBuffer
+from gesture_controller.vision.constants import TOTAL_SHM_SIZE as TOTAL_SIZE
 from gesture_controller.core.profiler import frame_budget
 
 logger = structlog.get_logger(__name__)
@@ -95,10 +96,14 @@ class FramePipeline:
 
     def adapt_fps(self, processing_time: float) -> None:
         """Adjust FPS target based on processing latency to avoid accumulating backlog."""
-        target_interval = 1.0 / self._fps_target
+        # ReAct fix: floor is 5 FPS (idle power-save target), not 15, so
+        # maybe_idle() and adapt_fps() no longer fight over _fps_target.
+        if processing_time < 0:
+            return
+        target_interval = 1.0 / max(1, self._fps_target)
         if processing_time > target_interval * 1.2:
             # Lower FPS
-            new_fps = max(15, int(self._fps_target * 0.8))
+            new_fps = max(5, int(self._fps_target * 0.8))
             if new_fps != self._fps_target:
                 logger.warning(
                     "Lowering FPS target to avoid backlog",

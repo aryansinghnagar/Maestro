@@ -86,7 +86,8 @@ def test_wasm_load_and_init(temp_plugin_dir: Path) -> None:
         plugin = plugins[0]
         assert plugin.meta["name"] == "test_gesture_plugin"
         assert len(plugin.gestures) == 1
-        assert plugin.gestures[0]["name"] == "SwipeLeft"
+        # ReAct fix: WASM gestures are namespaced to prevent squatting.
+        assert plugin.gestures[0]["name"] == "test_gesture_plugin:SwipeLeft"
 
 
 def test_wasm_permission_denied_trigger_action(temp_plugin_dir: Path) -> None:

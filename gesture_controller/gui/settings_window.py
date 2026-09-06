@@ -595,9 +595,27 @@ class SettingsWindow(QDialog):
             zip_path = model_dir / "vosk-model.zip"
 
             try:
-                urllib.request.urlretrieve(model_url, zip_path)  # nosec B310
+                import urllib.request as _urlreq
+
+                # ReAct fix: timeout + zip-slip guard (was unbounded extractall).
+                req = _urlreq.Request(model_url, headers={"User-Agent": "Maestro/1.3.0"})
+                with (
+                    _urlreq.urlopen(req, timeout=30) as resp,  # nosec B310
+                    open(zip_path, "wb") as out,
+                ):
+                    while True:
+                        chunk = resp.read(64 * 1024)
+                        if not chunk:
+                            break
+                        out.write(chunk)
                 with zipfile.ZipFile(zip_path) as z:
-                    z.extractall(model_dir)  # nosec B202
+                    for member in z.infolist():
+                        target = (model_dir / member.filename).resolve()
+                        if not str(target).startswith(str(model_dir.resolve())):
+                            raise ValueError(f"Blocked zip-slip entry: {member.filename}")
+                        if member.file_size > 200 * 1024 * 1024:
+                            raise ValueError(f"Oversize zip entry: {member.filename}")
+                    z.extractall(model_dir)  # nosec B202 -- paths validated above
                 zip_path.unlink()
 
                 from PyQt6.QtCore import QMetaObject

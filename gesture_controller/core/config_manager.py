@@ -43,6 +43,7 @@ class ConfigManager:
         self._config: dict[str, Any] = {}
         self._schema: dict[str, Any] = {}
         self._event_bus = event_bus
+        self._config_path: Path | None = config_path
         self._load_schema()
         self._load_config(config_path)
 
@@ -98,8 +99,26 @@ class ConfigManager:
                     migrated_data = migrate_config(user_data)
 
                     if migrated_data != user_data:
-                        with open(user_path, "w", encoding="utf-8") as f:
+                        # ReAct fix: atomic write with backup to avoid corrupting
+                        # user config on crash/power-loss.
+                        tmp_path = user_path.with_suffix(".yaml.tmp")
+                        bak_path = user_path.with_suffix(".yaml.bak")
+                        with open(tmp_path, "w", encoding="utf-8") as f:
                             yaml.safe_dump(migrated_data, f)
+                        try:
+                            try:
+                                import shutil as _shutil
+
+                                _shutil.copy2(user_path, bak_path)
+                            except Exception:
+                                pass
+                            os.replace(tmp_path, user_path)
+                        finally:
+                            try:
+                                if tmp_path.exists():
+                                    tmp_path.unlink()
+                            except Exception:
+                                pass
                         logger.info("Migrated user config file on disk", path=str(user_path))
                 except Exception as e:
                     logger.warning(
@@ -120,21 +139,55 @@ class ConfigManager:
             except Exception as e:
                 logger.warning("Failed to load config file", path=str(p), error=str(e))
 
-        # Validate against schema if available
+        # Validate against schema if available.
+        # ReAct fix: never crash on bad user config — fall back to defaults
+        # so laymen always get a bootable app with a clear log.
         if self._schema:
             try:
                 jsonschema.validate(self._config, self._schema)
             except jsonschema.ValidationError as e:
-                logger.error("Config validation failed against JSON schema", error=str(e.message))
-                raise
+                logger.error(
+                    "Config validation failed; falling back to defaults",
+                    error=str(e.message),
+                )
+                try:
+                    with open(DEFAULT_CONFIG_PATH, "r", encoding="utf-8") as f:
+                        defaults = yaml.safe_load(f) or {}
+                    self._config.clear()
+                    self._deep_merge(self._config, defaults)
+                except Exception as fb_e:
+                    logger.error("Default config fallback failed", error=str(fb_e))
 
     def _deep_merge(self, base: dict[str, Any], override: dict[str, Any]) -> None:
-        """Deeply merges override dictionary into base dictionary."""
+        """Deeply merge override into base.
+
+        ReAct fix: dicts merge recursively; lists of dicts with a ``name``
+        key merge by name (gestures/plugins survive partial overrides);
+        other lists replace wholesale (documented behavior).
+        """
         for key, value in override.items():
             if key in base and isinstance(base[key], dict) and isinstance(value, dict):
                 self._deep_merge(base[key], value)
+            elif (
+                key in base
+                and isinstance(base[key], list)
+                and isinstance(value, list)
+                and all(isinstance(v, dict) and "name" in v for v in base[key] + value)
+            ):
+                merged = {str(v["name"]): v for v in base[key]}
+                for v in value:
+                    vname = str(v["name"])
+                    if vname in merged and isinstance(merged[vname], dict):
+                        self._deep_merge(merged[vname], v)
+                    else:
+                        merged[vname] = v
+                base[key] = list(merged.values())
             else:
                 base[key] = value
+
+    def get_config(self) -> dict[str, Any]:
+        """Back-compat alias for :meth:`as_dict` (TierManager + tests)."""
+        return self.as_dict()
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value using dot notation, e.g., 'camera.device_id'."""
@@ -173,12 +226,18 @@ class ConfigManager:
     # then return an immutable view from this method.
 
     def as_dict(self) -> dict[str, Any]:
-        """Return the live, merged configuration dict.
+        """Return a snapshot copy of the merged configuration dict.
 
-        Audit fix MAE-ARCH-001: public accessor replacing cross-module
-        access to the private ``_config`` attribute.
+        ReAct change: previously returned the live mutable reference, so any
+        consumer could corrupt global config. Now returns a deep copy;
+        mutate via ``set()`` instead.
         """
-        return self._config
+        import copy as _copy
+
+        try:
+            return _copy.deepcopy(self._config)
+        except Exception:
+            return dict(self._config)
 
     # --- P6: Config Hot-Reload ------------------------------------------------
     #
@@ -263,7 +322,8 @@ class ConfigManager:
             return
         # Trigger the debounce regardless of which file changed — the
         # schema file, default config, or user config all warrant a reload.
-        self._last_change_at = time.monotonic()
+        with self._watch_lock:
+            self._last_change_at = time.monotonic()
 
     def _debounce_loop(self) -> None:
         """Debounce thread: wait for filesystem events to settle, then reload.
@@ -293,14 +353,14 @@ class ConfigManager:
 
     def _reload_and_emit(self) -> None:
         """Re-run ``_load_config`` and emit the ``config_reloaded`` signal."""
-        # Preserve the original dict identity so any consumer holding a
-        # reference via ``as_dict()`` sees the update (the in-place merge
-        # in ``_load_config`` mutates ``self._config``).
-        # Clear the existing merged state and re-merge from defaults+user.
+        # ReAct fix: preserve the custom config_path across reloads (was None).
         self._config.clear()
         # Re-run the schema load too in case the schema file itself changed.
         self._load_schema()
-        self._load_config(None)
+        try:
+            self._load_config(self._config_path)
+        except Exception:
+            self._load_config(None)
         logger.info("Config hot-reload complete")
         if self._event_bus is not None:
             try:

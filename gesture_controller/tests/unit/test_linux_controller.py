@@ -96,11 +96,10 @@ def test_linux_key_press_xdotool_fallback(
     assert ctrl._use_uinput is False
 
     ctrl.key_press("a", modifiers=["ctrl"])
-    # Verify subprocess called xdotool keydown
-    mock_run.assert_called_once()
-    assert mock_run.call_args[0][0][0] == "xdotool"
-    assert mock_run.call_args[0][0][1] == "keydown"
-    assert mock_run.call_args[0][0][2] == "ctrl+a"
+    # ReAct fix: key_press is now full down+up (was press-only stuck keys).
+    assert mock_run.call_count == 2
+    assert mock_run.call_args_list[0][0][0] == ["xdotool", "keydown", "ctrl+a"]
+    assert mock_run.call_args_list[1][0][0] == ["xdotool", "keyup", "ctrl+a"]
 
 
 @patch("platform.system", return_value="Linux")

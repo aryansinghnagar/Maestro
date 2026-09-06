@@ -1,6 +1,6 @@
 # Maestro Installation & Platform Setup Guide
 
-This document provides detailed installation, dependency setup, and platform permission instructions for **Maestro v1.2.0** across Windows, macOS, and Linux.
+This document provides detailed installation, dependency setup, and platform permission instructions for **Maestro v1.3.0** across Windows, macOS, and Linux.
 
 ---
 

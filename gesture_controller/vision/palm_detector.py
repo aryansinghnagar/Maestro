@@ -29,23 +29,60 @@ def _default_ort_session_options():
     return opts
 
 
+def _normalize_nms_indices(keep_raw: object) -> list[int]:
+    """Normalize cv.dnn.NMSBoxes output across OpenCV versions.
+
+    Returns a flat list of int indices. Handles ``[]``, ``[[i]]``,
+    ``np.ndarray`` of shape (N,1)/(N,), and tuple forms.
+    """
+    if keep_raw is None:
+        return []
+    try:
+        import numpy as _np
+
+        if isinstance(keep_raw, _np.ndarray):
+            return [int(v) for v in keep_raw.flatten().tolist()]
+    except Exception:
+        pass
+    flat: list[int] = []
+    try:
+        seq = list(keep_raw)  # type: ignore[arg-type]
+    except TypeError:
+        return []
+    for item in seq:
+        try:
+            if isinstance(item, (list, tuple)):
+                if len(item) == 0:
+                    continue
+                flat.append(int(item[0]))
+            else:
+                flat.append(int(item))  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+    return flat
+
+
 def _load_model_bytes_mmap(model_path: str) -> bytes | None:
-    """Memory-map the model file to avoid a full read into RSS at startup.
+    """Read model bytes (mmap-backed when possible, always closed promptly).
 
-    Performance optimization (P1): ``ort.InferenceSession`` accepts either
-    a filesystem path or a bytes buffer. Passing a ``mmap``-backed bytes
-    object lets the kernel page the model in lazily and share the page
-    across processes, reducing startup RSS by ~model-size for the common
-    7-12 MiB ONNX files.
-
+    ReAct fix: previous version did ``mm[:]`` without closing the mmap,
+    leaking the mapping (Windows file-lock risk) while still copying the
+    full buffer. We now copy then close explicitly.
     Returns ``None`` if mmap fails (the caller falls back to the path).
     """
     try:
-        # PROT_READ on a read-only mmap; the underlying fd is closed when
-        # the mmap object is garbage-collected.
         with open(model_path, "rb") as f:
-            mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-            return mm[:]
+            try:
+                mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+            except (OSError, ValueError):
+                return None
+            try:
+                return bytes(mm[:])
+            finally:
+                try:
+                    mm.close()
+                except Exception:
+                    pass
     except (OSError, ValueError):
         return None
 
@@ -72,14 +109,27 @@ class PalmDetector:
         self.input_size = np.array([192, 192])  # wh
 
         # Initialize onnxruntime session
+        # ReAct fix: prefer DirectML over CUDA on Windows (DirectML is
+        # consistently faster for these small models on consumer laptops);
+        # keep CUDA first on Linux. CoreML stays first on macOS.
         if providers is None:
+            import sys as _sys
+
+            available = set(ort.get_available_providers())
             providers = ["CPUExecutionProvider"]
-            if "CUDAExecutionProvider" in ort.get_available_providers():
-                providers.insert(0, "CUDAExecutionProvider")
-            if "DirectMLExecutionProvider" in ort.get_available_providers():
-                providers.insert(0, "DirectMLExecutionProvider")
-            if "CoreMLExecutionProvider" in ort.get_available_providers():
-                providers.insert(0, "CoreMLExecutionProvider")
+            if _sys.platform == "darwin":
+                if "CoreMLExecutionProvider" in available:
+                    providers.insert(0, "CoreMLExecutionProvider")
+            elif _sys.platform == "win32":
+                if "CUDAExecutionProvider" in available:
+                    providers.insert(0, "CUDAExecutionProvider")
+                if "DirectMLExecutionProvider" in available:
+                    providers.insert(0, "DirectMLExecutionProvider")
+            else:
+                if "DirectMLExecutionProvider" in available:
+                    providers.insert(0, "DirectMLExecutionProvider")
+                if "CUDAExecutionProvider" in available:
+                    providers.insert(0, "CUDAExecutionProvider")
         # Performance optimization (P1): default to graph-optimized session
         # options when the caller didn't supply their own.
         if sess_options is None:
@@ -102,6 +152,21 @@ class PalmDetector:
     @property
     def name(self):
         return self.__class__.__name__
+
+    def close(self) -> None:
+        """Release the native ORT session handle (ReAct fix: was leaked)."""
+        try:
+            sess = getattr(self, "session", None)
+            if sess is not None:
+                self.session = None  # type: ignore[assignment]
+        except Exception:
+            pass
+
+    def __del__(self):  # pragma: no cover - best-effort cleanup
+        try:
+            self.close()
+        except Exception:
+            pass
 
     def set_backend_and_target(self, backendId, targetId):
         self.backend_id = backendId
@@ -165,10 +230,18 @@ class PalmDetector:
         xy2 = (cxy_delta + wh_delta / 2 + self.anchors) * scale
         boxes = np.concatenate([xy1, xy2], axis=1)
         boxes -= [pad_bias[0], pad_bias[1], pad_bias[0], pad_bias[1]]
-        # NMS
-        keep_idx = cv.dnn.NMSBoxes(
-            boxes, score, self.score_threshold, self.nms_threshold, top_k=self.topK
-        )
+        # NMS (ReAct fix: return shape varies by OpenCV version).
+        try:
+            keep_raw = cv.dnn.NMSBoxes(
+                boxes.tolist(),
+                score.tolist(),
+                self.score_threshold,
+                self.nms_threshold,
+                top_k=self.topK,
+            )
+        except Exception:
+            return np.empty(shape=(0, 19))
+        keep_idx = _normalize_nms_indices(keep_raw)
         if len(keep_idx) == 0:
             return np.empty(shape=(0, 19))
         selected_score = score[keep_idx]

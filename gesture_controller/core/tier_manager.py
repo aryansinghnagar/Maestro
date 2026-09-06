@@ -50,11 +50,44 @@ class TierManager:
         self.reevaluate(force_immediate=True)
 
     def _init_from_config(self) -> None:
-        cfg = self._config_manager.get_config()
-        perf_cfg = cfg.get("performance", {})
+        # ReAct fix: ConfigManager exposes get()/as_dict(), not get_config().
+        # Support all shapes for backward compat with tests/mocks.
+        cfg: dict[str, Any] = {}
+        get_config = getattr(self._config_manager, "get_config", None)
+        if callable(get_config):
+            try:
+                cfg = get_config() or {}
+            except Exception:
+                cfg = {}
+        elif hasattr(self._config_manager, "as_dict") and callable(self._config_manager.as_dict):
+            try:
+                cfg = self._config_manager.as_dict() or {}
+            except Exception:
+                cfg = {}
+        elif hasattr(self._config_manager, "get") and callable(self._config_manager.get):
+            try:
+                perf = self._config_manager.get("performance", {})
+                cfg = {"performance": perf} if isinstance(perf, dict) else {}
+            except Exception:
+                cfg = {}
+        perf_cfg = cfg.get("performance", {}) if isinstance(cfg, dict) else {}
+        if not isinstance(perf_cfg, dict):
+            perf_cfg = {}
         override = perf_cfg.get("tier", "auto")
-        if override != "auto" and override in Tier.__members__.values():
-            self._manual_override = override
+        # Accept Tier member, member name ("HIGH"), or value ("T1").
+        resolved: Optional[Tier] = None
+        if isinstance(override, Tier):
+            resolved = override
+        elif isinstance(override, str) and override != "auto":
+            if override in Tier.__members__:
+                resolved = Tier[override]
+            else:
+                try:
+                    resolved = Tier(override)
+                except ValueError:
+                    resolved = None
+        if resolved is not None:
+            self._manual_override = resolved.value
 
         self._capability_overrides = perf_cfg.get("override_capabilities", {})
 
@@ -175,7 +208,19 @@ class TierManager:
     def set_manual_override(self, override: Optional[str]) -> None:
         """Set or clear manual tier override."""
         with self._lock:
-            self._manual_override = override
+            if override is None or override == "auto":
+                self._manual_override = None
+            elif isinstance(override, Tier):
+                self._manual_override = override.value
+            elif isinstance(override, str) and override in Tier.__members__:
+                self._manual_override = Tier[override].value
+            else:
+                try:
+                    # Validate value-form ("T1") early; raises on garbage.
+                    self._manual_override = Tier(override).value if override else None
+                except (ValueError, TypeError):
+                    logger.warning("Ignoring invalid tier override", override=override)
+                    return
             self.reevaluate(force_immediate=True)
 
     def start_monitoring(self, interval_s: float = 30.0) -> None:

@@ -220,18 +220,25 @@ class IntegrationServer:
                     k, v = line.split(":", 1)
                     headers[k.strip().lower()] = v.strip()
 
-            # Audit fix MAE-AUD-005: validate Host header against DNS rebinding attacks.
-            host_header = headers.get("host", "").lower().split(":")[0]
-            if host_header and host_header not in {
+            # Audit fix MAE-AUD-005: validate Host header against DNS rebinding.
+            # ReAct fix: empty Host no longer bypasses (HTTP/1.1 requires it).
+            raw_host = headers.get("host", "")
+            host_header = raw_host.lower().split(":")[0]
+            if host_header not in {
                 "127.0.0.1",
                 "localhost",
                 "[::1]",
                 "::1",
             }:
-                logger.warning(
-                    "Rejected request with foreign Host header", host=headers.get("host")
+                logger.warning("Rejected request with foreign/missing Host header", host=raw_host)
+                self._send_http_response(
+                    conn,
+                    400,
+                    {
+                        "error": "Invalid Host header. Connect via http://127.0.0.1:8765 "
+                        "and ensure your client sends Host: 127.0.0.1."
+                    },
                 )
-                self._send_http_response(conn, 400, {"error": "Invalid Host header"})
                 conn.close()
                 return
 
@@ -245,20 +252,32 @@ class IntegrationServer:
             if auth_header.lower().startswith("bearer "):
                 token_header = auth_header[7:].strip()
 
-            # Audit fix MAE-SEC-005: query-param tokens are deprecated.
-            # Log a warning so we can find and migrate any client still using
-            # the old path. The token is still accepted for backward compat.
+            # ReAct fix MAE-SEC-005: ?token= is now REJECTED (was warn-only).
+            # Query tokens leak via logs/history/Referer. Bearer header only.
             if token_param and not token_header:
-                logger.warning(
-                    "Deprecated: API token received via ?token= query parameter. "
-                    "Clients should migrate to the Authorization: Bearer header "
-                    "(audit fix MAE-SEC-005)."
+                logger.warning("Rejected ?token= query-param auth (use Bearer header)")
+                self._send_http_response(
+                    conn,
+                    401,
+                    {
+                        "error": "Unauthorized. Pass the token via "
+                        "'Authorization: Bearer <token>' header, not ?token=. "
+                        "See `maestro status --help` for where the token file lives."
+                    },
                 )
+                conn.close()
+                return
 
-            # Audit fix MAE-V2-SEC-003: prefer Authorization header over query param
-            client_token = token_header or token_param
+            client_token = token_header
             if not client_token or not secrets.compare_digest(client_token, self.token):
-                self._send_http_response(conn, 401, {"error": "Unauthorized"})
+                self._send_http_response(
+                    conn,
+                    401,
+                    {
+                        "error": "Unauthorized. Check that your Authorization: Bearer "
+                        "token matches the local token file."
+                    },
+                )
                 conn.close()
                 return
 
@@ -358,8 +377,9 @@ class IntegrationServer:
             elif method == "GET" and parsed_url.path == "/api/status":
                 self._send_http_response(conn, 200, {"status": "running", "uptime": "active"})
             elif method == "GET" and parsed_url.path == "/metrics":
-                # Prometheus-compatible text exposition format
-                # No token auth required (guarded by localhost-only binding)
+                # Prometheus-compatible text exposition format.
+                # NOTE: token auth WAS already enforced above for all routes
+                # (Bearer check precedes routing), despite the old comment.
                 from gesture_controller.core.profiler import frame_budget
 
                 stage_stats = frame_budget.snapshot()
@@ -391,7 +411,15 @@ class IntegrationServer:
                     conn, 200, "\n".join(lines_out), content_type="text/plain; version=0.0.4"
                 )
             else:
-                self._send_http_response(conn, 404, {"error": "Not Found"})
+                self._send_http_response(
+                    conn,
+                    404,
+                    {
+                        "error": f"Not Found: {method} {parsed_url.path}. "
+                        "Valid routes: POST /api/trigger, POST /api/state, "
+                        "GET /api/status, GET /metrics."
+                    },
+                )
 
             conn.close()
         except Exception as e:
@@ -449,6 +477,13 @@ class IntegrationServer:
         try:
             conn.sendall(resp.encode("utf-8"))
             with self._clients_lock:
+                if len(self.clients) >= self._MAX_WS_CLIENTS:
+                    logger.warning("WS client cap reached; rejecting new client")
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                    return
                 self.clients.append(conn)
             logger.info("WebSocket client connected successfully")
         except Exception as e:
@@ -608,33 +643,51 @@ class IntegrationServer:
             except Exception:
                 pass
 
+    _MAX_WS_CLIENTS = 16
+
     def _broadcast_gesture(self, event: GestureEvent) -> None:
-        """Broadcast gesture triggers to all open WebSockets."""
+        """Broadcast gesture triggers to all open WebSockets.
+
+        ReAct fix: snapshot client list under lock, then send WITHOUT
+        holding the lock (a slow client previously stalled all others).
+        Per-socket timeout bounds each send; dead clients reaped after.
+        """
         with self._clients_lock:
             if not self.clients:
                 return
+            targets = list(self.clients)
 
-            payload = json.dumps(
-                {
-                    "event": "gesture_triggered",
-                    "gesture": event.gesture_name,
-                    "type": event.gesture_type,
-                    "confidence": event.confidence,
-                    "hand": event.hand,
-                }
-            )
-            frame = make_websocket_frame(payload)
+        payload = json.dumps(
+            {
+                "event": "gesture_triggered",
+                "gesture": event.gesture_name,
+                "type": event.gesture_type,
+                "confidence": event.confidence,
+                "hand": event.hand,
+            }
+        )
+        frame = make_websocket_frame(payload)
 
-            dead_clients = []
-            for client in self.clients:
+        dead_clients = []
+        for client in targets:
+            try:
                 try:
-                    client.sendall(frame)
-                except Exception:
-                    dead_clients.append(client)
-
-            for client in dead_clients:
-                try:
-                    client.close()
+                    client.settimeout(2.0)
                 except Exception:
                     pass
-                self.clients.remove(client)
+                client.sendall(frame)
+            except Exception:
+                dead_clients.append(client)
+
+        if dead_clients:
+            with self._clients_lock:
+                for client in dead_clients:
+                    try:
+                        client.close()
+                    except Exception:
+                        pass
+                    try:
+                        if client in self.clients:
+                            self.clients.remove(client)
+                    except ValueError:
+                        pass

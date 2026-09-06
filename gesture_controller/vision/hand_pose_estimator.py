@@ -45,15 +45,25 @@ class HandPoseEstimator:
         self.HAND_BOX_SHIFT_VECTOR = [0, -0.1]
         self.HAND_BOX_ENLARGE_FACTOR = 1.65
 
-        # Initialize onnxruntime session
+        # Initialize onnxruntime session (DirectML preferred on Windows).
         if providers is None:
+            import sys as _sys
+
+            available = set(ort.get_available_providers())
             providers = ["CPUExecutionProvider"]
-            if "CUDAExecutionProvider" in ort.get_available_providers():
-                providers.insert(0, "CUDAExecutionProvider")
-            if "DirectMLExecutionProvider" in ort.get_available_providers():
-                providers.insert(0, "DirectMLExecutionProvider")
-            if "CoreMLExecutionProvider" in ort.get_available_providers():
-                providers.insert(0, "CoreMLExecutionProvider")
+            if _sys.platform == "darwin":
+                if "CoreMLExecutionProvider" in available:
+                    providers.insert(0, "CoreMLExecutionProvider")
+            elif _sys.platform == "win32":
+                if "CUDAExecutionProvider" in available:
+                    providers.insert(0, "CUDAExecutionProvider")
+                if "DirectMLExecutionProvider" in available:
+                    providers.insert(0, "DirectMLExecutionProvider")
+            else:
+                if "DirectMLExecutionProvider" in available:
+                    providers.insert(0, "DirectMLExecutionProvider")
+                if "CUDAExecutionProvider" in available:
+                    providers.insert(0, "CUDAExecutionProvider")
         # Performance optimization (P1): default to graph-optimized session
         # options when the caller didn't supply their own.
         if sess_options is None:
@@ -67,13 +77,36 @@ class HandPoseEstimator:
     def name(self):
         return self.__class__.__name__
 
+    def close(self) -> None:
+        """Release the native ORT session handle."""
+        try:
+            if getattr(self, "session", None) is not None:
+                self.session = None  # type: ignore[assignment]
+        except Exception:
+            pass
+
+    def __del__(self):  # pragma: no cover
+        try:
+            self.close()
+        except Exception:
+            pass
+
     def set_backend_and_target(self, backendId, targetId):
         self.backend_id = backendId
         self.target_id = targetId
 
     def _crop_and_pad_from_palm(self, image, palm_bbox, for_rotation=False):
+        # ReAct fix: guard degenerate/empty crops that crashed copyMakeBorder/resize.
+        if image is None or getattr(image, "size", 0) == 0:
+            raise ValueError("Empty image passed to _crop_and_pad_from_palm")
+        try:
+            palm_bbox = __import__("numpy").asarray(palm_bbox, dtype=__import__("numpy").float64)
+        except Exception:
+            raise ValueError("Invalid palm_bbox")
+        if palm_bbox.shape != (2, 2) or not __import__("numpy").isfinite(palm_bbox).all():
+            raise ValueError("Invalid palm_bbox shape/values")
         # shift bounding box
-        wh_palm_bbox = palm_bbox[1] - palm_bbox[0]
+        wh_palm_bbox = np.maximum(palm_bbox[1] - palm_bbox[0], 1.0)
         if for_rotation:
             shift_vector = self.PALM_BOX_PRE_SHIFT_VECTOR
         else:
@@ -82,7 +115,7 @@ class HandPoseEstimator:
         palm_bbox = palm_bbox + shift_vector
         # enlarge bounding box
         center_palm_bbox = np.sum(palm_bbox, axis=0) / 2
-        wh_palm_bbox = palm_bbox[1] - palm_bbox[0]
+        wh_palm_bbox = np.maximum(palm_bbox[1] - palm_bbox[0], 1.0)
         if for_rotation:
             enlarge_scale = self.PALM_BOX_PRE_ENLARGE_FACTOR
         else:
@@ -93,7 +126,23 @@ class HandPoseEstimator:
         palm_bbox[:, 0] = np.clip(palm_bbox[:, 0], 0, image.shape[1])
         palm_bbox[:, 1] = np.clip(palm_bbox[:, 1], 0, image.shape[0])
         # crop to the size of interest
-        image = image[palm_bbox[0][1] : palm_bbox[1][1], palm_bbox[0][0] : palm_bbox[1][0], :]
+        x1, y1 = int(palm_bbox[0][0]), int(palm_bbox[0][1])
+        x2, y2 = int(palm_bbox[1][0]), int(palm_bbox[1][1])
+        if x2 <= x1:
+            if x1 < image.shape[1]:
+                x2 = min(image.shape[1], x1 + 1)
+            else:
+                x1 = max(0, x2 - 1)
+        if y2 <= y1:
+            if y1 < image.shape[0]:
+                y2 = min(image.shape[0], y1 + 1)
+            else:
+                y1 = max(0, y2 - 1)
+        if x2 <= x1 or y2 <= y1:
+            raise ValueError("Degenerate palm crop (zero area)")
+        image = image[y1:y2, x1:x2, :]
+        if image.size == 0 or min(image.shape[:2]) <= 0:
+            raise ValueError("Empty palm crop after clipping")
         # pad to ensure conner pixels won't be cropped
         if for_rotation:
             side_len = np.linalg.norm(image.shape[:2])

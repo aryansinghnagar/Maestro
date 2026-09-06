@@ -159,8 +159,45 @@ def main() -> None:
     subparsers.add_parser(
         "metrics", help="Print Prometheus-format metrics from the running daemon."
     )
+    # ReAct fix (layman QoL): single `maestro doctor` entrypoint replacing the
+    # confusing trio (gesture-controller-verify / verify-audit-log / status).
+    subparsers.add_parser(
+        "doctor",
+        help="Run all first-aid checks (deps, camera, config, models, token, audit log).",
+    )
 
     args = parser.parse_args()
+
+    if args.command == "doctor":
+        from gesture_controller.cli.verify_install import main as _verify_main
+
+        print("=== Maestro Doctor ===")
+        print("Running install verification, daemon status, and audit-log checks…")
+        code = 0
+        try:
+            code = int(_verify_main() or 0)
+        except SystemExit as e:
+            code = int(e.code or 0)
+        except Exception as e:
+            print(f"verify-install failed: {e}")
+            code = 1
+        # Daemon status (non-fatal if daemon not running).
+        try:
+            res = _make_api_request("GET", "/api/status")
+            print(f"daemon: OK ({res})")
+        except Exception as e:
+            print(f"daemon: not running ({e})")
+            print("  hint: start the app first, then re-run `maestro doctor`.")
+        # Audit log verification (non-fatal).
+        try:
+            from gesture_controller.os_integration.broker import AuditLogger  # noqa: F401
+
+            print("audit-log: module OK (run `maestro verify-audit-log` for full chain check)")
+        except Exception as e:
+            print(f"audit-log: unavailable ({e})")
+            code = max(code, 1)
+        print(f"=== Doctor exit code: {code} ===")
+        sys.exit(code)
 
     if args.command == "token":
         from gesture_controller.core.integration_server import get_or_create_api_token

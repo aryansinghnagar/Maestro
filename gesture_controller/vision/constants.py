@@ -14,8 +14,14 @@ FRAME_SIZE: int = FRAME_WIDTH * FRAME_HEIGHT * FRAME_CHANNELS  # 921,600 bytes
 FRAME_DTYPE: str = "uint8"
 
 # SharedMemory double-buffer layout
-HEADER_SIZE: int = 64  # Cache-line aligned header
-TOTAL_SHM_SIZE: int = HEADER_SIZE + FRAME_SIZE * 2  # 1,843,264 bytes
+# ReAct fix: canonical 8-byte seqlock header. The previous value of 64
+# diverged from double_buffer.py (8) and produced two incompatible SHM
+# layouts depending on import path. All producers/consumers must share
+# this single source of truth.
+HEADER_SIZE: int = 8  # 64-bit sequence counter (seqlock)
+TOTAL_SHM_SIZE: int = HEADER_SIZE + FRAME_SIZE * 2  # 1,843,208 bytes
+# Back-compat alias for older import sites.
+TOTAL_SIZE: int = TOTAL_SHM_SIZE
 
 # MediaPipe model paths
 MODEL_DIR: str = "data"

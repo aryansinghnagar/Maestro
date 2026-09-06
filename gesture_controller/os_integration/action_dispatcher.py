@@ -148,9 +148,18 @@ class ActionDispatcher:
     def _execute_scroll(self, delta_str: str) -> None:
         try:
             delta = int(delta_str)
+        except (ValueError, TypeError):
+            logger.error(
+                "Invalid scroll delta value. Use an integer between -10 and 10.",
+                delta=delta_str,
+            )
+            return
+        # ReAct fix: clamp (was unbounded -> DWORD overflow in SendInput).
+        delta = max(-10, min(10, delta))
+        try:
             self._controller.mouse_scroll(delta_y=delta)
-        except ValueError:
-            logger.error("Invalid scroll delta value", delta=delta_str)
+        except Exception as e:
+            logger.error("Scroll dispatch failed", error=str(e))
 
     def _execute_media(self, action: str) -> None:
         dispatch = {

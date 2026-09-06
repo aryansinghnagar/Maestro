@@ -34,6 +34,8 @@ class GestureEngine:
         self._event_bus = EventBus()
         self._metrics = MetricsCollector()
         self._running = False
+        self._state_lock = threading.Lock()
+        self._started = False
         self._paused = False
         self._thread: threading.Thread | None = None
         self._frame_count = 0
@@ -55,6 +57,8 @@ class GestureEngine:
             self._config, create_camera_process=create_camera_process
         )
 
+        self._inference_pipeline: InferencePipeline
+        self._gesture_recognizer: GestureRecognizer
         try:
             self._frame_pipeline.start()
             self._inference_pipeline = InferencePipeline(
@@ -67,7 +71,18 @@ class GestureEngine:
             self._signal_handler = SignalHandler(self.shutdown)
         except Exception as e:
             logger.critical("Engine initialization failed, rolling back resources...", error=str(e))
-            self._frame_pipeline.shutdown()
+            try:
+                if getattr(self, "_inference_pipeline", None) is not None:
+                    try:
+                        self._inference_pipeline.close()
+                    except Exception:
+                        pass
+                self._frame_pipeline.shutdown()
+            finally:
+                try:
+                    self._plugin_loader.stop_hot_reload()
+                except Exception:
+                    pass
             raise
 
         self._event_bus.subscribe("engine_pause_requested", self.set_paused)
@@ -182,9 +197,11 @@ class GestureEngine:
 
     def start(self) -> None:
         """Start the engine main loop thread."""
-        if self._running:
-            return
-        self._running = True
+        with self._state_lock:
+            if self._running:
+                return
+            self._running = True
+            self._started = True
         self._plugin_loader.start_hot_reload()
         # Note: FramePipeline start is now handled in __init__ (matches original GestureEngine sequence)
         self._signal_handler.install()
@@ -235,11 +252,11 @@ class GestureEngine:
                     self._event_bus.publish("raw_landmarks", raw_hands)
                     last_hand_time = time.monotonic()
 
-                    for track_id, features in features_list:
-                        # Find the correct hand by matching track ID index
-                        hand_idx = next(
-                            i for i, (tid, _) in enumerate(features_list) if tid == track_id
-                        )
+                    # ReAct fix: O(n^2) identity lookup + StopIteration risk.
+                    # features_list and smoothed_hands are parallel arrays.
+                    for hand_idx, (track_id, features) in enumerate(features_list):
+                        if hand_idx >= len(smoothed_hands):
+                            break
                         hand = smoothed_hands[hand_idx]
 
                         event = self._gesture_recognizer.evaluate(
@@ -278,20 +295,39 @@ class GestureEngine:
 
     def shutdown(self) -> None:
         """Gracefully shuts down background engine thread, camera process and SharedMemory."""
-        if not self._running:
-            return
+        with self._state_lock:
+            was_running = self._running
+            was_started = self._started
+            self._running = False
+            # ReAct fix: __init__ starts FramePipeline even before start();
+            # shutdown must release it even if start() was never called.
+            if not (was_running or was_started):
+                # Still shut down pipeline resources to avoid SHM/camera leaks.
+                pass
+            self._started = False
         logger.info("Shutting down GestureEngine...")
-        self._running = False
-
-        self._plugin_loader.stop_hot_reload()
+        try:
+            self._plugin_loader.stop_hot_reload()
+        except Exception:
+            pass
 
         if self._thread:
             self._thread.join(timeout=2.0)
             self._thread = None
 
-        self._frame_pipeline.shutdown()
-        self._inference_pipeline.close()
-        self._signal_handler.uninstall()
+        try:
+            self._frame_pipeline.shutdown()
+        except Exception:
+            pass
+        try:
+            if self._inference_pipeline is not None:
+                self._inference_pipeline.close()
+        except Exception:
+            pass
+        try:
+            self._signal_handler.uninstall()
+        except Exception:
+            pass
 
     def get_current_hands(self) -> list[Hand]:
         """Return the latest detected and filtered Hand data."""

@@ -6,22 +6,37 @@ set -e
 
 echo "=== Maestro Installation & Configuration ==="
 
-# 1. Create dedicated gesture-controller group if not exists
-if ! getent group gesture-controller > /dev/null; then
-    echo "Creating system group 'gesture-controller'..."
-    sudo groupadd -r gesture-controller
+# ReAct fix: standard video/input groups own /dev/video* and /dev/uinput on
+# most distros. We add the user to those AND keep the dedicated group for
+# the shipped udev rule. Matches INSTALL.md (was contradictory).
+# 1. Ensure groups exist / add user
+CURRENT_USER=$(logname 2>/dev/null || echo "${SUDO_USER:-$USER}")
+for grp in input video gesture-controller; do
+    if ! getent group "$grp" > /dev/null; then
+        echo "Creating system group '$grp'..."
+        sudo groupadd -r "$grp" || true
+    fi
+    echo "Adding user '$CURRENT_USER' to group '$grp'..."
+    sudo usermod -aG "$grp" "$CURRENT_USER" || true
+done
+
+# 2. Wayland notice (xdotool path is X11-only; uinput works on both)
+if [ "${XDG_SESSION_TYPE:-}" = "wayland" ]; then
+    echo "NOTE: Wayland detected — X11 helpers (xdotool) are disabled; uinput path will be used."
 fi
 
-# 2. Add current user to group
-CURRENT_USER=$(logname || echo $USER)
-echo "Adding user '$CURRENT_USER' to group 'gesture-controller'..."
-sudo usermod -aG gesture-controller "$CURRENT_USER"
-
-# 3. Install udev rule for non-root uinput access
+# 3. Install udev rule for non-root uinput access (resolve script dir first)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "Deploying udev rules..."
-sudo cp udev/99-gesture-controller-uinput.rules /etc/udev/rules.d/ 2>/dev/null || sudo cp 99-gesture-controller-uinput.rules /etc/udev/rules.d/
+if [ -f "$SCRIPT_DIR/../99-gesture-controller-uinput.rules" ]; then
+    sudo cp "$SCRIPT_DIR/../99-gesture-controller-uinput.rules" /etc/udev/rules.d/
+elif [ -f "$SCRIPT_DIR/99-gesture-controller-uinput.rules" ]; then
+    sudo cp "$SCRIPT_DIR/99-gesture-controller-uinput.rules" /etc/udev/rules.d/
+else
+    sudo cp udev/99-gesture-controller-uinput.rules /etc/udev/rules.d/ 2>/dev/null || sudo cp 99-gesture-controller-uinput.rules /etc/udev/rules.d/
+fi
 sudo udevadm control --reload-rules
-sudo udevadm trigger
+sudo udevadm trigger || true
 
 # 4. Install systemd user service
 echo "Deploying systemd user service..."

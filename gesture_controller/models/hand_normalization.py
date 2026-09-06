@@ -29,8 +29,10 @@ def normalize_landmarks(
     if landmarks.shape != (21, 3):
         raise ValueError(f"Expected shape (21, 3), got {landmarks.shape}")
 
-    wrist = landmarks[0]
-    centered = landmarks - wrist
+    # ReAct fix: copy wrist first — `landmarks - wrist` with a view is safe
+    # here, but explicit copy documents intent and guards inplace callers.
+    wrist = np.array(landmarks[0], dtype=np.float64, copy=True)
+    centered = landmarks.astype(np.float64, copy=True) - wrist
 
     mcp5 = centered[5]
     pip6 = centered[6]
@@ -40,7 +42,8 @@ def normalize_landmarks(
 
     normalized = centered / scale
 
-    if handedness == "Left":
+    # ReAct fix: case-insensitive handedness ("left"/"Left").
+    if isinstance(handedness, str) and handedness.strip().lower() == "left":
         normalized[:, 0] *= -1.0
 
     return np.asarray(normalized, dtype=np.float32)
@@ -58,7 +61,8 @@ def normalize_landmarks_inplace(
         raise ValueError(f"Expected shape (21, 3) for out, got {out.shape}")
 
     # 1. Center on wrist (landmark 0)
-    wrist = landmarks[0]
+    # ReAct fix: overlapping in/out is undefined — copy wrist first.
+    wrist = np.array(landmarks[0], dtype=out.dtype if hasattr(out, "dtype") else None, copy=True)
     np.subtract(landmarks, wrist, out=out)
 
     # 2. Scale by index MCP->PIP distance (landmarks 5->6)
@@ -70,8 +74,8 @@ def normalize_landmarks_inplace(
 
     out /= scale
 
-    # 3. Mirror x-axis for Left hand
-    if handedness == "Left":
+    # 3. Mirror x-axis for Left hand (case-insensitive)
+    if isinstance(handedness, str) and handedness.strip().lower() == "left":
         out[:, 0] *= -1.0
 
     return out

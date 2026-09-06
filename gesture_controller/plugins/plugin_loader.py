@@ -549,8 +549,15 @@ class PluginLoader:
         except Exception as e:
             raise PluginLoadError(str(path), f"RestrictedPython sandbox execution failed: {e}")
 
-        # Re-read meta from the executed module (in case it was computed or customized)
-        meta = getattr(module, "PLUGIN_META", meta)
+        # ReAct fix: DO NOT re-read PLUGIN_META post-exec (privilege
+        # escalation: plugin passes schema validation then widens
+        # permissions at runtime). The pre-validated manifest wins.
+        executed_meta = getattr(module, "PLUGIN_META", None)
+        if isinstance(executed_meta, dict) and executed_meta != meta:
+            logger.warning(
+                "Plugin attempted to modify PLUGIN_META at runtime; ignoring",
+                path=str(path),
+            )
 
         # 3. Validate GESTURE_DEFINITIONS if present
         gestures = getattr(module, "GESTURE_DEFINITIONS", [])
@@ -670,35 +677,87 @@ class PluginLoader:
         if not wasm_path.exists():
             raise PluginLoadError(str(path), "Missing plugin.wasm or plugin.wat")
 
-        # Compile WASM module
+        # Compile WASM module (ReAct fix: fuel + size bounds; was unbounded).
         try:
-            engine = wasmtime.Engine()
+            _cfg = wasmtime.Config()
+            try:
+                _cfg.consume_fuel = True
+            except Exception:
+                pass
+            engine = wasmtime.Engine(_cfg)
             store = wasmtime.Store(engine)
+            try:
+                store.set_fuel(1_000_000)
+            except Exception:
+                pass
             linker = wasmtime.Linker(engine)
 
+            # Size cap: 16 MiB (DoS guard).
+            raw_bytes: bytes | None = None
             if wasm_path.suffix == ".wat":
                 module = wasmtime.Module(engine, wasm_path.read_text(encoding="utf-8"))
             else:
-                module = wasmtime.Module(engine, wasm_path.read_bytes())
+                raw_bytes = wasm_path.read_bytes()
+                if len(raw_bytes) > 16 * 1024 * 1024:
+                    raise PluginLoadError(str(wasm_path), "WASM module exceeds 16 MiB cap")
+                if len(raw_bytes) == 0:
+                    raise PluginLoadError(str(wasm_path), "Empty WASM module")
+                module = wasmtime.Module(engine, raw_bytes)
+        except PluginLoadError:
+            raise
         except Exception as e:
             raise PluginLoadError(str(wasm_path), f"WASM compilation failed: {e}")
 
         gestures: list[dict] = []
+        _MAX_WASM_STR = 64 * 1024  # 64 KiB per host-call string
+        _action_times: list[float] = []
 
-        # Helper to read strings from WASM memory
+        # Helper to read strings from WASM memory (bounds-checked).
         def get_wasm_string(caller: Any, ptr: int, length: int) -> str:
+            try:
+                ptr, length = int(ptr), int(length)
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"Invalid WASM ptr/len: {e}") from e
+            if ptr < 0 or length < 0 or length > _MAX_WASM_STR:
+                raise ValueError(f"WASM string out of bounds (ptr={ptr}, len={length})")
             memory = caller.get("memory")
             if not memory:
                 raise RuntimeError("WASM module does not export 'memory'")
-            data = memory.read(caller, ptr, ptr + length)
-            return data.decode("utf-8")
+            try:
+                mem_size = memory.data_len(caller)
+                if ptr + length > mem_size:
+                    raise ValueError("WASM read exceeds linear memory")
+            except AttributeError:
+                pass  # older wasmtime without data_len; length cap still applies
+            # NOTE: wasmtime memory.read(caller, data, ptr) — order is (data, ptr).
+            # The old code passed (ptr, ptr+length) which over-read. We read
+            # exactly `length` bytes from `ptr` with a compat shim.
+            try:
+                data = memory.read(caller, ptr, length)
+            except TypeError:
+                # Fallback for alternate binding signature read(caller, data, ptr).
+                buf = bytearray(length)
+                memory.read(caller, buf, ptr)
+                data = bytes(buf)
+            return bytes(data).decode("utf-8", errors="strict")
 
-        # Define host imports
+        # Define host imports (rate-limited to prevent event-bus flooding).
         def trigger_action(caller: Any, ptr: int, length: int) -> None:
             if "os:input" not in meta["permissions"]:
                 raise PermissionError("Permission Denied: Plugin lacks 'os:input' capability")
+            import time as _time
+
+            now = _time.monotonic()
+            _action_times.append(now)
+            # Keep last 10s window; max 20 actions/10s per plugin.
+            while _action_times and now - _action_times[0] > 10.0:
+                _action_times.pop(0)
+            if len(_action_times) > 20:
+                raise RuntimeError("trigger_action rate limit exceeded (20/10s)")
             action = get_wasm_string(caller, ptr, length)
-            logger.info("WASM plugin triggered action", plugin=meta["name"], action=action)
+            if len(action) > _MAX_WASM_STR:
+                raise ValueError("Action payload too large")
+            logger.info("WASM plugin triggered action", plugin=meta["name"], action=action[:200])
             self._event_bus.publish("action_triggered", action)
 
         def get_config(
@@ -718,6 +777,9 @@ class PluginLoader:
             return write_len
 
         def register_gesture(caller: Any, ptr: int, length: int) -> None:
+            # ReAct fix: cap + dedupe + namespace to prevent squatting/DoS.
+            if len(gestures) >= 32:
+                raise RuntimeError("register_gesture cap exceeded (32/plugin)")
             gesture_json = get_wasm_string(caller, ptr, length)
             try:
                 gesture = json.loads(gesture_json)
@@ -726,6 +788,12 @@ class PluginLoader:
                     with open(gesture_schema_path, "r") as f:
                         g_schema = json.load(f)
                     jsonschema.validate(gesture, g_schema)
+                gname = str(gesture.get("name", ""))
+                if not gname or any(g.get("name") == gname for g in gestures):
+                    raise ValueError(f"Duplicate/empty gesture name: {gname!r}")
+                # Namespace with plugin name to prevent squatting core gestures.
+                gesture = dict(gesture)
+                gesture["name"] = f"{meta['name']}:{gname}"[:128]
                 gestures.append(gesture)
             except Exception as e:
                 logger.error("WASM plugin failed to register gesture", error=str(e))

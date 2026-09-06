@@ -1,15 +1,15 @@
 # Maestro Security Policy
 
-**Last updated: 2026-08-19**
+**Last updated: 2026-09-04**
 
 ## Supported Versions
 
 | Version | Supported |
 |---|---|
-| 1.2.x | ✅ (Active) |
-| 1.1.x | ⚠️ (Security fixes only) |
-| 1.0.x | ❌ (End of life — upgrade to 1.2.x) |
-| < 1.0 | ❌ |
+| 1.3.x | ✅ (Active) |
+| 1.2.x | ⚠️ (Security fixes only) |
+| 1.1.x | ❌ (End of life — upgrade to 1.3.x) |
+| < 1.1 | ❌ |
 
 ## Reporting a Vulnerability
 

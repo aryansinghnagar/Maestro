@@ -27,7 +27,9 @@ _DOMAIN = "maestro"
 
 # ── Module-level translation function (replaced on install) ──────────────────
 _current_lang: str = "en"
-_translation_lock = threading.Lock()
+# ReAct fix: RLock (install() holds the lock while calling _load_translator(),
+# which also locks — Lock would deadlock).
+_translation_lock = threading.RLock()
 _translators: dict[str, gettext.NullTranslations] = {}
 
 
@@ -64,16 +66,23 @@ def detect_system_locale() -> str:
 
 def _load_translator(lang: str) -> gettext.NullTranslations:
     """Load (or return cached) a GNUTranslations object for *lang*."""
-    if lang in _translators:
-        return _translators[lang]
-
+    # ReAct fix: lock + close fd (was FD leak + race). Normalize "C"/"c".
+    lang = (lang or "en").strip().lower()
+    if lang in ("c", "c.utf-8", "posix"):
+        lang = "en"
+    lang = lang[:2]
+    with _translation_lock:
+        if lang in _translators:
+            return _translators[lang]
     mo_dir = _LOCALE_DIR / lang / "LC_MESSAGES"
     mo_path = mo_dir / f"{_DOMAIN}.mo"
 
     if mo_path.exists():
         try:
-            t = gettext.GNUTranslations(open(mo_path, "rb"))
-            _translators[lang] = t
+            with open(mo_path, "rb") as f:
+                t = gettext.GNUTranslations(f)
+            with _translation_lock:
+                _translators[lang] = t
             return t
         except Exception as exc:
             logger.warning("Failed to load .mo file for %s: %s", lang, exc)
@@ -115,13 +124,32 @@ def current_lang() -> str:
 
 
 def available_languages() -> list[str]:
-    """Return sorted list of languages that have a locale directory."""
+    """Return sorted list of languages that have a locale directory.
+
+    NOTE: entries without a compiled .mo fall back to English at runtime
+    (see _load_translator). Run `scripts/compile_locales.py` (now with
+    stdlib fallback + CI check) to generate .mo files for release.
+    """
     if not _LOCALE_DIR.exists():
         return ["en"]
     langs = sorted(
         d.name for d in _LOCALE_DIR.iterdir() if d.is_dir() and (d / "LC_MESSAGES").is_dir()
     )
     return langs if langs else ["en"]
+
+
+def available_compiled_languages() -> list[str]:
+    """Subset of available_languages() with a compiled .mo on disk."""
+    if not _LOCALE_DIR.exists():
+        return ["en"]
+    langs = sorted(
+        d.name
+        for d in _LOCALE_DIR.iterdir()
+        if d.is_dir() and (d / "LC_MESSAGES" / f"{_DOMAIN}.mo").exists()
+    )
+    if "en" not in langs:
+        langs = ["en", *langs]
+    return langs
 
 
 def gettext_callable() -> Callable[[str], str]:

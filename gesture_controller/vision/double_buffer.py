@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import struct
 import time
 from multiprocessing import shared_memory
@@ -6,12 +8,25 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-FRAME_WIDTH = 640
-FRAME_HEIGHT = 480
-FRAME_CHANNELS = 3
-FRAME_SIZE = FRAME_WIDTH * FRAME_HEIGHT * FRAME_CHANNELS  # 921600 bytes
-HEADER_SIZE = 8  # 64-bit sequence counter
-TOTAL_SIZE = HEADER_SIZE + 2 * FRAME_SIZE  # 1843208 bytes
+# ReAct fix: single source of truth lives in vision.constants.
+# These module-level names are kept as re-exports for backward compat.
+try:
+    from gesture_controller.vision.constants import (
+        FRAME_WIDTH,
+        FRAME_HEIGHT,
+        FRAME_CHANNELS,
+        FRAME_SIZE,
+        HEADER_SIZE,
+        TOTAL_SHM_SIZE as TOTAL_SIZE,
+    )
+except Exception:  # pragma: no cover - import-time fallback for frozen builds
+    FRAME_WIDTH = 640
+    FRAME_HEIGHT = 480
+    FRAME_CHANNELS = 3
+    FRAME_SIZE = FRAME_WIDTH * FRAME_HEIGHT * FRAME_CHANNELS  # 921600 bytes
+    HEADER_SIZE = 8  # 64-bit sequence counter
+    TOTAL_SIZE = HEADER_SIZE + 2 * FRAME_SIZE  # 1843208 bytes
+TOTAL_SHM_SIZE = TOTAL_SIZE
 
 # Performance optimization (P8): right-sized SHM buffer dimensions for the
 # three most common capture resolutions. Callers building a DoubleFrameBuffer
@@ -171,9 +186,22 @@ class DoubleFrameBuffer:
             # Verify no concurrent write occurred while we built the view.
             seq2 = struct.unpack_from("<Q", buf, 0)[0]
             if seq1 == seq2:
+                try:
+                    view.flags.writeable = False
+                except Exception:
+                    pass
                 return view
 
         return None
+
+    def __enter__(self) -> DoubleFrameBuffer:
+        return self
+
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
 
     def close(self) -> None:
         """Close shared memory access handle."""

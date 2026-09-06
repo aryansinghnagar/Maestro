@@ -23,22 +23,30 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install .[dev]
-          pip install cyclonedx-python-lib
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
 
-      - name: Generate CycloneDX SBOM
+      - name: Install dependencies (frozen lockfile)
         run: |
-          cyclonedx-py poetry --outfile sbom.json --format json || cyclonedx-py requirements --outfile sbom.json --format json
+          uv sync --frozen --extra dev
+          uv pip install pyinstaller
+
+      - name: Compile locales (.po -> .mo)
+        run: uv run python scripts/compile_locales.py
+
+      - name: Generate CycloneDX SBOM (from uv.lock)
+        # ReAct fix: deterministic lockfile-driven SBOM instead of
+        # environment introspection.
+        run: |
+          uv run python scripts/generate_sbom.py
+          cp packaging/sbom.cdx.json sbom.json
 
       - name: Build Executable via PyInstaller
         run: |
-          pip install pyinstaller
-          pyinstaller gesture_controller.spec
+          uv run pyinstaller gesture_controller.spec --noconfirm
 
       - name: Code Sign (Windows)
         shell: powershell
@@ -55,17 +63,22 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.5.0
 
+      # ReAct fix: spec outputs dist/GestureController/GestureController.exe
+      # (COLLECT dir), not dist/Maestro.exe. Sign + hash the real binary.
       - name: Sign Executable with Cosign (Keyless)
+        shell: pwsh
         run: |
-          cosign sign-blob --yes --output-signature dist/Maestro.exe.sig --output-certificate dist/Maestro.exe.pem dist/Maestro.exe
+          $exe = "dist/GestureController/GestureController.exe"
+          if (-not (Test-Path $exe)) { Write-Error "Expected binary missing: $exe"; exit 1 }
+          cosign sign-blob --yes --output-signature "$exe.sig" --output-certificate "$exe.pem" "$exe"
 
       - name: Generate Hashes for SLSA Generic Generator
         id: hash
         shell: pwsh
         run: |
-          $hash = (Get-FileHash dist/Maestro.exe -Algorithm SHA256).Hash.ToLower()
-          $filename = "Maestro.exe"
-          $subject = "$hash  $filename"
+          $exe = "dist/GestureController/GestureController.exe"
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          $subject = "$hash  GestureController.exe"
           $base64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($subject))
           echo "hashes=$base64" >> $env:GITHUB_OUTPUT
 
@@ -74,10 +87,86 @@ jobs:
         with:
           name: Maestro-Windows-Artifacts
           path: |
-            dist/Maestro.exe
-            dist/Maestro.exe.sig
-            dist/Maestro.exe.pem
+            dist/GestureController/
             sbom.json
+
+  # ReAct fix: the project claims Windows/macOS/Linux support but only
+  # shipped Windows artifacts. These jobs build the same PyInstaller spec
+  # on each OS. (Notarization, .dmg, and deb/rpm remain future work.)
+  build-linux:
+    name: Build Release (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libglib2.0-0 gettext
+
+      - name: Install dependencies (frozen lockfile)
+        run: |
+          uv sync --frozen --extra dev
+          uv pip install pyinstaller
+
+      - name: Compile locales (.po -> .mo)
+        run: uv run python scripts/compile_locales.py
+
+      - name: Build Executable via PyInstaller
+        run: uv run pyinstaller gesture_controller.spec --noconfirm
+
+      - name: Upload Binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: Maestro-Linux-Artifacts
+          path: dist/GestureController/
+
+  build-macos:
+    name: Build Release (macOS)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies (frozen lockfile)
+        run: |
+          uv sync --frozen --extra dev
+          uv pip install pyinstaller
+
+      # NOTE: no gettext install needed — scripts/compile_locales.py falls
+      # back to its self-contained .po -> .mo compiler.
+      - name: Compile locales (.po -> .mo)
+        run: uv run python scripts/compile_locales.py
+
+      - name: Build Executable via PyInstaller
+        run: uv run pyinstaller gesture_controller.spec --noconfirm
+
+      - name: Upload Binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: Maestro-macOS-Artifacts
+          path: dist/
 
   provenance:
     needs: build

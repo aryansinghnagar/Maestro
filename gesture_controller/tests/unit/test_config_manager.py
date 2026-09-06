@@ -100,8 +100,10 @@ def test_config_manager_validation_raises_on_invalid_type(tmp_path: Path) -> Non
         original_load_schema = ConfigManager._load_schema
         ConfigManager._load_schema = mock_load_schema  # type: ignore
 
-        with pytest.raises(jsonschema.ValidationError):
-            ConfigManager(config_path=config_file)
+        # ReAct change: invalid user config now falls back to defaults
+        # (layman-safe boot) instead of raising. Verify fallback.
+        cm = ConfigManager(config_path=config_file)
+        assert cm.get("camera.device_id", 0) == 0
 
         # Restore _load_schema
         ConfigManager._load_schema = original_load_schema

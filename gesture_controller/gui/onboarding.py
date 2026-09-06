@@ -307,11 +307,15 @@ class OnboardingWizard(QDialog):
             self.os_status.setStyleSheet("color: #89b4fa;")
 
     def complete_onboarding(self) -> None:
-        """Write the onboarding confirmation marker file and exit dialog."""
+        """Write the versioned onboarding marker file and exit dialog."""
+        # ReAct fix: version the marker so major updates re-prompt (was
+        # versionless touch -> never re-showed after updates).
+        from gesture_controller import __version__ as _ver
+
         marker = get_onboarded_marker_path()
         try:
             marker.parent.mkdir(parents=True, exist_ok=True)
-            marker.touch()
+            marker.write_text(f"maestro={_ver}\n", encoding="utf-8")
             logger.info("Onboarding wizard finished and marker file written", path=str(marker))
         except Exception as e:
             logger.error("Failed to write onboarding marker file", error=str(e))
@@ -321,5 +325,24 @@ class OnboardingWizard(QDialog):
 
 
 def is_onboarded() -> bool:
-    """Return True if onboarding was completed previously."""
-    return get_onboarded_marker_path().exists()
+    """Return True if onboarding was completed for the current major version."""
+    marker = get_onboarded_marker_path()
+    if not marker.exists():
+        return False
+    try:
+        from gesture_controller import __version__ as _ver
+
+        content = marker.read_text(encoding="utf-8").strip()
+        if not content:
+            return True  # legacy marker: honor it once, re-prompt next major
+        # Re-prompt when major version changed (e.g. 1.x -> 2.x).
+        cur_major = str(_ver).split(".")[0]
+        for token in content.replace(",", " ").split():
+            if token.startswith("maestro="):
+                marked = token.split("=", 1)[1].strip()
+                if marked.split(".")[0] != cur_major:
+                    return False
+                return True
+        return True
+    except Exception:
+        return True

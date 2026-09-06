@@ -59,24 +59,58 @@ def get_vk_code(key: str) -> int:
 
 
 def send_key_event(vk_code: int, is_up: bool = False) -> None:
-    if vk_code == 0:
+    # ReAct fix: validate + check SendInput return (was silently ignored).
+    if not vk_code:
+        logger.warning("send_key_event called with unknown VK code; dropping")
         return
+    # Extended keys (arrows, ins/del, home/end, R-ctrl/R-alt) need EXTENDEDKEY.
+    _EXTENDED = {
+        0x21,
+        0x22,
+        0x23,
+        0x24,
+        0x25,
+        0x26,
+        0x27,
+        0x28,
+        0x2D,
+        0x2E,
+        0x5B,
+        0x5C,
+        0x5D,
+        0xA3,
+        0xA5,
+    }
     flags = 0x0002 if is_up else 0  # KEYEVENTF_KEYUP = 0x0002
+    if vk_code in _EXTENDED:
+        flags |= 0x0001  # KEYEVENTF_EXTENDEDKEY
     ki = KEYBDINPUT(wVk=vk_code, wScan=0, dwFlags=flags, time=0, dwExtraInfo=0)
     union = INPUT_UNION(ki=ki)
     input_struct = INPUT(type=1, u=union)  # INPUT_KEYBOARD = 1
-    ctypes.windll.user32.SendInput(  # type: ignore[attr-defined]
-        1, ctypes.byref(input_struct), ctypes.sizeof(input_struct)
-    )
+    try:
+        sent = ctypes.windll.user32.SendInput(  # type: ignore[attr-defined]
+            1, ctypes.byref(input_struct), ctypes.sizeof(input_struct)
+        )
+    except Exception as e:
+        logger.warning("SendInput key event failed", error=str(e))
+        return
+    if sent != 1:
+        logger.warning("SendInput injected 0/1 key events (UIPI block?)", vk=vk_code)
 
 
 def send_mouse_event(flags: int, dx: int = 0, dy: int = 0, data: int = 0) -> None:
     mi = MOUSEINPUT(dx=dx, dy=dy, mouseData=data, dwFlags=flags, time=0, dwExtraInfo=0)
     union = INPUT_UNION(mi=mi)
     input_struct = INPUT(type=0, u=union)  # INPUT_MOUSE = 0
-    ctypes.windll.user32.SendInput(  # type: ignore[attr-defined]
-        1, ctypes.byref(input_struct), ctypes.sizeof(input_struct)
-    )
+    try:
+        sent = ctypes.windll.user32.SendInput(  # type: ignore[attr-defined]
+            1, ctypes.byref(input_struct), ctypes.sizeof(input_struct)
+        )
+    except Exception as e:
+        logger.warning("SendInput mouse event failed", error=str(e))
+        return
+    if sent != 1:
+        logger.warning("SendInput injected 0/1 mouse events", flags=flags)
 
 
 class WindowsController(BaseController):
@@ -92,34 +126,51 @@ class WindowsController(BaseController):
 
     def key_press(self, key: str, modifiers: list[str] | None = None) -> None:
         vk = get_vk_code(key)
+        if not vk:
+            logger.warning("Unknown key; dropping key_press", key=key)
+            return
         mods_vks = [get_vk_code(m) for m in (modifiers or [])]
+        mods_vks = [v for v in mods_vks if v]
+        pressed: list[int] = []
+        try:
+            # Press modifiers
+            for m_vk in mods_vks:
+                send_key_event(m_vk, is_up=False)
+                pressed.append(m_vk)
 
-        # Press modifiers
-        for m_vk in mods_vks:
-            send_key_event(m_vk, is_up=False)
-
-        # Press key
-        send_key_event(vk, is_up=False)
-        send_key_event(vk, is_up=True)
-
-        # Release modifiers (reverse order)
-        for m_vk in reversed(mods_vks):
-            send_key_event(m_vk, is_up=True)
+            # Press key
+            send_key_event(vk, is_up=False)
+            send_key_event(vk, is_up=True)
+        finally:
+            # ReAct fix: always release modifiers (was stuck on exception).
+            for m_vk in reversed(pressed):
+                try:
+                    send_key_event(m_vk, is_up=True)
+                except Exception:
+                    pass
 
     def key_release(self, key: str) -> None:
         vk = get_vk_code(key)
         send_key_event(vk, is_up=True)
 
     def key_combo(self, keys: list[str]) -> None:
-        vks = [get_vk_code(k) for k in keys]
-
-        # Press all in order
-        for vk in vks:
-            send_key_event(vk, is_up=False)
-
-        # Release all in reverse order
-        for vk in reversed(vks):
-            send_key_event(vk, is_up=True)
+        vks = [v for v in (get_vk_code(k) for k in keys) if v]
+        if not vks:
+            logger.warning("key_combo with no known keys; dropping")
+            return
+        pressed: list[int] = []
+        try:
+            # Press all in order
+            for vk in vks:
+                send_key_event(vk, is_up=False)
+                pressed.append(vk)
+        finally:
+            # Release all in reverse order (always, even on partial failure).
+            for vk in reversed(pressed):
+                try:
+                    send_key_event(vk, is_up=True)
+                except Exception:
+                    pass
 
     def mouse_click(self, button: str = "left", x: int | None = None, y: int | None = None) -> None:
         if x is not None and y is not None:
@@ -152,10 +203,19 @@ class WindowsController(BaseController):
             send_mouse_event(0x0001, x, y)  # MOUSEEVENTF_MOVE
 
     def mouse_scroll(self, delta_x: int = 0, delta_y: int = 0) -> None:
-        if delta_y != 0:
-            send_mouse_event(0x0800, data=delta_y * 120)  # MOUSEEVENTF_WHEEL
-        if delta_x != 0:
-            send_mouse_event(0x1000, data=delta_x * 120)  # MOUSEEVENTF_HWHEEL
+        # ReAct fix: clamp to DWORD range to avoid overflow; bound loops.
+        def _clamp(v: int) -> int:
+            try:
+                v = int(v)
+            except (TypeError, ValueError):
+                return 0
+            return max(-10, min(10, v))
+
+        dx, dy = _clamp(delta_x), _clamp(delta_y)
+        if dy != 0:
+            send_mouse_event(0x0800, data=dy * 120)  # MOUSEEVENTF_WHEEL
+        if dx != 0:
+            send_mouse_event(0x1000, data=dx * 120)  # MOUSEEVENTF_HWHEEL
 
     def get_foreground_app(self) -> str:
         """Query foreground window and return its process executable name."""

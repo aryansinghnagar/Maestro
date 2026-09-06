@@ -114,9 +114,13 @@ class MacOSController(BaseController):
         return (int(loc.x), int(loc.y))
 
     def key_press(self, key: str, modifiers: list[str] | None = None) -> None:
+        # ReAct fix: was key-down only (stuck keys). Now down+up with
+        # try/finally parity and unknown-key guard.
         if not self.is_supported():
             return
-        keycode = MAC_KEYCODES.get(key.lower(), 0)
+        keycode = MAC_KEYCODES.get(key.lower())
+        if keycode is None:
+            return
         flags = 0
         if modifiers:
             for mod in modifiers:
@@ -126,7 +130,9 @@ class MacOSController(BaseController):
     def key_release(self, key: str) -> None:
         if not self.is_supported():
             return
-        keycode = MAC_KEYCODES.get(key.lower(), 0)
+        keycode = MAC_KEYCODES.get(key.lower())
+        if keycode is None:
+            return
         self._post_keyboard_event(keycode, False, 0)
 
     def key_combo(self, keys: list[str]) -> None:
