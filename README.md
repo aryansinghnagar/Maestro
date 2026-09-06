@@ -7,6 +7,17 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 [![GitHub Release](https://img.shields.io/github/v/release/aryansinghnagar/Maestro)](https://github.com/aryansinghnagar/Maestro/releases)
+[![Status: Work in Progress](https://img.shields.io/badge/Status-Work--In--Progress-orange.svg)](#)
+[![Testing: Untested](https://img.shields.io/badge/Testing-Untested-red.svg)](#)
+[![Stability: Experimental](https://img.shields.io/badge/Stability-Experimental-red.svg)](#)
+
+> [!CAUTION]
+> ### ⚠️ EXPERIMENTAL & UNTESTED — WORK IN PROGRESS
+> This repository is an active **Work-In-Progress (WIP)** and is currently **untested across diverse user hardware**.
+>
+> - **Experimental OS-Level Automation**: Webcam tracking, input simulation (SendInput/uinput/CGEvent), and background broker daemons are under active development.
+> - **Not for General End Users**: This project is not ready for consumer use or daily-driver desktop interaction without technical oversight.
+> - **Use at Your Own Risk**: Operating system level input simulation and hotkey hooks may interfere with normal cursor control, window management, or user input if unexpected tracking behaviors occur.
 
 ## Features
 
